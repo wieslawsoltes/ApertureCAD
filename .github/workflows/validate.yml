@@ -1,0 +1,47 @@
+name: Validate source, real WGSL compiler, and DOM
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm run build && npm test && npm run check
+      - run: python -m pip install -r tests/requirements.txt
+      - run: python -m playwright install --with-deps chromium
+      - run: python tests/browser.py --dom-only
+      # Controller integration only: explicit test engine/storage doubles, not GPU qualification.
+      - run: python tests/workspace-ui.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: validation-evidence
+          path: artifacts/
+  wgsl-compiler:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm run build
+      # Optional test tooling only; the delivered browser app has no external runtime dependency.
+      - run: npm install --no-save --ignore-scripts webgpu@0.6.1
+      - run: npm run test:wgsl
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-wgsl-compiler-evidence
+          path: |
+            artifacts/native-compiler.json
+            artifacts/shader-manifest.json
+# Compiler-only CI is not execution/performance qualification.
+# Run npm run test:native with a native Vulkan adapter, and tests/browser.py on a permitted browser.

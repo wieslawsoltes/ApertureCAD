@@ -1,0 +1,122 @@
+name: Import release, validate, and deploy Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      archive_url:
+        description: Optional HTTPS download URL of the original v2.5.0 ZIP
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aperture-pages
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    outputs:
+      ready: ${{ steps.source.outputs.ready }}
+      sha: ${{ steps.source.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Import complete release when an archive is available
+        id: source
+        env:
+          ARCHIVE_URL: ${{ inputs.archive_url }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f package.json && -f packages/app/index.js ]]; then
+            echo 'ready=true' >> "$GITHUB_OUTPUT"
+            echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          archive=''
+          if [[ -n "${ARCHIVE_URL:-}" ]]; then
+            archive="$RUNNER_TEMP/aperture-cad-v2.5.0.zip"
+            curl --fail --show-error --silent --location --retry 2 \
+              --proto '=https' --proto-redir '=https' --max-time 120 \
+              --max-filesize 16777216 --output "$archive" "$ARCHIVE_URL"
+          else
+            shopt -s nullglob
+            candidates=(aperture-cad-v2.5.0*.zip imports/aperture-cad-v2.5.0*.zip)
+            if (( ${#candidates[@]} > 1 )); then
+              echo '::error::Keep exactly one original release ZIP in the repository.'
+              exit 1
+            fi
+            if (( ${#candidates[@]} == 1 )); then archive="${candidates[0]}"; fi
+          fi
+          if [[ -z "$archive" ]]; then
+            echo 'ready=false' >> "$GITHUB_OUTPUT"
+            echo '## Not deployed: the source archive has not been transferred' >> "$GITHUB_STEP_SUMMARY"
+            echo 'Upload the original aperture-cad-v2.5.0 ZIP to the repository root, or run this workflow with its HTTPS download URL.' >> "$GITHUB_STEP_SUMMARY"
+            echo 'No application build or Pages deployment has been performed.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          python tools/import-release.py "$archive" --target . --workflows-preseeded
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add --all
+          if ! git diff --cached --quiet; then
+            git commit -m 'Import complete verified ApertureCAD v2.5.0 release (228 files)'
+            git push origin HEAD:main
+          fi
+          echo 'ready=true' >> "$GITHUB_OUTPUT"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: prepare
+    if: needs.prepare.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm run build && npm test && npm run check
+      - name: Stage standalone and modular applications
+        run: |
+          mkdir -p _site
+          cp -a dist/. _site/
+          cp -a examples _site/examples
+          cp -a packages _site/packages
+          cp -a docs _site/docs
+          touch _site/.nojekyll
+          test -s _site/index.html
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    needs: [prepare, build]
+    if: needs.prepare.outputs.ready == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      # Repository Settings > Pages > Source must be GitHub Actions.
+      # Initial enablement requires administration permission, not merely pages:write.
+      - uses: actions/configure-pages@v5
+      - name: Deploy GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
