@@ -1,0 +1,81 @@
+{
+  "schema": "aperture-clean-package/1",
+  "version": "2.2.0",
+  "status": "passed",
+  "createdAt": "2026-09-18T08:30:36.664728+00:00",
+  "input": "Fresh extraction of aperture-cad-v2.2.0-stage.zip; final archive appends only this verification, its logs, aggregate validation and file hashes.",
+  "commands": [
+    {
+      "command": "npm run build",
+      "exitCode": 0
+    },
+    {
+      "command": "npm test",
+      "exitCode": 0,
+      "tests": 178,
+      "passed": 178,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "command": "npm run check",
+      "exitCode": 0
+    },
+    {
+      "command": "DAWN_MODULE=<official Dawn binary> node tools/native-webgpu.mjs",
+      "exitCode": 0,
+      "modules": 5,
+      "pipelines": 25,
+      "negativeProbes": 4
+    }
+  ],
+  "sourceFilesByteIdentical": 58,
+  "rebuiltDistributions": [
+    {
+      "file": "dist/aperture-cad-preview.html",
+      "bytes": 402330,
+      "sha256": "f1bf56c3144c0ac3ede4cfac5ee0fdf1d5da65c042ccb40496147dd4f3906c58",
+      "byteIdentical": true
+    },
+    {
+      "file": "dist/index.html",
+      "bytes": 402330,
+      "sha256": "f1bf56c3144c0ac3ede4cfac5ee0fdf1d5da65c042ccb40496147dd4f3906c58",
+      "byteIdentical": true
+    },
+    {
+      "file": "dist/index.modular.html",
+      "bytes": 10924,
+      "sha256": "7a54e76ba13a73c524e626ab033ee87e06d81d42c690229ef7a22f16e41f86ec",
+      "byteIdentical": true
+    },
+    {
+      "file": "dist/app.js",
+      "bytes": 367924,
+      "sha256": "26065f54ef61ea8c05c0040422cabd00b1a148939f3586c1be97f1a182e128e5",
+      "byteIdentical": true
+    },
+    {
+      "file": "dist/styles.css",
+      "bytes": 23521,
+      "sha256": "60515b48a1b0ecf099dbc9a8cb0a371338cb7533df0a66c8d544750f83c1f0a5",
+      "byteIdentical": true
+    },
+    {
+      "file": "packages/gpu/shaders.js",
+      "bytes": 77197,
+      "sha256": "6f237758a3f8327f508861df7f374064bc1c227d803027b95d382baee508139b",
+      "byteIdentical": true
+    }
+  ],
+  "shaderHashes": {
+    "font": "c822fcca45947de4bfe81859edfd36583299747a1d01949daadb100c3e95dfc1",
+    "scene": "c07b2030aad5da67cf1222f76720428a797df3daaaf7301f6be17c6f8ab22737",
+    "pixels": "f16cbc1c12df54a4f7c846078045e035128584d6e55a793ce1ea2730094e27ca",
+    "index": "b4cb48219738e12ac585e6a0f8b5e24e970b6b4bd6c3bc92bc59ae23cedace66",
+    "stroke": "62e12d849a01163392f70429041a4367369ab9f6fcdffea7ffdcfab22f052035"
+  },
+  "gpuExecutionRerunInCleanExtraction": false,
+  "gpuExecutionEvidence": "artifacts/native-gpu.json (same final shader hashes; executed before archive extraction)",
+  "logs": "artifacts/clean-package/"
+}

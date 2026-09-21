@@ -1,0 +1,36 @@
+{
+  "suite": "quadratic-distance-numerical-reference",
+  "status": "passed",
+  "gpuExecuted": false,
+  "candidate": "CPU float32 emulation of the WGSL analytic distance formula",
+  "reference": "independent float64 polynomial roots + endpoint minimum",
+  "seed": 529,
+  "cases": 10000,
+  "maxAbsoluteErrorEm": 5.166644021017963e-07,
+  "p99AbsoluteErrorEm": 2.3067312196145556e-07,
+  "maxAcceptedAbsoluteErrorEm": 2e-06,
+  "worstCase": [
+    5.166644021017963e-07,
+    [
+      [
+        1.0734363794326782,
+        1.5328011512756348
+      ],
+      [
+        -0.91740882396698,
+        -0.2809722125530243
+      ],
+      [
+        1.0526882410049438,
+        1.5472540855407715
+      ],
+      [
+        1.1525399684906006,
+        0.5519545674324036
+      ]
+    ],
+    0.019344691187143326,
+    0.019344174522741224
+  ],
+  "scope": "Random endpoints/control/query coordinates [-1,2] em, including near-linear quadratics. Not a proof for all f32 inputs."
+}

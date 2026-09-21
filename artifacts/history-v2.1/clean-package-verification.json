@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "nodeTests": {
+    "passed": 160,
+    "failed": 0
+  },
+  "staticChecks": "passed",
+  "realNativeCompiler": "passed",
+  "modules": 5,
+  "pipelines": 22,
+  "negativeProbes": 4,
+  "standaloneRebuildByteIdentical": true,
+  "previewSha256": "42efc76e8146d8a0bcf3c80f6686221cc0fb9ffe9aa97ae5d339551ee3291870",
+  "note": "Fresh extraction: build, Node tests, static contracts and actual Dawn compilation repeated. GPU execution evidence is from the source-identical working tree."
+}

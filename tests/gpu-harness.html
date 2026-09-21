@@ -1,0 +1,7 @@
+<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0"><canvas id="view" style="width:1000px;height:700px"></canvas><script type="module">
+import {makeBuiltinFont} from '/packages/font/index.js';
+import {ModelBuilder,TYPE,rgba} from '/packages/model/index.js';
+import {ComputeCad,makeSyntheticModel} from '/packages/gpu/index.js';
+globalThis.failures=[];globalThis.boot=async()=>{const font=makeBuiltinFont();globalThis.font=font;const engine=await new ComputeCad(document.querySelector('canvas'),{pixelRatio:1}).initialize(font);globalThis.engine=engine;engine.addEventListener('error',e=>{failures.push(e.detail.message);console.error(e.detail.message)});const m=new ModelBuilder(font,{layers:[{name:'Geometry',color:rgba('#6fdccc'),visible:true}]});m.rect(0,0,500,300);m.circle(130,140,80);m.line([0,0],[500,300]);m.text('Aperture CAD / Compute 0123456789',15,250,10);m.text('Abc def ghij - mm ° ± Ø',15,220,12);globalThis.model=m.finish();await engine.setModel(model);engine.render();await engine.device.queue.onSubmittedWorkDone();return {info:engine.info,errors:engine.errors,metrics:await engine.captureMetrics()};};
+globalThis.synthetic=async(n,mode=1)=>{await engine.setModel(makeSyntheticModel(font,n,mode));engine.render();await engine.device.queue.onSubmittedWorkDone();return await engine.captureMetrics();};
+</script></body></html>

@@ -1,0 +1,117 @@
+{
+  "schema": "aperture-release-validation/2",
+  "version": "2.3.0",
+  "createdAt": "2026-09-18T09:38:10.870977+00:00",
+  "status": "passed-with-explicit-qualification-boundaries",
+  "qualification": {
+    "core": "passed",
+    "actualShaderCompilation": "passed",
+    "nativeComputeExecution": "passed-software-adapter",
+    "browserDOM": "passed",
+    "documentController": "passed-with-explicit-test-doubles",
+    "browserGPU": "blocked",
+    "hardwareGPU": "not-tested",
+    "productionQualification": "not-claimed"
+  },
+  "coreTests": {
+    "passed": 200,
+    "failed": 0,
+    "skipped": 0,
+    "evidence": "artifacts/tests-v2.3.txt"
+  },
+  "staticChecks": {
+    "status": "passed",
+    "evidence": "artifacts/static-checks.json"
+  },
+  "nativeCompiler": {
+    "modules": 5,
+    "pipelines": 27,
+    "negativeProbes": 4,
+    "status": "passed",
+    "evidence": "artifacts/native-compiler.json"
+  },
+  "nativeExecution": {
+    "status": "passed",
+    "checks": 37,
+    "newViewTimingChecks": 8,
+    "backend": "vulkan",
+    "softwareAdapter": true,
+    "adapter": {
+      "vendor": "google",
+      "architecture": "swiftshader",
+      "device": "swiftshader-device-subzero-",
+      "description": "SwiftShader driver 5.0.0"
+    },
+    "evidence": "artifacts/native-gpu.json"
+  },
+  "browserDOM": {
+    "passed": 5,
+    "gpuExecuted": false,
+    "evidence": "artifacts/browser-dom.json"
+  },
+  "documentController": {
+    "passed": 7,
+    "gpuExecuted": false,
+    "realParserWorkers": true,
+    "engineAndStorageDoubled": true,
+    "evidence": "artifacts/workspace-ui.json"
+  },
+  "browserGPU": {
+    "status": "blocked",
+    "reason": "Page.goto: net::ERR_BLOCKED_BY_ADMINISTRATOR at http://localhost:4173/dist/index.html\nCall log:\n  - navigating to \"http://localhost:4173/dist/index.html\", waiting until \"load\"\n",
+    "gpuExecuted": false,
+    "evidence": "artifacts/browser-gpu.json"
+  },
+  "timing": {
+    "scope": "compute-pass",
+    "duration": "Number(endNs - beginNs) / 1e6; subtraction in BigInt space",
+    "invalidDisplay": "em dash, never CPU fallback or zero",
+    "reportedValueRegression": "Injected zero start / ending corresponding to 615296880.54 ms rejected on actual native GPU readback path",
+    "scopeComparisonGuard": "Tools reject comparing compute-pass with legacy native-clearing-inclusive intervals; invalid sample statuses rejected",
+    "excludes": [
+      "native clears preceding compute pass",
+      "uploads",
+      "CPU encoding and queue waiting",
+      "diagnostic sampling and map latency",
+      "browser presentation"
+    ],
+    "separateReleasePerformanceClaim": false
+  },
+  "features": {
+    "allRegisteredSpaces": true,
+    "emptyLayouts": true,
+    "paperComposition": "rectangular top-plan opaque views; shared Model geometry",
+    "namedViews": "supported top-plan views; unsupported projections listed with diagnostics",
+    "independentSpaceOrigins": true,
+    "fileTabs": true,
+    "activeFileOnlyGPUResidency": true,
+    "retainedPackedModelsOnCPU": true,
+    "perSpaceReviewsCameraUndo": true,
+    "workspaceFormat": 3
+  },
+  "cleanPackage": {
+    "status": "passed",
+    "evidence": "artifacts/clean-package-verification.json",
+    "previewSha256": "8445f2fede2e97fa7063c78966a529520bd6541c269516b9137cbdb00537479e"
+  },
+  "shaderHashes": {
+    "font": "c822fcca45947de4bfe81859edfd36583299747a1d01949daadb100c3e95dfc1",
+    "scene": "e5e5478e2e7255d274168490624e82421fb88c6a4239c8d3f7c8519b29e65548",
+    "pixels": "484daec0914ac97ce16f0cd83de2c543d5564bd0934bd28c47653582bb81fb43",
+    "index": "b4cb48219738e12ac585e6a0f8b5e24e970b6b4bd6c3bc92bc59ae23cedace66",
+    "stroke": "62e12d849a01163392f70429041a4367369ab9f6fcdffea7ffdcfab22f052035"
+  },
+  "limitations": [
+    "Software adapter is not hardware performance or browser-presentation qualification.",
+    "Full browser WebGPU navigation remains blocked by managed Chromium policy.",
+    "Document-controller test uses explicit engine/storage doubles; actual IndexedDB execution not validated by that suite.",
+    "Perspective/3D/side projections, nonrectangular viewport clipping, rotated whole-paper saved views and full plotting/viewport overrides are unsupported.",
+    "Composed paper viewports use opaque coverage, not ordered alpha.",
+    "Paper-instance glyph diagnostics are unavailable rather than zero.",
+    "Inactive files re-upload retained packed data on activation; only layout switches within the active file avoid entity uploads.",
+    "Document admission bytes are an estimate, not full heap accounting.",
+    "Legacy DXF editing/font/3D conformance limits remain.",
+    "Stress text scale checks use adaptive proxies, not million exact-glyph rendering.",
+    "Timing scope differs from v2.2; no new GPU speedup is inferred from smaller scope."
+  ]
+}

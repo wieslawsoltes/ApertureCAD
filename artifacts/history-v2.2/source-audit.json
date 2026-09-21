@@ -1,0 +1,118 @@
+{
+  "version": "2.2.0",
+  "scope": "All GPU JS/WGSL, frame planner and adjoining packing/application boundary; per-module analysis in docs/GPU-AUDIT-v2.2.md",
+  "files": [
+    {
+      "file": "packages/app/index.js",
+      "bytes": 44464,
+      "lines": 493,
+      "sha256": "1dc23ec6eb9c688ba9912f533f6889f49878c4579cdc74345039ae30a28579ea",
+      "disposition": "modified"
+    },
+    {
+      "file": "packages/gpu/compiler.js",
+      "bytes": 5369,
+      "lines": 78,
+      "sha256": "af81d2512d6adbbda25da905cc85b6c70b54f5cdd44daf6d3eb73e0196172232",
+      "disposition": "unchanged"
+    },
+    {
+      "file": "packages/gpu/index.js",
+      "bytes": 66446,
+      "lines": 709,
+      "sha256": "3580c2a6954540255f906f0bb26dfb1bc3ba70375bae85f7f5be2b245c06536e",
+      "disposition": "modified"
+    },
+    {
+      "file": "packages/gpu/shaders/dimension-common.wgsl",
+      "bytes": 7382,
+      "lines": 66,
+      "sha256": "15ffd4011e663c00fd65800b420cb770a5b883cec9aa5de32f35ad23d97a5463",
+      "disposition": "unchanged"
+    },
+    {
+      "file": "packages/gpu/shaders/font-common.wgsl",
+      "bytes": 4467,
+      "lines": 52,
+      "sha256": "4101352694e3ec1edcf0b41e1e40617a175c654e902422bfa8f2f309697634ff",
+      "disposition": "unchanged"
+    },
+    {
+      "file": "packages/gpu/shaders/font.wgsl",
+      "bytes": 836,
+      "lines": 7,
+      "sha256": "19dfb838ef7f6341f423665c31a5818d0357598d6c9c625699a66483e3423d67",
+      "disposition": "unchanged"
+    },
+    {
+      "file": "packages/gpu/shaders/hatch-common.wgsl",
+      "bytes": 4738,
+      "lines": 56,
+      "sha256": "a1c946b5967ac49d259ab204860f5aeb6298ef0fef1f960da1e250afecf4e5cc",
+      "disposition": "modified"
+    },
+    {
+      "file": "packages/gpu/shaders/index.wgsl",
+      "bytes": 2471,
+      "lines": 22,
+      "sha256": "b4cb48219738e12ac585e6a0f8b5e24e970b6b4bd6c3bc92bc59ae23cedace66",
+      "disposition": "unchanged"
+    },
+    {
+      "file": "packages/gpu/shaders/layout-common.wgsl",
+      "bytes": 2853,
+      "lines": 27,
+      "sha256": "07404e9af3c324719fa227e2b8ef0ced944f1c6a41d478b957aa480af45a7c33",
+      "disposition": "unchanged"
+    },
+    {
+      "file": "packages/gpu/shaders/pixels.wgsl",
+      "bytes": 5696,
+      "lines": 64,
+      "sha256": "f16cbc1c12df54a4f7c846078045e035128584d6e55a793ce1ea2730094e27ca",
+      "disposition": "modified"
+    },
+    {
+      "file": "packages/gpu/shaders/scene.wgsl",
+      "bytes": 33003,
+      "lines": 292,
+      "sha256": "608fb511b3d69720f5a71a417420258a98815fa449f192989996105b391e8906",
+      "disposition": "modified"
+    },
+    {
+      "file": "packages/gpu/shaders/stroke.wgsl",
+      "bytes": 4288,
+      "lines": 43,
+      "sha256": "b144ba18b57c1a688b48801d5fb29857b014eb8d2efa5d9b6cd517422ec78dde",
+      "disposition": "unchanged"
+    },
+    {
+      "file": "packages/gpu/shaders.js",
+      "bytes": 77197,
+      "lines": 4,
+      "sha256": "6f237758a3f8327f508861df7f374064bc1c227d803027b95d382baee508139b",
+      "disposition": "modified"
+    },
+    {
+      "file": "packages/gpu/transfer.js",
+      "bytes": 2342,
+      "lines": 38,
+      "sha256": "feb3c5482eb6ec515b627279ffef89b4b82772dbf7f338ffd5e6894857422ff2",
+      "disposition": "added"
+    },
+    {
+      "file": "packages/model/index.js",
+      "bytes": 15768,
+      "lines": 192,
+      "sha256": "36b799e12482ad83aa50e166cdc2ff14436977e8cc38caeed75d0ee9d572e203",
+      "disposition": "unchanged"
+    },
+    {
+      "file": "packages/performance/index.js",
+      "bytes": 4699,
+      "lines": 66,
+      "sha256": "2255bd388064ec2c79f65b36bd2b577d938a2a9dcb1a914a37625bd95b10e118",
+      "disposition": "modified"
+    }
+  ]
+}

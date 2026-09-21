@@ -1,0 +1,974 @@
+
+> aperture-cad@2.1.0 test
+> node --test tests/*.test.mjs
+
+TAP version 13
+# Subtest: Transform-free entity packing and repeated nodes retain GPU ABI
+ok 1 - Transform-free entity packing and repeated nodes retain GPU ABI
+  ---
+  duration_ms: 1.882451
+  type: 'test'
+  ...
+# Subtest: Annotation failed transaction preserves items and redo history
+ok 2 - Annotation failed transaction preserves items and redo history
+  ---
+  duration_ms: 4.65319
+  type: 'test'
+  ...
+# Subtest: Annotation history rejects unbounded and invalid limits
+ok 3 - Annotation history rejects unbounded and invalid limits
+  ---
+  duration_ms: 0.317698
+  type: 'test'
+  ...
+# Subtest: Same backing-size viewport change invalidates camera coverage and requests a frame
+ok 4 - Same backing-size viewport change invalidates camera coverage and requests a frame
+  ---
+  duration_ms: 0.800344
+  type: 'test'
+  ...
+# Subtest: Edit scratch allocation is budgeted and partial allocations are destroyed
+ok 5 - Edit scratch allocation is budgeted and partial allocations are destroyed
+  ---
+  duration_ms: 0.766173
+  type: 'test'
+  ...
+# Subtest: Failed initialization destroys acquired device without secure-context spoofing
+ok 6 - Failed initialization destroys acquired device without secure-context spoofing
+  ---
+  duration_ms: 0.740344
+  type: 'test'
+  ...
+# Subtest: DXF cancellation isolates stale worker callbacks from a replacement request
+ok 7 - DXF cancellation isolates stale worker callbacks from a replacement request
+  ---
+  duration_ms: 1.40313
+  type: 'test'
+  ...
+# Subtest: DXF synchronous postMessage failure terminates the worker and clears pending state
+ok 8 - DXF synchronous postMessage failure terminates the worker and clears pending state
+  ---
+  duration_ms: 0.688165
+  type: 'test'
+  ...
+# Subtest: DXF progress callback failure closes its worker
+ok 9 - DXF progress callback failure closes its worker
+  ---
+  duration_ms: 0.752642
+  type: 'test'
+  ...
+# Subtest: DXF invalid input rejects before worker allocation
+ok 10 - DXF invalid input rejects before worker allocation
+  ---
+  duration_ms: 0.548645
+  type: 'test'
+  ...
+# Subtest: Lexical guard rejects ungrouped logical mix: a || b && c
+ok 11 - Lexical guard rejects ungrouped logical mix: a || b && c
+  ---
+  duration_ms: 2.4398
+  type: 'test'
+  ...
+# Subtest: Lexical guard rejects ungrouped logical mix: a && b || c
+ok 12 - Lexical guard rejects ungrouped logical mix: a && b || c
+  ---
+  duration_ms: 0.260662
+  type: 'test'
+  ...
+# Subtest: Lexical guard rejects ungrouped logical mix: a ||\\n b /* nested /* comment */ end */ && c
+ok 13 - Lexical guard rejects ungrouped logical mix: a ||\\n b /* nested /* comment */ end */ && c
+  ---
+  duration_ms: 0.190938
+  type: 'test'
+  ...
+# Subtest: Lexical guard permits independent logical groups: a || (b && c)
+ok 14 - Lexical guard permits independent logical groups: a || (b && c)
+  ---
+  duration_ms: 0.148504
+  type: 'test'
+  ...
+# Subtest: Lexical guard permits independent logical groups: (a && b) || c
+ok 15 - Lexical guard permits independent logical groups: (a && b) || c
+  ---
+  duration_ms: 0.129455
+  type: 'test'
+  ...
+# Subtest: Lexical guard permits independent logical groups: select(a || b, c && d, true)
+ok 16 - Lexical guard permits independent logical groups: select(a || b, c && d, true)
+  ---
+  duration_ms: 0.11998
+  type: 'test'
+  ...
+# Subtest: Lexical guard permits independent logical groups: a || b; c && d;
+ok 17 - Lexical guard permits independent logical groups: a || b; c && d;
+  ---
+  duration_ms: 0.103876
+  type: 'test'
+  ...
+# Subtest: Lexical guard permits independent logical groups: a && /* || */ b
+ok 18 - Lexical guard permits independent logical groups: a && /* || */ b
+  ---
+  duration_ms: 0.103245
+  type: 'test'
+  ...
+# Subtest: Lexical guard permits independent logical groups: a || b // && c\\n;
+ok 19 - Lexical guard permits independent logical groups: a || b // && c\\n;
+  ---
+  duration_ms: 0.338029
+  type: 'test'
+  ...
+# Subtest: Lexical guard permits independent logical groups: if a || b { if c && d {} }
+ok 20 - Lexical guard permits independent logical groups: if a || b { if c && d {} }
+  ---
+  duration_ms: 0.428975
+  type: 'test'
+  ...
+# Subtest: All assembled sources and provenance hashes are fresh
+ok 21 - All assembled sources and provenance hashes are fresh
+  ---
+  duration_ms: 17.732621
+  type: 'test'
+  ...
+# Subtest: Compiler diagnostics map include lines and fallback locations
+ok 22 - Compiler diagnostics map include lines and fallback locations
+  ---
+  duration_ms: 0.628746
+  type: 'test'
+  ...
+# Subtest: Compiler rejects invalid concurrency before device access
+ok 23 - Compiler rejects invalid concurrency before device access
+  ---
+  duration_ms: 0.912452
+  type: 'test'
+  ...
+# Subtest: Compiler aggregates source errors and never attempts invalid pipelines
+ok 24 - Compiler aggregates source errors and never attempts invalid pipelines
+  ---
+  duration_ms: 1.437623
+  type: 'test'
+  ...
+# Subtest: Compiler pipeline concurrency is bounded and failures retain entry names
+ok 25 - Compiler pipeline concurrency is bounded and failures retain entry names
+  ---
+  duration_ms: 11.62162
+  type: 'test'
+  ...
+# Subtest: ABI is 128 bytes with 65,536-record pages
+ok 26 - ABI is 128 bytes with 65,536-record pages
+  ---
+  duration_ms: 2.849916
+  type: 'test'
+  ...
+# Subtest: IEEE high/low split preserves CAD origins
+ok 27 - IEEE high/low split preserves CAD origins
+  ---
+  duration_ms: 0.276115
+  type: 'test'
+  ...
+# Subtest: RGBA byte ordering is exact
+ok 28 - RGBA byte ordering is exact
+  ---
+  duration_ms: 0.215434
+  type: 'test'
+  ...
+# Subtest: WordArena grows and preserves mixed data
+ok 29 - WordArena grows and preserves mixed data
+  ---
+  duration_ms: 0.181794
+  type: 'test'
+  ...
+# Subtest: Packed line offsets, identity and handle
+ok 30 - Packed line offsets, identity and handle
+  ---
+  duration_ms: 0.721636
+  type: 'test'
+  ...
+# Subtest: Run interning prevents duplicate label serialization
+ok 31 - Run interning prevents duplicate label serialization
+  ---
+  duration_ms: 0.364518
+  type: 'test'
+  ...
+# Subtest: Unknown characters are reported, not hidden
+ok 32 - Unknown characters are reported, not hidden
+  ---
+  duration_ms: 0.863128
+  type: 'test'
+  ...
+# Subtest: Text run cap is enforced
+ok 33 - Text run cap is enforced
+  ---
+  duration_ms: 0.572501
+  type: 'test'
+  ...
+# Subtest: Nested nodes intern parents before children
+ok 34 - Nested nodes intern parents before children
+  ---
+  duration_ms: 0.324608
+  type: 'test'
+  ...
+# Subtest: Page splitting preserves continuous global IDs
+ok 35 - Page splitting preserves continuous global IDs
+  ---
+  duration_ms: 0.976759
+  type: 'test'
+  ...
+# Subtest: Original built-in font is complete for the bundled demo
+ok 36 - Original built-in font is complete for the bundled demo
+  ---
+  duration_ms: 17.783373
+  type: 'test'
+  ...
+# Subtest: TrueType parser rejects malformed and unsupported files
+ok 37 - TrueType parser rejects malformed and unsupported files
+  ---
+  duration_ms: 0.774314
+  type: 'test'
+  ...
+# Subtest: Synthetic million-entity model has no CPU entity array
+ok 38 - Synthetic million-entity model has no CPU entity array
+  ---
+  duration_ms: 16.677825
+  type: 'test'
+  ...
+# Subtest: Synthetic count safety boundaries
+ok 39 - Synthetic count safety boundaries
+  ---
+  duration_ms: 0.169405
+  type: 'test'
+  ...
+# Subtest: ASCII DXF group parser handles BOM and CRLF
+ok 40 - ASCII DXF group parser handles BOM and CRLF
+  ---
+  duration_ms: 0.374704
+  type: 'test'
+  ...
+# Subtest: ASCII malformed groups and nonfinite values fail
+ok 41 - ASCII malformed groups and nonfinite values fail
+  ---
+  duration_ms: 0.294613
+  type: 'test'
+  ...
+# Subtest: Unicode DXF escapes consume exactly four hex digits
+ok 42 - Unicode DXF escapes consume exactly four hex digits
+  ---
+  duration_ms: 0.384688
+  type: 'test'
+  ...
+# Subtest: LINE import, header and handles
+ok 43 - LINE import, header and handles
+  ---
+  duration_ms: 1.913828
+  type: 'test'
+  ...
+# Subtest: UTF-8 DXF bytes preserve Polish codepoints
+ok 44 - UTF-8 DXF bytes preserve Polish codepoints
+  ---
+  duration_ms: 0.88433
+  type: 'test'
+  ...
+# Subtest: Layers, frozen visibility and truecolor survive normalization
+ok 45 - Layers, frozen visibility and truecolor survive normalization
+  ---
+  duration_ms: 0.53163
+  type: 'test'
+  ...
+# Subtest: ACI primary colors follow AutoCAD byte colors
+ok 46 - ACI primary colors follow AutoCAD byte colors
+  ---
+  duration_ms: 0.164988
+  type: 'test'
+  ...
+# Subtest: Paper space excluded explicitly
+ok 47 - Paper space excluded explicitly
+  ---
+  duration_ms: 0.804169
+  type: 'test'
+  ...
+# Subtest: Invisible entities do not enter the GPU model
+ok 48 - Invisible entities do not enter the GPU model
+  ---
+  duration_ms: 0.320703
+  type: 'test'
+  ...
+# Subtest: ARC and ELLIPSE retain analytic parameters
+ok 49 - ARC and ELLIPSE retain analytic parameters
+  ---
+  duration_ms: 0.350457
+  type: 'test'
+  ...
+# Subtest: Large negative arc sweep cannot cause a parser loop
+ok 50 - Large negative arc sweep cannot cause a parser loop
+  ---
+  duration_ms: 1.918035
+  type: 'test'
+  ...
+# Subtest: Bulges are raw GPU path data, not CPU tessellation
+ok 51 - Bulges are raw GPU path data, not CPU tessellation
+  ---
+  duration_ms: 3.267054
+  type: 'test'
+  ...
+# Subtest: Legacy POLYLINE collects VERTEX records
+ok 52 - Legacy POLYLINE collects VERTEX records
+  ---
+  duration_ms: 3.100173
+  type: 'test'
+  ...
+# Subtest: MTEXT width is wrap width, not horizontal font scale
+ok 53 - MTEXT width is wrap width, not horizontal font scale
+  ---
+  duration_ms: 0.792011
+  type: 'test'
+  ...
+# Subtest: INSERT is hierarchical GPU transform data
+ok 54 - INSERT is hierarchical GPU transform data
+  ---
+  duration_ms: 0.835878
+  type: 'test'
+  ...
+# Subtest: MINSERT array offsets do not inherit INSERT scale
+ok 55 - MINSERT array offsets do not inherit INSERT scale
+  ---
+  duration_ms: 0.7445
+  type: 'test'
+  ...
+# Subtest: Cycles in block definitions are reported
+ok 56 - Cycles in block definitions are reported
+  ---
+  duration_ms: 3.340755
+  type: 'test'
+  ...
+# Subtest: Zero OCS normal is explicitly rejected
+ok 57 - Zero OCS normal is explicitly rejected
+  ---
+  duration_ms: 0.689808
+  type: 'test'
+  ...
+# Subtest: OCS is a GPU projection node
+ok 58 - OCS is a GPU projection node
+  ---
+  duration_ms: 0.694704
+  type: 'test'
+  ...
+# Subtest: Rational spline control points and knots are retained
+ok 59 - Rational spline control points and knots are retained
+  ---
+  duration_ms: 3.514146
+  type: 'test'
+  ...
+# Subtest: Nonpositive spline weights reject unsafe rational bounds
+ok 60 - Nonpositive spline weights reject unsafe rational bounds
+  ---
+  duration_ms: 0.712481
+  type: 'test'
+  ...
+# Subtest: Polyline HATCH retains even-odd path boundaries
+ok 61 - Polyline HATCH retains even-odd path boundaries
+  ---
+  duration_ms: 1.310551
+  type: 'test'
+  ...
+# Subtest: Unsupported entities produce diagnostics
+ok 62 - Unsupported entities produce diagnostics
+  ---
+  duration_ms: 1.053765
+  type: 'test'
+  ...
+# Subtest: Import refuses to truncate above an explicit entity cap
+ok 63 - Import refuses to truncate above an explicit entity cap
+  ---
+  duration_ms: 0.674484
+  type: 'test'
+  ...
+# Subtest: Missing EOF is diagnosed while retaining complete records
+ok 64 - Missing EOF is diagnosed while retaining complete records
+  ---
+  duration_ms: 0.659352
+  type: 'test'
+  ...
+# Subtest: Modern binary DXF decodes UTF-8 after ACADVER
+ok 65 - Modern binary DXF decodes UTF-8 after ACADVER
+  ---
+  duration_ms: 9.376423
+  type: 'test'
+  ...
+# Subtest: Legacy narrow group codes are parsed
+ok 66 - Legacy narrow group codes are parsed
+  ---
+  duration_ms: 0.483908
+  type: 'test'
+  ...
+# Subtest: Truncated binary fails cleanly
+ok 67 - Truncated binary fails cleanly
+  ---
+  duration_ms: 0.221484
+  type: 'test'
+  ...
+# Subtest: Annotation history is reversible and does not mutate source
+ok 68 - Annotation history is reversible and does not mutate source
+  ---
+  duration_ms: 2.937949
+  type: 'test'
+  ...
+# Subtest: Annotation JSON validation rejects foreign formats and NaN
+ok 69 - Annotation JSON validation rejects foreign formats and NaN
+  ---
+  duration_ms: 0.330306
+  type: 'test'
+  ...
+# Subtest: Annotation IDs follow base IDs and map back to review groups
+ok 70 - Annotation IDs follow base IDs and map back to review groups
+  ---
+  duration_ms: 21.983045
+  type: 'test'
+  ...
+# Subtest: All annotation types export without silent omissions
+ok 71 - All annotation types export without silent omissions
+  ---
+  duration_ms: 4.918198
+  type: 'test'
+  ...
+# Subtest: Overlay exporter rejects unknown types rather than dropping them
+ok 72 - Overlay exporter rejects unknown types rather than dropping them
+  ---
+  duration_ms: 0.306932
+  type: 'test'
+  ...
+# Subtest: Camera zoom preserves the world point under the pointer
+ok 73 - Camera zoom preserves the world point under the pointer
+  ---
+  duration_ms: 0.681034
+  type: 'test'
+  ...
+# Subtest: Camera pan signs respect CAD Y-up coordinates
+ok 74 - Camera pan signs respect CAD Y-up coordinates
+  ---
+  duration_ms: 0.227061
+  type: 'test'
+  ...
+# Subtest: Malformed raw polylines cannot underflow a GPU traversal
+ok 75 - Malformed raw polylines cannot underflow a GPU traversal
+  ---
+  duration_ms: 0.287723
+  type: 'test'
+  ...
+# Subtest: Nonrepresentable f32 inputs and cyclic nodes are rejected
+ok 76 - Nonrepresentable f32 inputs and cyclic nodes are rejected
+  ---
+  duration_ms: 0.247443
+  type: 'test'
+  ...
+# Subtest: Transient annotation previews do not serialize committed records
+ok 77 - Transient annotation previews do not serialize committed records
+  ---
+  duration_ms: 18.503696
+  type: 'test'
+  ...
+# Subtest: Preview events are distinct from committed model changes
+ok 78 - Preview events are distinct from committed model changes
+  ---
+  duration_ms: 0.277307
+  type: 'test'
+  ...
+# Subtest: GSUB closure preserves dependent lookup outputs
+ok 79 - GSUB closure preserves dependent lookup outputs
+  ---
+  duration_ms: 1.552325
+  type: 'test'
+  ...
+# Subtest: GSUB common profile applies ligatures in lookup order
+ok 80 - GSUB common profile applies ligatures in lookup order
+  ---
+  duration_ms: 0.687865
+  type: 'test'
+  ...
+# Subtest: GSUB ligature priority remains the font rule order
+ok 81 - GSUB ligature priority remains the font rule order
+  ---
+  duration_ms: 0.308995
+  type: 'test'
+  ...
+# Subtest: GSUB never joins ligatures across explicit newlines
+ok 82 - GSUB never joins ligatures across explicit newlines
+  ---
+  duration_ms: 0.1602
+  type: 'test'
+  ...
+# Subtest: GSUB data omits unavailable output glyphs instead of aliasing glyph zero
+ok 83 - GSUB data omits unavailable output glyphs instead of aliasing glyph zero
+  ---
+  duration_ms: 0.142144
+  type: 'test'
+  ...
+# Subtest: GPOS explicit pairs retain negative fractional advances
+ok 84 - GPOS explicit pairs retain negative fractional advances
+  ---
+  duration_ms: 0.373562
+  type: 'test'
+  ...
+# Subtest: GPOS classes remain compact matrices and match implicit class zero
+ok 85 - GPOS classes remain compact matrices and match implicit class zero
+  ---
+  duration_ms: 1.13695
+  type: 'test'
+  ...
+# Subtest: GPOS lookup uses the first matching subtable, not a sum of alternatives
+ok 86 - GPOS lookup uses the first matching subtable, not a sum of alternatives
+  ---
+  duration_ms: 0.144237
+  type: 'test'
+  ...
+# Subtest: Separate GPOS lookups accumulate and legacy override is respected
+ok 87 - Separate GPOS lookups accumulate and legacy override is respected
+  ---
+  duration_ms: 0.309866
+  type: 'test'
+  ...
+# Subtest: Absent OpenType tables produce an empty, well-formed program
+ok 88 - Absent OpenType tables produce an empty, well-formed program
+  ---
+  duration_ms: 0.695776
+  type: 'test'
+  ...
+# Subtest: OpenType parser rejects offsets outside table bounds
+ok 89 - OpenType parser rejects offsets outside table bounds
+  ---
+  duration_ms: 0.367522
+  type: 'test'
+  ...
+# Subtest: GPU run source slots are immutable, separate from shaped glyph slots
+ok 90 - GPU run source slots are immutable, separate from shaped glyph slots
+  ---
+  duration_ms: 3.527115
+  type: 'test'
+  ...
+# Subtest: Exact composition deduplicates repeated coverage before alpha blending
+ok 91 - Exact composition deduplicates repeated coverage before alpha blending
+  ---
+  duration_ms: 0.310888
+  type: 'test'
+  ...
+# Subtest: Exact composition matches opaque painter order at full alpha
+ok 92 - Exact composition matches opaque painter order at full alpha
+  ---
+  duration_ms: 0.268164
+  type: 'test'
+  ...
+# Subtest: Two-ended visible queues have no overlap for partial workgroups
+ok 93 - Two-ended visible queues have no overlap for partial workgroups
+  ---
+  duration_ms: 9.978609
+  type: 'test'
+  ...
+# Subtest: One million small entities require 15,625 raster workgroups, not one million
+ok 94 - One million small entities require 15,625 raster workgroups, not one million
+  ---
+  duration_ms: 26.552457
+  type: 'test'
+  ...
+# Subtest: Frame cache: initial coverage then resolve-only state
+ok 95 - Frame cache: initial coverage then resolve-only state
+  ---
+  duration_ms: 2.505849
+  type: 'test'
+  ...
+# Subtest: Frame cache: annotation revision never invalidates base coverage
+ok 96 - Frame cache: annotation revision never invalidates base coverage
+  ---
+  duration_ms: 0.207011
+  type: 'test'
+  ...
+# Subtest: Frame cache invalidates on camera
+ok 97 - Frame cache invalidates on camera
+  ---
+  duration_ms: 0.261694
+  type: 'test'
+  ...
+# Subtest: Frame cache invalidates on zoom
+ok 98 - Frame cache invalidates on zoom
+  ---
+  duration_ms: 0.152319
+  type: 'test'
+  ...
+# Subtest: Frame cache invalidates on width
+ok 99 - Frame cache invalidates on width
+  ---
+  duration_ms: 0.256135
+  type: 'test'
+  ...
+# Subtest: Frame cache invalidates on height
+ok 100 - Frame cache invalidates on height
+  ---
+  duration_ms: 0.147111
+  type: 'test'
+  ...
+# Subtest: Frame cache invalidates on pixel ratio
+ok 101 - Frame cache invalidates on pixel ratio
+  ---
+  duration_ms: 0.317007
+  type: 'test'
+  ...
+# Subtest: Frame cache invalidates on text quality
+ok 102 - Frame cache invalidates on text quality
+  ---
+  duration_ms: 0.155564
+  type: 'test'
+  ...
+# Subtest: Frame cache invalidates on font
+ok 103 - Frame cache invalidates on font
+  ---
+  duration_ms: 0.399531
+  type: 'test'
+  ...
+# Subtest: Frame cache invalidates on stroke
+ok 104 - Frame cache invalidates on stroke
+  ---
+  duration_ms: 0.487914
+  type: 'test'
+  ...
+# Subtest: Frame cache invalidates on curve tolerance
+ok 105 - Frame cache invalidates on curve tolerance
+  ---
+  duration_ms: 0.202134
+  type: 'test'
+  ...
+# Subtest: Resolve-only color flags preserve coverage
+ok 106 - Resolve-only color flags preserve coverage
+  ---
+  duration_ms: 0.18645
+  type: 'test'
+  ...
+# Subtest: Exact transparency always rebuilds both coverage domains
+ok 107 - Exact transparency always rebuilds both coverage domains
+  ---
+  duration_ms: 0.137857
+  type: 'test'
+  ...
+# Subtest: No-cache benchmark profile rebuilds all geometry
+ok 108 - No-cache benchmark profile rebuilds all geometry
+  ---
+  duration_ms: 0.122815
+  type: 'test'
+  ...
+# Subtest: Visibility guard reuses only conservative pan windows
+ok 109 - Visibility guard reuses only conservative pan windows
+  ---
+  duration_ms: 0.234072
+  type: 'test'
+  ...
+# Subtest: Visibility windows are page-local and invalidatable
+ok 110 - Visibility windows are page-local and invalidatable
+  ---
+  duration_ms: 0.15951
+  type: 'test'
+  ...
+# Subtest: Visibility classification invalidates DPR
+ok 111 - Visibility classification invalidates DPR
+  ---
+  duration_ms: 0.138228
+  type: 'test'
+  ...
+# Subtest: Visibility classification invalidates stroke
+ok 112 - Visibility classification invalidates stroke
+  ---
+  duration_ms: 0.150126
+  type: 'test'
+  ...
+# Subtest: Visibility classification invalidates font
+ok 113 - Visibility classification invalidates font
+  ---
+  duration_ms: 0.105699
+  type: 'test'
+  ...
+# Subtest: Visibility classification invalidates text mode
+ok 114 - Visibility classification invalidates text mode
+  ---
+  duration_ms: 0.100271
+  type: 'test'
+  ...
+# Subtest: Visibility classification invalidates zoom
+ok 115 - Visibility classification invalidates zoom
+  ---
+  duration_ms: 0.101673
+  type: 'test'
+  ...
+# Subtest: Visibility expanded viewport cannot reuse a narrow cached window
+ok 116 - Visibility expanded viewport cannot reuse a narrow cached window
+  ---
+  duration_ms: 0.127031
+  type: 'test'
+  ...
+# Subtest: Invalid guard-band settings fail before GPU submission
+ok 117 - Invalid guard-band settings fail before GPU submission
+  ---
+  duration_ms: 0.488034
+  type: 'test'
+  ...
+# Subtest: Timing summaries use nearest-rank percentiles
+ok 118 - Timing summaries use nearest-rank percentiles
+  ---
+  duration_ms: 0.269225
+  type: 'test'
+  ...
+# Subtest: Timing summaries never invent absent GPU samples
+ok 119 - Timing summaries never invent absent GPU samples
+  ---
+  duration_ms: 0.180883
+  type: 'test'
+  ...
+# Subtest: Adaptive resolution has hysteresis, bounds and cooldown
+ok 120 - Adaptive resolution has hysteresis, bounds and cooldown
+  ---
+  duration_ms: 0.562827
+  type: 'test'
+  ...
+# Subtest: Adaptive resolution excludes invalid and stable samples
+ok 121 - Adaptive resolution excludes invalid and stable samples
+  ---
+  duration_ms: 0.144006
+  type: 'test'
+  ...
+# Subtest: Adaptive resolution validates all numeric configuration
+ok 122 - Adaptive resolution validates all numeric configuration
+  ---
+  duration_ms: 0.286471
+  type: 'test'
+  ...
+# Subtest: Dimension kind 0 remains one GPU-parametric entity
+ok 123 - Dimension kind 0 remains one GPU-parametric entity
+  ---
+  duration_ms: 1.526376
+  type: 'test'
+  ...
+# Subtest: Dimension kind 1 remains one GPU-parametric entity
+ok 124 - Dimension kind 1 remains one GPU-parametric entity
+  ---
+  duration_ms: 0.260672
+  type: 'test'
+  ...
+# Subtest: Dimension kind 2 remains one GPU-parametric entity
+ok 125 - Dimension kind 2 remains one GPU-parametric entity
+  ---
+  duration_ms: 0.175624
+  type: 'test'
+  ...
+# Subtest: Dimension kind 3 remains one GPU-parametric entity
+ok 126 - Dimension kind 3 remains one GPU-parametric entity
+  ---
+  duration_ms: 1.536721
+  type: 'test'
+  ...
+# Subtest: Dimension kind 4 remains one GPU-parametric entity
+ok 127 - Dimension kind 4 remains one GPU-parametric entity
+  ---
+  duration_ms: 0.236475
+  type: 'test'
+  ...
+# Subtest: Dimension kind 5 remains one GPU-parametric entity
+ok 128 - Dimension kind 5 remains one GPU-parametric entity
+  ---
+  duration_ms: 0.198509
+  type: 'test'
+  ...
+# Subtest: Dimension kind 6 remains one GPU-parametric entity
+ok 129 - Dimension kind 6 remains one GPU-parametric entity
+  ---
+  duration_ms: 1.40999
+  type: 'test'
+  ...
+# Subtest: Dimension custom text and suppression are retained
+ok 130 - Dimension custom text and suppression are retained
+  ---
+  duration_ms: 6.361789
+  type: 'test'
+  ...
+# Subtest: Invalid dimensions are rejected transactionally
+ok 131 - Invalid dimensions are rejected transactionally
+  ---
+  duration_ms: 0.443327
+  type: 'test'
+  ...
+# Subtest: Pattern hatch preserves equations rather than expanded hatch strokes
+ok 132 - Pattern hatch preserves equations rather than expanded hatch strokes
+  ---
+  duration_ms: 1.528579
+  type: 'test'
+  ...
+# Subtest: Hatch ABI keeps distinct edge and family tables
+ok 133 - Hatch ABI keeps distinct edge and family tables
+  ---
+  duration_ms: 0.380171
+  type: 'test'
+  ...
+# Subtest: Hatch circular/elliptical boundaries are not CPU-tessellated
+ok 134 - Hatch circular/elliptical boundaries are not CPU-tessellated
+  ---
+  duration_ms: 0.25883
+  type: 'test'
+  ...
+# Subtest: Hatch rational boundary control data survives packing
+ok 135 - Hatch rational boundary control data survives packing
+  ---
+  duration_ms: 0.556377
+  type: 'test'
+  ...
+# Subtest: Invalid hatch edge/family never corrupts following IDs
+ok 136 - Invalid hatch edge/family never corrupts following IDs
+  ---
+  duration_ms: 0.374653
+  type: 'test'
+  ...
+# Subtest: Gradient hatches fail explicitly rather than claiming solid equivalence
+ok 137 - Gradient hatches fail explicitly rather than claiming solid equivalence
+  ---
+  duration_ms: 0.685035
+  type: 'test'
+  ...
+# Subtest: Hatch malformed counts and missing definitions fail closed
+ok 138 - Hatch malformed counts and missing definitions fail closed
+  ---
+  duration_ms: 0.223426
+  type: 'test'
+  ...
+# Subtest: DXF native dimensions regenerate without requiring a cached anonymous block
+ok 139 - DXF native dimensions regenerate without requiring a cached anonymous block
+  ---
+  duration_ms: 2.289383
+  type: 'test'
+  ...
+# Subtest: Preserved ASCII source includes unknown application records unchanged
+ok 140 - Preserved ASCII source includes unknown application records unchanged
+  ---
+  duration_ms: 1.121006
+  type: 'test'
+  ...
+# Subtest: Preserved input bytes are independently retained and transferred once
+ok 141 - Preserved input bytes are independently retained and transferred once
+  ---
+  duration_ms: 2.814403
+  type: 'test'
+  ...
+# Subtest: Source preservation is opt-in and not advertised as an edited rewrite
+ok 142 - Source preservation is opt-in and not advertised as an edited rewrite
+  ---
+  duration_ms: 2.664468
+  type: 'test'
+  ...
+# Subtest: Paper/model/all DXF import filters are explicit
+ok 143 - Paper/model/all DXF import filters are explicit
+  ---
+  duration_ms: 1.24324
+  type: 'test'
+  ...
+# Subtest: SHP compiles to bytecode and capacity, not CPU glyph geometry
+ok 144 - SHP compiles to bytecode and capacity, not CPU glyph geometry
+  ---
+  duration_ms: 1.394938
+  type: 'test'
+  ...
+# Subtest: SHP text supplied as a byte buffer retains its actual format
+ok 145 - SHP text supplied as a byte buffer retains its actual format
+  ---
+  duration_ms: 0.333782
+  type: 'test'
+  ...
+# Subtest: Stroke decoder preserves vertical-only compound instruction scope
+ok 146 - Stroke decoder preserves vertical-only compound instruction scope
+  ---
+  duration_ms: 0.208744
+  type: 'test'
+  ...
+# Subtest: Stroke decoder expands multiple bulge records without geometry evaluation
+ok 147 - Stroke decoder expands multiple bulge records without geometry evaluation
+  ---
+  duration_ms: 0.141483
+  type: 'test'
+  ...
+# Subtest: Stroke packed vectors retain length/direction parameters
+ok 148 - Stroke packed vectors retain length/direction parameters
+  ---
+  duration_ms: 0.222565
+  type: 'test'
+  ...
+# Subtest: SHX subshape call cycles and missing targets are rejected
+ok 149 - SHX subshape call cycles and missing targets are rejected
+  ---
+  duration_ms: 0.443647
+  type: 'test'
+  ...
+# Subtest: Stroke capacity follows subshape calls rather than record count
+ok 150 - Stroke capacity follows subshape calls rather than record count
+  ---
+  duration_ms: 0.309695
+  type: 'test'
+  ...
+# Subtest: Stroke parser rejects unsupported BIGFONT and malformed instructions
+ok 151 - Stroke parser rejects unsupported BIGFONT and malformed instructions
+  ---
+  duration_ms: 0.318239
+  type: 'test'
+  ...
+# Subtest: Binary SHX shape index and signed displacement decode correctly
+ok 152 - Binary SHX shape index and signed displacement decode correctly
+  ---
+  duration_ms: 0.753062
+  type: 'test'
+  ...
+# Subtest: Binary SHX validates its terminal marker
+ok 153 - Binary SHX validates its terminal marker
+  ---
+  duration_ms: 0.324187
+  type: 'test'
+  ...
+# Subtest: Glyph atlas supports configurable cells with balanced power-of-two columns
+ok 154 - Glyph atlas supports configurable cells with balanced power-of-two columns
+  ---
+  duration_ms: 0.932392
+  type: 'test'
+  ...
+# Subtest: Font edge arenas reserve GPU-compiled slots without a nested expansion array
+ok 155 - Font edge arenas reserve GPU-compiled slots without a nested expansion array
+  ---
+  duration_ms: 0.115273
+  type: 'test'
+  ...
+# Subtest: Failed long text record rolls back glyph-run and entity allocation
+ok 156 - Failed long text record rolls back glyph-run and entity allocation
+  ---
+  duration_ms: 1.611463
+  type: 'test'
+  ...
+# Subtest: Rational spline knot ordering and weight lengths are validated
+ok 157 - Rational spline knot ordering and weight lengths are validated
+  ---
+  duration_ms: 0.543167
+  type: 'test'
+  ...
+# Subtest: Fixed-record edits validate every patch before writing GPU memory
+ok 158 - Fixed-record edits validate every patch before writing GPU memory
+  ---
+  duration_ms: 1.545655
+  type: 'test'
+  ...
+# Subtest: An invalid first entity leaves no empty dispatch page
+ok 159 - An invalid first entity leaves no empty dispatch page
+  ---
+  duration_ms: 0.567293
+  type: 'test'
+  ...
+# Subtest: Feature gallery has real hatch and dimension records, not presentation images
+ok 160 - Feature gallery has real hatch and dimension records, not presentation images
+  ---
+  duration_ms: 26.564425
+  type: 'test'
+  ...
+1..160
+# tests 160
+# suites 0
+# pass 160
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 260.362726

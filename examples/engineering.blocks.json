@@ -1,0 +1,4779 @@
+{
+  "schema": "aperture.block-library/1",
+  "name": "Aperture Engineering · original symbols",
+  "units": 0,
+  "blocks": [
+    {
+      "header": {
+        "type": "BLOCK",
+        "groups": [
+          {
+            "code": 5,
+            "value": "100001"
+          },
+          {
+            "code": 330,
+            "value": "100000"
+          },
+          {
+            "code": 8,
+            "value": "0"
+          },
+          {
+            "code": 2,
+            "value": "VALVE_GATE"
+          },
+          {
+            "code": 3,
+            "value": "VALVE_GATE"
+          },
+          {
+            "code": 70,
+            "value": 0
+          },
+          {
+            "code": 10,
+            "value": 0
+          },
+          {
+            "code": 20,
+            "value": 0
+          },
+          {
+            "code": 30,
+            "value": 0
+          },
+          {
+            "code": 4,
+            "value": "Process / Gate valve"
+          }
+        ]
+      },
+      "end": {
+        "type": "ENDBLK",
+        "groups": [
+          {
+            "code": 5,
+            "value": "100002"
+          },
+          {
+            "code": 330,
+            "value": "100000"
+          },
+          {
+            "code": 8,
+            "value": "0"
+          }
+        ]
+      },
+      "records": [
+        {
+          "type": "LWPOLYLINE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 90,
+              "value": 4
+            },
+            {
+              "code": 70,
+              "value": 1
+            },
+            {
+              "code": 10,
+              "value": -10
+            },
+            {
+              "code": 20,
+              "value": -6
+            },
+            {
+              "code": 10,
+              "value": 10
+            },
+            {
+              "code": 20,
+              "value": 6
+            },
+            {
+              "code": 10,
+              "value": 10
+            },
+            {
+              "code": 20,
+              "value": -6
+            },
+            {
+              "code": 10,
+              "value": -10
+            },
+            {
+              "code": 20,
+              "value": 6
+            },
+            {
+              "code": 5,
+              "value": "100003"
+            }
+          ]
+        },
+        {
+          "type": "LINE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": -16
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 11,
+              "value": -10
+            },
+            {
+              "code": 21,
+              "value": 0
+            },
+            {
+              "code": 5,
+              "value": "100004"
+            }
+          ]
+        },
+        {
+          "type": "LINE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": 10
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 11,
+              "value": 16
+            },
+            {
+              "code": 21,
+              "value": 0
+            },
+            {
+              "code": 5,
+              "value": "100005"
+            }
+          ]
+        },
+        {
+          "type": "ATTDEF",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 2,
+              "value": "TAG"
+            },
+            {
+              "code": 3,
+              "value": "TAG"
+            },
+            {
+              "code": 1,
+              "value": "V-101"
+            },
+            {
+              "code": 10,
+              "value": -5
+            },
+            {
+              "code": 20,
+              "value": 10
+            },
+            {
+              "code": 40,
+              "value": 2.5
+            },
+            {
+              "code": 70,
+              "value": 0
+            },
+            {
+              "code": 5,
+              "value": "100006"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "header": {
+        "type": "BLOCK",
+        "groups": [
+          {
+            "code": 5,
+            "value": "100008"
+          },
+          {
+            "code": 330,
+            "value": "100007"
+          },
+          {
+            "code": 8,
+            "value": "0"
+          },
+          {
+            "code": 2,
+            "value": "VALVE_CONTROL"
+          },
+          {
+            "code": 3,
+            "value": "VALVE_CONTROL"
+          },
+          {
+            "code": 70,
+            "value": 0
+          },
+          {
+            "code": 10,
+            "value": 0
+          },
+          {
+            "code": 20,
+            "value": 0
+          },
+          {
+            "code": 30,
+            "value": 0
+          },
+          {
+            "code": 4,
+            "value": "Process / Actuated control valve"
+          }
+        ]
+      },
+      "end": {
+        "type": "ENDBLK",
+        "groups": [
+          {
+            "code": 5,
+            "value": "100009"
+          },
+          {
+            "code": 330,
+            "value": "100007"
+          },
+          {
+            "code": 8,
+            "value": "0"
+          }
+        ]
+      },
+      "records": [
+        {
+          "type": "INSERT",
+          "groups": [
+            {
+              "code": 5,
+              "value": "10000A"
+            },
+            {
+              "code": 100,
+              "value": "AcDbEntity"
+            },
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 67,
+              "value": 0
+            },
+            {
+              "code": 410,
+              "value": "Model"
+            },
+            {
+              "code": 100,
+              "value": "AcDbBlockReference"
+            },
+            {
+              "code": 2,
+              "value": "VALVE_GATE"
+            },
+            {
+              "code": 10,
+              "value": 0
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 30,
+              "value": 0
+            },
+            {
+              "code": 41,
+              "value": 1
+            },
+            {
+              "code": 42,
+              "value": 1
+            },
+            {
+              "code": 43,
+              "value": 1
+            },
+            {
+              "code": 50,
+              "value": 0
+            },
+            {
+              "code": 70,
+              "value": 1
+            },
+            {
+              "code": 71,
+              "value": 1
+            },
+            {
+              "code": 44,
+              "value": 0
+            },
+            {
+              "code": 45,
+              "value": 0
+            },
+            {
+              "code": 66,
+              "value": 1
+            }
+          ],
+          "attributes": [
+            {
+              "type": "ATTRIB",
+              "groups": [
+                {
+                  "code": 8,
+                  "value": "0"
+                },
+                {
+                  "code": 62,
+                  "value": 0
+                },
+                {
+                  "code": 2,
+                  "value": "TAG"
+                },
+                {
+                  "code": 1,
+                  "value": "V-101"
+                },
+                {
+                  "code": 10,
+                  "value": -5
+                },
+                {
+                  "code": 20,
+                  "value": 10
+                },
+                {
+                  "code": 40,
+                  "value": 2.5
+                },
+                {
+                  "code": 70,
+                  "value": 0
+                },
+                {
+                  "code": 5,
+                  "value": "10000B"
+                },
+                {
+                  "code": 100,
+                  "value": "AcDbEntity"
+                },
+                {
+                  "code": 30,
+                  "value": 0
+                },
+                {
+                  "code": 41,
+                  "value": 1
+                },
+                {
+                  "code": 50,
+                  "value": 0
+                },
+                {
+                  "code": 51,
+                  "value": 0
+                },
+                {
+                  "code": 71,
+                  "value": 0
+                },
+                {
+                  "code": 74,
+                  "value": 0
+                }
+              ]
+            }
+          ],
+          "seqend": {
+            "type": "SEQEND",
+            "groups": [
+              {
+                "code": 5,
+                "value": "10000C"
+              },
+              {
+                "code": 8,
+                "value": "0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "LINE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": 0
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 11,
+              "value": 0
+            },
+            {
+              "code": 21,
+              "value": 15
+            },
+            {
+              "code": 5,
+              "value": "10000D"
+            }
+          ]
+        },
+        {
+          "type": "ARC",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": 0
+            },
+            {
+              "code": 20,
+              "value": 15
+            },
+            {
+              "code": 40,
+              "value": 6
+            },
+            {
+              "code": 50,
+              "value": 0
+            },
+            {
+              "code": 51,
+              "value": 180
+            },
+            {
+              "code": 5,
+              "value": "10000E"
+            }
+          ]
+        },
+        {
+          "type": "LINE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": -6
+            },
+            {
+              "code": 20,
+              "value": 15
+            },
+            {
+              "code": 11,
+              "value": 6
+            },
+            {
+              "code": 21,
+              "value": 15
+            },
+            {
+              "code": 5,
+              "value": "10000F"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "header": {
+        "type": "BLOCK",
+        "groups": [
+          {
+            "code": 5,
+            "value": "100011"
+          },
+          {
+            "code": 330,
+            "value": "100010"
+          },
+          {
+            "code": 8,
+            "value": "0"
+          },
+          {
+            "code": 2,
+            "value": "PUMP_CENTRIFUGAL"
+          },
+          {
+            "code": 3,
+            "value": "PUMP_CENTRIFUGAL"
+          },
+          {
+            "code": 70,
+            "value": 0
+          },
+          {
+            "code": 10,
+            "value": 0
+          },
+          {
+            "code": 20,
+            "value": 0
+          },
+          {
+            "code": 30,
+            "value": 0
+          },
+          {
+            "code": 4,
+            "value": "Process / Centrifugal pump"
+          }
+        ]
+      },
+      "end": {
+        "type": "ENDBLK",
+        "groups": [
+          {
+            "code": 5,
+            "value": "100012"
+          },
+          {
+            "code": 330,
+            "value": "100010"
+          },
+          {
+            "code": 8,
+            "value": "0"
+          }
+        ]
+      },
+      "records": [
+        {
+          "type": "CIRCLE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": 0
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 40,
+              "value": 9
+            },
+            {
+              "code": 5,
+              "value": "100013"
+            }
+          ]
+        },
+        {
+          "type": "LWPOLYLINE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 90,
+              "value": 3
+            },
+            {
+              "code": 70,
+              "value": 1
+            },
+            {
+              "code": 10,
+              "value": -5
+            },
+            {
+              "code": 20,
+              "value": -5
+            },
+            {
+              "code": 10,
+              "value": 6
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": -5
+            },
+            {
+              "code": 20,
+              "value": 5
+            },
+            {
+              "code": 5,
+              "value": "100014"
+            }
+          ]
+        },
+        {
+          "type": "LINE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": -18
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 11,
+              "value": -9
+            },
+            {
+              "code": 21,
+              "value": 0
+            },
+            {
+              "code": 5,
+              "value": "100015"
+            }
+          ]
+        },
+        {
+          "type": "LINE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": 0
+            },
+            {
+              "code": 20,
+              "value": 9
+            },
+            {
+              "code": 11,
+              "value": 0
+            },
+            {
+              "code": 21,
+              "value": 16
+            },
+            {
+              "code": 5,
+              "value": "100016"
+            }
+          ]
+        },
+        {
+          "type": "LINE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": 0
+            },
+            {
+              "code": 20,
+              "value": 16
+            },
+            {
+              "code": 11,
+              "value": 18
+            },
+            {
+              "code": 21,
+              "value": 16
+            },
+            {
+              "code": 5,
+              "value": "100017"
+            }
+          ]
+        },
+        {
+          "type": "ATTDEF",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 2,
+              "value": "TAG"
+            },
+            {
+              "code": 3,
+              "value": "TAG"
+            },
+            {
+              "code": 1,
+              "value": "P-101"
+            },
+            {
+              "code": 10,
+              "value": -7
+            },
+            {
+              "code": 20,
+              "value": -15
+            },
+            {
+              "code": 40,
+              "value": 2.5
+            },
+            {
+              "code": 70,
+              "value": 0
+            },
+            {
+              "code": 5,
+              "value": "100018"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "header": {
+        "type": "BLOCK",
+        "groups": [
+          {
+            "code": 5,
+            "value": "10001A"
+          },
+          {
+            "code": 330,
+            "value": "100019"
+          },
+          {
+            "code": 8,
+            "value": "0"
+          },
+          {
+            "code": 2,
+            "value": "FLANGE"
+          },
+          {
+            "code": 3,
+            "value": "FLANGE"
+          },
+          {
+            "code": 70,
+            "value": 0
+          },
+          {
+            "code": 10,
+            "value": 0
+          },
+          {
+            "code": 20,
+            "value": 0
+          },
+          {
+            "code": 30,
+            "value": 0
+          },
+          {
+            "code": 4,
+            "value": "Mechanical / Pipe flange"
+          }
+        ]
+      },
+      "end": {
+        "type": "ENDBLK",
+        "groups": [
+          {
+            "code": 5,
+            "value": "10001B"
+          },
+          {
+            "code": 330,
+            "value": "100019"
+          },
+          {
+            "code": 8,
+            "value": "0"
+          }
+        ]
+      },
+      "records": [
+        {
+          "type": "CIRCLE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": 0
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 40,
+              "value": 12
+            },
+            {
+              "code": 5,
+              "value": "10001C"
+            }
+          ]
+        },
+        {
+          "type": "CIRCLE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": 0
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 40,
+              "value": 6
+            },
+            {
+              "code": 5,
+              "value": "10001D"
+            }
+          ]
+        },
+        {
+          "type": "CIRCLE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": 0
+            },
+            {
+              "code": 20,
+              "value": 9
+            },
+            {
+              "code": 40,
+              "value": 1.5
+            },
+            {
+              "code": 5,
+              "value": "10001E"
+            }
+          ]
+        },
+        {
+          "type": "CIRCLE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": 9
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 40,
+              "value": 1.5
+            },
+            {
+              "code": 5,
+              "value": "10001F"
+            }
+          ]
+        },
+        {
+          "type": "CIRCLE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": 0
+            },
+            {
+              "code": 20,
+              "value": -9
+            },
+            {
+              "code": 40,
+              "value": 1.5
+            },
+            {
+              "code": 5,
+              "value": "100020"
+            }
+          ]
+        },
+        {
+          "type": "CIRCLE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": -9
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 40,
+              "value": 1.5
+            },
+            {
+              "code": 5,
+              "value": "100021"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "header": {
+        "type": "BLOCK",
+        "groups": [
+          {
+            "code": 5,
+            "value": "100023"
+          },
+          {
+            "code": 330,
+            "value": "100022"
+          },
+          {
+            "code": 8,
+            "value": "0"
+          },
+          {
+            "code": 2,
+            "value": "INSTRUMENT"
+          },
+          {
+            "code": 3,
+            "value": "INSTRUMENT"
+          },
+          {
+            "code": 70,
+            "value": 0
+          },
+          {
+            "code": 10,
+            "value": 0
+          },
+          {
+            "code": 20,
+            "value": 0
+          },
+          {
+            "code": 30,
+            "value": 0
+          },
+          {
+            "code": 4,
+            "value": "Instrumentation / Field indicator"
+          }
+        ]
+      },
+      "end": {
+        "type": "ENDBLK",
+        "groups": [
+          {
+            "code": 5,
+            "value": "100024"
+          },
+          {
+            "code": 330,
+            "value": "100022"
+          },
+          {
+            "code": 8,
+            "value": "0"
+          }
+        ]
+      },
+      "records": [
+        {
+          "type": "CIRCLE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": 0
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 40,
+              "value": 8
+            },
+            {
+              "code": 5,
+              "value": "100025"
+            }
+          ]
+        },
+        {
+          "type": "LINE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": -8
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 11,
+              "value": 8
+            },
+            {
+              "code": 21,
+              "value": 0
+            },
+            {
+              "code": 5,
+              "value": "100026"
+            }
+          ]
+        },
+        {
+          "type": "ATTDEF",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 2,
+              "value": "FUNCTION"
+            },
+            {
+              "code": 3,
+              "value": "FUNCTION"
+            },
+            {
+              "code": 1,
+              "value": "PI"
+            },
+            {
+              "code": 10,
+              "value": -4
+            },
+            {
+              "code": 20,
+              "value": 2
+            },
+            {
+              "code": 40,
+              "value": 2.5
+            },
+            {
+              "code": 70,
+              "value": 0
+            },
+            {
+              "code": 5,
+              "value": "100027"
+            }
+          ]
+        },
+        {
+          "type": "ATTDEF",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 2,
+              "value": "NUMBER"
+            },
+            {
+              "code": 3,
+              "value": "NUMBER"
+            },
+            {
+              "code": 1,
+              "value": "101"
+            },
+            {
+              "code": 10,
+              "value": -3
+            },
+            {
+              "code": 20,
+              "value": -5
+            },
+            {
+              "code": 40,
+              "value": 2.5
+            },
+            {
+              "code": 70,
+              "value": 0
+            },
+            {
+              "code": 5,
+              "value": "100028"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "header": {
+        "type": "BLOCK",
+        "groups": [
+          {
+            "code": 5,
+            "value": "10002A"
+          },
+          {
+            "code": 330,
+            "value": "100029"
+          },
+          {
+            "code": 8,
+            "value": "0"
+          },
+          {
+            "code": 2,
+            "value": "TANK_VERTICAL"
+          },
+          {
+            "code": 3,
+            "value": "TANK_VERTICAL"
+          },
+          {
+            "code": 70,
+            "value": 0
+          },
+          {
+            "code": 10,
+            "value": 0
+          },
+          {
+            "code": 20,
+            "value": 0
+          },
+          {
+            "code": 30,
+            "value": 0
+          },
+          {
+            "code": 4,
+            "value": "Process / Storage tank"
+          }
+        ]
+      },
+      "end": {
+        "type": "ENDBLK",
+        "groups": [
+          {
+            "code": 5,
+            "value": "10002B"
+          },
+          {
+            "code": 330,
+            "value": "100029"
+          },
+          {
+            "code": 8,
+            "value": "0"
+          }
+        ]
+      },
+      "records": [
+        {
+          "type": "LINE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": -12
+            },
+            {
+              "code": 20,
+              "value": -15
+            },
+            {
+              "code": 11,
+              "value": -12
+            },
+            {
+              "code": 21,
+              "value": 15
+            },
+            {
+              "code": 5,
+              "value": "10002C"
+            }
+          ]
+        },
+        {
+          "type": "LINE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": 12
+            },
+            {
+              "code": 20,
+              "value": -15
+            },
+            {
+              "code": 11,
+              "value": 12
+            },
+            {
+              "code": 21,
+              "value": 15
+            },
+            {
+              "code": 5,
+              "value": "10002D"
+            }
+          ]
+        },
+        {
+          "type": "ARC",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": 0
+            },
+            {
+              "code": 20,
+              "value": 15
+            },
+            {
+              "code": 40,
+              "value": 12
+            },
+            {
+              "code": 50,
+              "value": 0
+            },
+            {
+              "code": 51,
+              "value": 180
+            },
+            {
+              "code": 5,
+              "value": "10002E"
+            }
+          ]
+        },
+        {
+          "type": "ARC",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": 0
+            },
+            {
+              "code": 20,
+              "value": -15
+            },
+            {
+              "code": 40,
+              "value": 12
+            },
+            {
+              "code": 50,
+              "value": 180
+            },
+            {
+              "code": 51,
+              "value": 360
+            },
+            {
+              "code": 5,
+              "value": "10002F"
+            }
+          ]
+        },
+        {
+          "type": "ATTDEF",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 2,
+              "value": "TAG"
+            },
+            {
+              "code": 3,
+              "value": "TAG"
+            },
+            {
+              "code": 1,
+              "value": "TK-101"
+            },
+            {
+              "code": 10,
+              "value": -6
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 40,
+              "value": 2.5
+            },
+            {
+              "code": 70,
+              "value": 0
+            },
+            {
+              "code": 5,
+              "value": "100030"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "header": {
+        "type": "BLOCK",
+        "groups": [
+          {
+            "code": 5,
+            "value": "100032"
+          },
+          {
+            "code": 330,
+            "value": "100031"
+          },
+          {
+            "code": 8,
+            "value": "0"
+          },
+          {
+            "code": 2,
+            "value": "DOOR_SINGLE"
+          },
+          {
+            "code": 3,
+            "value": "DOOR_SINGLE"
+          },
+          {
+            "code": 70,
+            "value": 0
+          },
+          {
+            "code": 10,
+            "value": 0
+          },
+          {
+            "code": 20,
+            "value": 0
+          },
+          {
+            "code": 30,
+            "value": 0
+          },
+          {
+            "code": 4,
+            "value": "Architecture / Single leaf door"
+          }
+        ]
+      },
+      "end": {
+        "type": "ENDBLK",
+        "groups": [
+          {
+            "code": 5,
+            "value": "100033"
+          },
+          {
+            "code": 330,
+            "value": "100031"
+          },
+          {
+            "code": 8,
+            "value": "0"
+          }
+        ]
+      },
+      "records": [
+        {
+          "type": "LINE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": 0
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 11,
+              "value": 0
+            },
+            {
+              "code": 21,
+              "value": 30
+            },
+            {
+              "code": 5,
+              "value": "100034"
+            }
+          ]
+        },
+        {
+          "type": "ARC",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": 0
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 40,
+              "value": 30
+            },
+            {
+              "code": 50,
+              "value": 0
+            },
+            {
+              "code": 51,
+              "value": 90
+            },
+            {
+              "code": 5,
+              "value": "100035"
+            }
+          ]
+        },
+        {
+          "type": "LINE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": -3
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 11,
+              "value": 3
+            },
+            {
+              "code": 21,
+              "value": 0
+            },
+            {
+              "code": 5,
+              "value": "100036"
+            }
+          ]
+        },
+        {
+          "type": "LINE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": 27
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 11,
+              "value": 33
+            },
+            {
+              "code": 21,
+              "value": 0
+            },
+            {
+              "code": 5,
+              "value": "100037"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "header": {
+        "type": "BLOCK",
+        "groups": [
+          {
+            "code": 5,
+            "value": "100039"
+          },
+          {
+            "code": 330,
+            "value": "100038"
+          },
+          {
+            "code": 8,
+            "value": "0"
+          },
+          {
+            "code": 2,
+            "value": "DESK"
+          },
+          {
+            "code": 3,
+            "value": "DESK"
+          },
+          {
+            "code": 70,
+            "value": 0
+          },
+          {
+            "code": 10,
+            "value": 0
+          },
+          {
+            "code": 20,
+            "value": 0
+          },
+          {
+            "code": 30,
+            "value": 0
+          },
+          {
+            "code": 4,
+            "value": "Furniture / Workstation"
+          }
+        ]
+      },
+      "end": {
+        "type": "ENDBLK",
+        "groups": [
+          {
+            "code": 5,
+            "value": "10003A"
+          },
+          {
+            "code": 330,
+            "value": "100038"
+          },
+          {
+            "code": 8,
+            "value": "0"
+          }
+        ]
+      },
+      "records": [
+        {
+          "type": "LWPOLYLINE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 90,
+              "value": 4
+            },
+            {
+              "code": 70,
+              "value": 1
+            },
+            {
+              "code": 10,
+              "value": -20
+            },
+            {
+              "code": 20,
+              "value": -10
+            },
+            {
+              "code": 10,
+              "value": 20
+            },
+            {
+              "code": 20,
+              "value": -10
+            },
+            {
+              "code": 10,
+              "value": 20
+            },
+            {
+              "code": 20,
+              "value": 10
+            },
+            {
+              "code": 10,
+              "value": -20
+            },
+            {
+              "code": 20,
+              "value": 10
+            },
+            {
+              "code": 5,
+              "value": "10003B"
+            }
+          ]
+        },
+        {
+          "type": "LWPOLYLINE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 90,
+              "value": 4
+            },
+            {
+              "code": 70,
+              "value": 1
+            },
+            {
+              "code": 10,
+              "value": -13
+            },
+            {
+              "code": 20,
+              "value": -3
+            },
+            {
+              "code": 10,
+              "value": -3
+            },
+            {
+              "code": 20,
+              "value": -3
+            },
+            {
+              "code": 10,
+              "value": -3
+            },
+            {
+              "code": 20,
+              "value": 4
+            },
+            {
+              "code": 10,
+              "value": -13
+            },
+            {
+              "code": 20,
+              "value": 4
+            },
+            {
+              "code": 5,
+              "value": "10003C"
+            }
+          ]
+        },
+        {
+          "type": "CIRCLE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": 8
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 40,
+              "value": 3
+            },
+            {
+              "code": 5,
+              "value": "10003D"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "header": {
+        "type": "BLOCK",
+        "groups": [
+          {
+            "code": 5,
+            "value": "10003F"
+          },
+          {
+            "code": 330,
+            "value": "10003E"
+          },
+          {
+            "code": 8,
+            "value": "0"
+          },
+          {
+            "code": 2,
+            "value": "CHAIR"
+          },
+          {
+            "code": 3,
+            "value": "CHAIR"
+          },
+          {
+            "code": 70,
+            "value": 0
+          },
+          {
+            "code": 10,
+            "value": 0
+          },
+          {
+            "code": 20,
+            "value": 0
+          },
+          {
+            "code": 30,
+            "value": 0
+          },
+          {
+            "code": 4,
+            "value": "Furniture / Task chair"
+          }
+        ]
+      },
+      "end": {
+        "type": "ENDBLK",
+        "groups": [
+          {
+            "code": 5,
+            "value": "100040"
+          },
+          {
+            "code": 330,
+            "value": "10003E"
+          },
+          {
+            "code": 8,
+            "value": "0"
+          }
+        ]
+      },
+      "records": [
+        {
+          "type": "LWPOLYLINE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 90,
+              "value": 4
+            },
+            {
+              "code": 70,
+              "value": 1
+            },
+            {
+              "code": 10,
+              "value": -5
+            },
+            {
+              "code": 20,
+              "value": -5
+            },
+            {
+              "code": 10,
+              "value": 5
+            },
+            {
+              "code": 20,
+              "value": -5
+            },
+            {
+              "code": 10,
+              "value": 5
+            },
+            {
+              "code": 20,
+              "value": 5
+            },
+            {
+              "code": 10,
+              "value": -5
+            },
+            {
+              "code": 20,
+              "value": 5
+            },
+            {
+              "code": 5,
+              "value": "100041"
+            }
+          ]
+        },
+        {
+          "type": "ARC",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": 0
+            },
+            {
+              "code": 20,
+              "value": 5
+            },
+            {
+              "code": 40,
+              "value": 6
+            },
+            {
+              "code": 50,
+              "value": 0
+            },
+            {
+              "code": 51,
+              "value": 180
+            },
+            {
+              "code": 5,
+              "value": "100042"
+            }
+          ]
+        },
+        {
+          "type": "LINE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": -8
+            },
+            {
+              "code": 20,
+              "value": -5
+            },
+            {
+              "code": 11,
+              "value": -8
+            },
+            {
+              "code": 21,
+              "value": 5
+            },
+            {
+              "code": 5,
+              "value": "100043"
+            }
+          ]
+        },
+        {
+          "type": "LINE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": 8
+            },
+            {
+              "code": 20,
+              "value": -5
+            },
+            {
+              "code": 11,
+              "value": 8
+            },
+            {
+              "code": 21,
+              "value": 5
+            },
+            {
+              "code": 5,
+              "value": "100044"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "header": {
+        "type": "BLOCK",
+        "groups": [
+          {
+            "code": 5,
+            "value": "100046"
+          },
+          {
+            "code": 330,
+            "value": "100045"
+          },
+          {
+            "code": 8,
+            "value": "0"
+          },
+          {
+            "code": 2,
+            "value": "WORKSTATION"
+          },
+          {
+            "code": 3,
+            "value": "WORKSTATION"
+          },
+          {
+            "code": 70,
+            "value": 0
+          },
+          {
+            "code": 10,
+            "value": 0
+          },
+          {
+            "code": 20,
+            "value": 0
+          },
+          {
+            "code": 30,
+            "value": 0
+          },
+          {
+            "code": 4,
+            "value": "Furniture / Nested desk and chair"
+          }
+        ]
+      },
+      "end": {
+        "type": "ENDBLK",
+        "groups": [
+          {
+            "code": 5,
+            "value": "100047"
+          },
+          {
+            "code": 330,
+            "value": "100045"
+          },
+          {
+            "code": 8,
+            "value": "0"
+          }
+        ]
+      },
+      "records": [
+        {
+          "type": "INSERT",
+          "groups": [
+            {
+              "code": 5,
+              "value": "100048"
+            },
+            {
+              "code": 100,
+              "value": "AcDbEntity"
+            },
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 67,
+              "value": 0
+            },
+            {
+              "code": 410,
+              "value": "Model"
+            },
+            {
+              "code": 100,
+              "value": "AcDbBlockReference"
+            },
+            {
+              "code": 2,
+              "value": "DESK"
+            },
+            {
+              "code": 10,
+              "value": 0
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 30,
+              "value": 0
+            },
+            {
+              "code": 41,
+              "value": 1
+            },
+            {
+              "code": 42,
+              "value": 1
+            },
+            {
+              "code": 43,
+              "value": 1
+            },
+            {
+              "code": 50,
+              "value": 0
+            },
+            {
+              "code": 70,
+              "value": 1
+            },
+            {
+              "code": 71,
+              "value": 1
+            },
+            {
+              "code": 44,
+              "value": 0
+            },
+            {
+              "code": 45,
+              "value": 0
+            }
+          ]
+        },
+        {
+          "type": "INSERT",
+          "groups": [
+            {
+              "code": 5,
+              "value": "100049"
+            },
+            {
+              "code": 100,
+              "value": "AcDbEntity"
+            },
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 67,
+              "value": 0
+            },
+            {
+              "code": 410,
+              "value": "Model"
+            },
+            {
+              "code": 100,
+              "value": "AcDbBlockReference"
+            },
+            {
+              "code": 2,
+              "value": "CHAIR"
+            },
+            {
+              "code": 10,
+              "value": 0
+            },
+            {
+              "code": 20,
+              "value": -20
+            },
+            {
+              "code": 30,
+              "value": 0
+            },
+            {
+              "code": 41,
+              "value": 1
+            },
+            {
+              "code": 42,
+              "value": 1
+            },
+            {
+              "code": 43,
+              "value": 1
+            },
+            {
+              "code": 50,
+              "value": 0
+            },
+            {
+              "code": 70,
+              "value": 1
+            },
+            {
+              "code": 71,
+              "value": 1
+            },
+            {
+              "code": 44,
+              "value": 0
+            },
+            {
+              "code": 45,
+              "value": 0
+            }
+          ]
+        },
+        {
+          "type": "ATTDEF",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 2,
+              "value": "ASSET_ID"
+            },
+            {
+              "code": 3,
+              "value": "ASSET ID"
+            },
+            {
+              "code": 1,
+              "value": "WS-01"
+            },
+            {
+              "code": 10,
+              "value": -18
+            },
+            {
+              "code": 20,
+              "value": 15
+            },
+            {
+              "code": 40,
+              "value": 2.5
+            },
+            {
+              "code": 70,
+              "value": 0
+            },
+            {
+              "code": 5,
+              "value": "10004A"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "header": {
+        "type": "BLOCK",
+        "groups": [
+          {
+            "code": 5,
+            "value": "10004C"
+          },
+          {
+            "code": 330,
+            "value": "10004B"
+          },
+          {
+            "code": 8,
+            "value": "0"
+          },
+          {
+            "code": 2,
+            "value": "BOLT_HEX"
+          },
+          {
+            "code": 3,
+            "value": "BOLT_HEX"
+          },
+          {
+            "code": 70,
+            "value": 0
+          },
+          {
+            "code": 10,
+            "value": 0
+          },
+          {
+            "code": 20,
+            "value": 0
+          },
+          {
+            "code": 30,
+            "value": 0
+          },
+          {
+            "code": 4,
+            "value": "Mechanical / Hexagonal bolt"
+          }
+        ]
+      },
+      "end": {
+        "type": "ENDBLK",
+        "groups": [
+          {
+            "code": 5,
+            "value": "10004D"
+          },
+          {
+            "code": 330,
+            "value": "10004B"
+          },
+          {
+            "code": 8,
+            "value": "0"
+          }
+        ]
+      },
+      "records": [
+        {
+          "type": "LWPOLYLINE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 90,
+              "value": 6
+            },
+            {
+              "code": 70,
+              "value": 1
+            },
+            {
+              "code": 10,
+              "value": 10
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": 5
+            },
+            {
+              "code": 20,
+              "value": 8.660254
+            },
+            {
+              "code": 10,
+              "value": -5
+            },
+            {
+              "code": 20,
+              "value": 8.660254
+            },
+            {
+              "code": 10,
+              "value": -10
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": -5
+            },
+            {
+              "code": 20,
+              "value": -8.660254
+            },
+            {
+              "code": 10,
+              "value": 5
+            },
+            {
+              "code": 20,
+              "value": -8.660254
+            },
+            {
+              "code": 5,
+              "value": "10004E"
+            }
+          ]
+        },
+        {
+          "type": "CIRCLE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": 0
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 40,
+              "value": 5
+            },
+            {
+              "code": 5,
+              "value": "10004F"
+            }
+          ]
+        },
+        {
+          "type": "LINE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": -3
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 11,
+              "value": 3
+            },
+            {
+              "code": 21,
+              "value": 0
+            },
+            {
+              "code": 5,
+              "value": "100050"
+            }
+          ]
+        },
+        {
+          "type": "LINE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": 0
+            },
+            {
+              "code": 20,
+              "value": -3
+            },
+            {
+              "code": 11,
+              "value": 0
+            },
+            {
+              "code": 21,
+              "value": 3
+            },
+            {
+              "code": 5,
+              "value": "100051"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "header": {
+        "type": "BLOCK",
+        "groups": [
+          {
+            "code": 5,
+            "value": "100053"
+          },
+          {
+            "code": 330,
+            "value": "100052"
+          },
+          {
+            "code": 8,
+            "value": "0"
+          },
+          {
+            "code": 2,
+            "value": "NORTH_ARROW"
+          },
+          {
+            "code": 3,
+            "value": "NORTH_ARROW"
+          },
+          {
+            "code": 70,
+            "value": 0
+          },
+          {
+            "code": 10,
+            "value": 0
+          },
+          {
+            "code": 20,
+            "value": 0
+          },
+          {
+            "code": 30,
+            "value": 0
+          },
+          {
+            "code": 4,
+            "value": "Drawing / North marker"
+          }
+        ]
+      },
+      "end": {
+        "type": "ENDBLK",
+        "groups": [
+          {
+            "code": 5,
+            "value": "100054"
+          },
+          {
+            "code": 330,
+            "value": "100052"
+          },
+          {
+            "code": 8,
+            "value": "0"
+          }
+        ]
+      },
+      "records": [
+        {
+          "type": "LWPOLYLINE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 90,
+              "value": 4
+            },
+            {
+              "code": 70,
+              "value": 1
+            },
+            {
+              "code": 10,
+              "value": 0
+            },
+            {
+              "code": 20,
+              "value": 16
+            },
+            {
+              "code": 10,
+              "value": -5
+            },
+            {
+              "code": 20,
+              "value": -6
+            },
+            {
+              "code": 10,
+              "value": 0
+            },
+            {
+              "code": 20,
+              "value": -3
+            },
+            {
+              "code": 10,
+              "value": 5
+            },
+            {
+              "code": 20,
+              "value": -6
+            },
+            {
+              "code": 5,
+              "value": "100055"
+            }
+          ]
+        },
+        {
+          "type": "TEXT",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 1,
+              "value": "N"
+            },
+            {
+              "code": 10,
+              "value": -2
+            },
+            {
+              "code": 20,
+              "value": 20
+            },
+            {
+              "code": 40,
+              "value": 4
+            },
+            {
+              "code": 5,
+              "value": "100056"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "header": {
+        "type": "BLOCK",
+        "groups": [
+          {
+            "code": 5,
+            "value": "100058"
+          },
+          {
+            "code": 330,
+            "value": "100057"
+          },
+          {
+            "code": 8,
+            "value": "0"
+          },
+          {
+            "code": 2,
+            "value": "DATUM_TARGET"
+          },
+          {
+            "code": 3,
+            "value": "DATUM_TARGET"
+          },
+          {
+            "code": 70,
+            "value": 0
+          },
+          {
+            "code": 10,
+            "value": 0
+          },
+          {
+            "code": 20,
+            "value": 0
+          },
+          {
+            "code": 30,
+            "value": 0
+          },
+          {
+            "code": 4,
+            "value": "Drawing / Datum with attributes"
+          }
+        ]
+      },
+      "end": {
+        "type": "ENDBLK",
+        "groups": [
+          {
+            "code": 5,
+            "value": "100059"
+          },
+          {
+            "code": 330,
+            "value": "100057"
+          },
+          {
+            "code": 8,
+            "value": "0"
+          }
+        ]
+      },
+      "records": [
+        {
+          "type": "CIRCLE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": 0
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 40,
+              "value": 5
+            },
+            {
+              "code": 5,
+              "value": "10005A"
+            }
+          ]
+        },
+        {
+          "type": "LINE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": -8
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 11,
+              "value": 8
+            },
+            {
+              "code": 21,
+              "value": 0
+            },
+            {
+              "code": 5,
+              "value": "10005B"
+            }
+          ]
+        },
+        {
+          "type": "LINE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": 0
+            },
+            {
+              "code": 20,
+              "value": -8
+            },
+            {
+              "code": 11,
+              "value": 0
+            },
+            {
+              "code": 21,
+              "value": 8
+            },
+            {
+              "code": 5,
+              "value": "10005C"
+            }
+          ]
+        },
+        {
+          "type": "ATTDEF",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 2,
+              "value": "DATUM"
+            },
+            {
+              "code": 3,
+              "value": "DATUM"
+            },
+            {
+              "code": 1,
+              "value": "A"
+            },
+            {
+              "code": 10,
+              "value": 8
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 40,
+              "value": 2.5
+            },
+            {
+              "code": 70,
+              "value": 0
+            },
+            {
+              "code": 5,
+              "value": "10005D"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "header": {
+        "type": "BLOCK",
+        "groups": [
+          {
+            "code": 5,
+            "value": "10005F"
+          },
+          {
+            "code": 330,
+            "value": "10005E"
+          },
+          {
+            "code": 8,
+            "value": "0"
+          },
+          {
+            "code": 2,
+            "value": "PUMP_STATION"
+          },
+          {
+            "code": 3,
+            "value": "PUMP_STATION"
+          },
+          {
+            "code": 70,
+            "value": 0
+          },
+          {
+            "code": 10,
+            "value": 0
+          },
+          {
+            "code": 20,
+            "value": 0
+          },
+          {
+            "code": 30,
+            "value": 0
+          },
+          {
+            "code": 4,
+            "value": "Process / Nested pump, valves and instrumentation"
+          }
+        ]
+      },
+      "end": {
+        "type": "ENDBLK",
+        "groups": [
+          {
+            "code": 5,
+            "value": "100060"
+          },
+          {
+            "code": 330,
+            "value": "10005E"
+          },
+          {
+            "code": 8,
+            "value": "0"
+          }
+        ]
+      },
+      "records": [
+        {
+          "type": "INSERT",
+          "groups": [
+            {
+              "code": 5,
+              "value": "100061"
+            },
+            {
+              "code": 100,
+              "value": "AcDbEntity"
+            },
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 67,
+              "value": 0
+            },
+            {
+              "code": 410,
+              "value": "Model"
+            },
+            {
+              "code": 100,
+              "value": "AcDbBlockReference"
+            },
+            {
+              "code": 2,
+              "value": "PUMP_CENTRIFUGAL"
+            },
+            {
+              "code": 10,
+              "value": 0
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 30,
+              "value": 0
+            },
+            {
+              "code": 41,
+              "value": 1
+            },
+            {
+              "code": 42,
+              "value": 1
+            },
+            {
+              "code": 43,
+              "value": 1
+            },
+            {
+              "code": 50,
+              "value": 0
+            },
+            {
+              "code": 70,
+              "value": 1
+            },
+            {
+              "code": 71,
+              "value": 1
+            },
+            {
+              "code": 44,
+              "value": 0
+            },
+            {
+              "code": 45,
+              "value": 0
+            },
+            {
+              "code": 66,
+              "value": 1
+            }
+          ],
+          "attributes": [
+            {
+              "type": "ATTRIB",
+              "groups": [
+                {
+                  "code": 8,
+                  "value": "0"
+                },
+                {
+                  "code": 62,
+                  "value": 0
+                },
+                {
+                  "code": 2,
+                  "value": "TAG"
+                },
+                {
+                  "code": 1,
+                  "value": "P-101"
+                },
+                {
+                  "code": 10,
+                  "value": -7
+                },
+                {
+                  "code": 20,
+                  "value": -15
+                },
+                {
+                  "code": 40,
+                  "value": 2.5
+                },
+                {
+                  "code": 70,
+                  "value": 0
+                },
+                {
+                  "code": 5,
+                  "value": "100062"
+                },
+                {
+                  "code": 100,
+                  "value": "AcDbEntity"
+                },
+                {
+                  "code": 30,
+                  "value": 0
+                },
+                {
+                  "code": 41,
+                  "value": 1
+                },
+                {
+                  "code": 50,
+                  "value": 0
+                },
+                {
+                  "code": 51,
+                  "value": 0
+                },
+                {
+                  "code": 71,
+                  "value": 0
+                },
+                {
+                  "code": 74,
+                  "value": 0
+                }
+              ]
+            }
+          ],
+          "seqend": {
+            "type": "SEQEND",
+            "groups": [
+              {
+                "code": 5,
+                "value": "100063"
+              },
+              {
+                "code": 8,
+                "value": "0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "INSERT",
+          "groups": [
+            {
+              "code": 5,
+              "value": "100064"
+            },
+            {
+              "code": 100,
+              "value": "AcDbEntity"
+            },
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 67,
+              "value": 0
+            },
+            {
+              "code": 410,
+              "value": "Model"
+            },
+            {
+              "code": 100,
+              "value": "AcDbBlockReference"
+            },
+            {
+              "code": 2,
+              "value": "VALVE_GATE"
+            },
+            {
+              "code": 10,
+              "value": -40
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 30,
+              "value": 0
+            },
+            {
+              "code": 41,
+              "value": 1
+            },
+            {
+              "code": 42,
+              "value": 1
+            },
+            {
+              "code": 43,
+              "value": 1
+            },
+            {
+              "code": 50,
+              "value": 0
+            },
+            {
+              "code": 70,
+              "value": 1
+            },
+            {
+              "code": 71,
+              "value": 1
+            },
+            {
+              "code": 44,
+              "value": 0
+            },
+            {
+              "code": 45,
+              "value": 0
+            },
+            {
+              "code": 66,
+              "value": 1
+            }
+          ],
+          "attributes": [
+            {
+              "type": "ATTRIB",
+              "groups": [
+                {
+                  "code": 8,
+                  "value": "0"
+                },
+                {
+                  "code": 62,
+                  "value": 0
+                },
+                {
+                  "code": 2,
+                  "value": "TAG"
+                },
+                {
+                  "code": 1,
+                  "value": "V-101"
+                },
+                {
+                  "code": 10,
+                  "value": -45
+                },
+                {
+                  "code": 20,
+                  "value": 10
+                },
+                {
+                  "code": 40,
+                  "value": 2.5
+                },
+                {
+                  "code": 70,
+                  "value": 0
+                },
+                {
+                  "code": 5,
+                  "value": "100065"
+                },
+                {
+                  "code": 100,
+                  "value": "AcDbEntity"
+                },
+                {
+                  "code": 30,
+                  "value": 0
+                },
+                {
+                  "code": 41,
+                  "value": 1
+                },
+                {
+                  "code": 50,
+                  "value": 0
+                },
+                {
+                  "code": 51,
+                  "value": 0
+                },
+                {
+                  "code": 71,
+                  "value": 0
+                },
+                {
+                  "code": 74,
+                  "value": 0
+                }
+              ]
+            }
+          ],
+          "seqend": {
+            "type": "SEQEND",
+            "groups": [
+              {
+                "code": 5,
+                "value": "100066"
+              },
+              {
+                "code": 8,
+                "value": "0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "LINE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": -24
+            },
+            {
+              "code": 20,
+              "value": 0
+            },
+            {
+              "code": 11,
+              "value": -18
+            },
+            {
+              "code": 21,
+              "value": 0
+            },
+            {
+              "code": 5,
+              "value": "100067"
+            }
+          ]
+        },
+        {
+          "type": "INSERT",
+          "groups": [
+            {
+              "code": 5,
+              "value": "100068"
+            },
+            {
+              "code": 100,
+              "value": "AcDbEntity"
+            },
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 67,
+              "value": 0
+            },
+            {
+              "code": 410,
+              "value": "Model"
+            },
+            {
+              "code": 100,
+              "value": "AcDbBlockReference"
+            },
+            {
+              "code": 2,
+              "value": "VALVE_CONTROL"
+            },
+            {
+              "code": 10,
+              "value": 45
+            },
+            {
+              "code": 20,
+              "value": 16
+            },
+            {
+              "code": 30,
+              "value": 0
+            },
+            {
+              "code": 41,
+              "value": 1
+            },
+            {
+              "code": 42,
+              "value": 1
+            },
+            {
+              "code": 43,
+              "value": 1
+            },
+            {
+              "code": 50,
+              "value": 0
+            },
+            {
+              "code": 70,
+              "value": 1
+            },
+            {
+              "code": 71,
+              "value": 1
+            },
+            {
+              "code": 44,
+              "value": 0
+            },
+            {
+              "code": 45,
+              "value": 0
+            }
+          ]
+        },
+        {
+          "type": "LINE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": 18
+            },
+            {
+              "code": 20,
+              "value": 16
+            },
+            {
+              "code": 11,
+              "value": 29
+            },
+            {
+              "code": 21,
+              "value": 16
+            },
+            {
+              "code": 5,
+              "value": "100069"
+            }
+          ]
+        },
+        {
+          "type": "INSERT",
+          "groups": [
+            {
+              "code": 5,
+              "value": "10006A"
+            },
+            {
+              "code": 100,
+              "value": "AcDbEntity"
+            },
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 67,
+              "value": 0
+            },
+            {
+              "code": 410,
+              "value": "Model"
+            },
+            {
+              "code": 100,
+              "value": "AcDbBlockReference"
+            },
+            {
+              "code": 2,
+              "value": "INSTRUMENT"
+            },
+            {
+              "code": 10,
+              "value": 20
+            },
+            {
+              "code": 20,
+              "value": 35
+            },
+            {
+              "code": 30,
+              "value": 0
+            },
+            {
+              "code": 41,
+              "value": 1
+            },
+            {
+              "code": 42,
+              "value": 1
+            },
+            {
+              "code": 43,
+              "value": 1
+            },
+            {
+              "code": 50,
+              "value": 0
+            },
+            {
+              "code": 70,
+              "value": 1
+            },
+            {
+              "code": 71,
+              "value": 1
+            },
+            {
+              "code": 44,
+              "value": 0
+            },
+            {
+              "code": 45,
+              "value": 0
+            },
+            {
+              "code": 66,
+              "value": 1
+            }
+          ],
+          "attributes": [
+            {
+              "type": "ATTRIB",
+              "groups": [
+                {
+                  "code": 8,
+                  "value": "0"
+                },
+                {
+                  "code": 62,
+                  "value": 0
+                },
+                {
+                  "code": 2,
+                  "value": "FUNCTION"
+                },
+                {
+                  "code": 1,
+                  "value": "PI"
+                },
+                {
+                  "code": 10,
+                  "value": 16
+                },
+                {
+                  "code": 20,
+                  "value": 37
+                },
+                {
+                  "code": 40,
+                  "value": 2.5
+                },
+                {
+                  "code": 70,
+                  "value": 0
+                },
+                {
+                  "code": 5,
+                  "value": "10006B"
+                },
+                {
+                  "code": 100,
+                  "value": "AcDbEntity"
+                },
+                {
+                  "code": 30,
+                  "value": 0
+                },
+                {
+                  "code": 41,
+                  "value": 1
+                },
+                {
+                  "code": 50,
+                  "value": 0
+                },
+                {
+                  "code": 51,
+                  "value": 0
+                },
+                {
+                  "code": 71,
+                  "value": 0
+                },
+                {
+                  "code": 74,
+                  "value": 0
+                }
+              ]
+            },
+            {
+              "type": "ATTRIB",
+              "groups": [
+                {
+                  "code": 8,
+                  "value": "0"
+                },
+                {
+                  "code": 62,
+                  "value": 0
+                },
+                {
+                  "code": 2,
+                  "value": "NUMBER"
+                },
+                {
+                  "code": 1,
+                  "value": "101"
+                },
+                {
+                  "code": 10,
+                  "value": 17
+                },
+                {
+                  "code": 20,
+                  "value": 30
+                },
+                {
+                  "code": 40,
+                  "value": 2.5
+                },
+                {
+                  "code": 70,
+                  "value": 0
+                },
+                {
+                  "code": 5,
+                  "value": "10006C"
+                },
+                {
+                  "code": 100,
+                  "value": "AcDbEntity"
+                },
+                {
+                  "code": 30,
+                  "value": 0
+                },
+                {
+                  "code": 41,
+                  "value": 1
+                },
+                {
+                  "code": 50,
+                  "value": 0
+                },
+                {
+                  "code": 51,
+                  "value": 0
+                },
+                {
+                  "code": 71,
+                  "value": 0
+                },
+                {
+                  "code": 74,
+                  "value": 0
+                }
+              ]
+            }
+          ],
+          "seqend": {
+            "type": "SEQEND",
+            "groups": [
+              {
+                "code": 5,
+                "value": "10006D"
+              },
+              {
+                "code": 8,
+                "value": "0"
+              }
+            ]
+          }
+        },
+        {
+          "type": "LINE",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 10,
+              "value": 20
+            },
+            {
+              "code": 20,
+              "value": 27
+            },
+            {
+              "code": 11,
+              "value": 20
+            },
+            {
+              "code": 21,
+              "value": 16
+            },
+            {
+              "code": 5,
+              "value": "10006E"
+            }
+          ]
+        },
+        {
+          "type": "ATTDEF",
+          "groups": [
+            {
+              "code": 8,
+              "value": "0"
+            },
+            {
+              "code": 62,
+              "value": 0
+            },
+            {
+              "code": 2,
+              "value": "STATION"
+            },
+            {
+              "code": 3,
+              "value": "STATION"
+            },
+            {
+              "code": 1,
+              "value": "STATION 01"
+            },
+            {
+              "code": 10,
+              "value": -35
+            },
+            {
+              "code": 20,
+              "value": -25
+            },
+            {
+              "code": 40,
+              "value": 2.5
+            },
+            {
+              "code": 70,
+              "value": 0
+            },
+            {
+              "code": 5,
+              "value": "10006F"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "tables": [
+    {
+      "type": "LTYPE",
+      "groups": [
+        {
+          "code": 5,
+          "value": "24",
+          "line": 1471
+        },
+        {
+          "code": 330,
+          "value": "2",
+          "line": 1473
+        },
+        {
+          "code": 100,
+          "value": "AcDbSymbolTableRecord",
+          "line": 1475
+        },
+        {
+          "code": 100,
+          "value": "AcDbLinetypeTableRecord",
+          "line": 1477
+        },
+        {
+          "code": 2,
+          "value": "ByBlock",
+          "line": 1479
+        },
+        {
+          "code": 70,
+          "value": 0,
+          "line": 1481
+        },
+        {
+          "code": 3,
+          "value": "",
+          "line": 1483
+        },
+        {
+          "code": 72,
+          "value": 65,
+          "line": 1485
+        },
+        {
+          "code": 73,
+          "value": 0,
+          "line": 1487
+        },
+        {
+          "code": 40,
+          "value": 0,
+          "line": 1489
+        }
+      ],
+      "line": 1469
+    },
+    {
+      "type": "LTYPE",
+      "groups": [
+        {
+          "code": 5,
+          "value": "25",
+          "line": 1493
+        },
+        {
+          "code": 330,
+          "value": "2",
+          "line": 1495
+        },
+        {
+          "code": 100,
+          "value": "AcDbSymbolTableRecord",
+          "line": 1497
+        },
+        {
+          "code": 100,
+          "value": "AcDbLinetypeTableRecord",
+          "line": 1499
+        },
+        {
+          "code": 2,
+          "value": "ByLayer",
+          "line": 1501
+        },
+        {
+          "code": 70,
+          "value": 0,
+          "line": 1503
+        },
+        {
+          "code": 3,
+          "value": "",
+          "line": 1505
+        },
+        {
+          "code": 72,
+          "value": 65,
+          "line": 1507
+        },
+        {
+          "code": 73,
+          "value": 0,
+          "line": 1509
+        },
+        {
+          "code": 40,
+          "value": 0,
+          "line": 1511
+        }
+      ],
+      "line": 1491
+    },
+    {
+      "type": "LTYPE",
+      "groups": [
+        {
+          "code": 5,
+          "value": "26",
+          "line": 1515
+        },
+        {
+          "code": 330,
+          "value": "2",
+          "line": 1517
+        },
+        {
+          "code": 100,
+          "value": "AcDbSymbolTableRecord",
+          "line": 1519
+        },
+        {
+          "code": 100,
+          "value": "AcDbLinetypeTableRecord",
+          "line": 1521
+        },
+        {
+          "code": 2,
+          "value": "Continuous",
+          "line": 1523
+        },
+        {
+          "code": 70,
+          "value": 0,
+          "line": 1525
+        },
+        {
+          "code": 3,
+          "value": "",
+          "line": 1527
+        },
+        {
+          "code": 72,
+          "value": 65,
+          "line": 1529
+        },
+        {
+          "code": 73,
+          "value": 0,
+          "line": 1531
+        },
+        {
+          "code": 40,
+          "value": 0,
+          "line": 1533
+        }
+      ],
+      "line": 1513
+    },
+    {
+      "type": "LAYER",
+      "groups": [
+        {
+          "code": 5,
+          "value": "27",
+          "line": 1551
+        },
+        {
+          "code": 330,
+          "value": "1",
+          "line": 1553
+        },
+        {
+          "code": 100,
+          "value": "AcDbSymbolTableRecord",
+          "line": 1555
+        },
+        {
+          "code": 100,
+          "value": "AcDbLayerTableRecord",
+          "line": 1557
+        },
+        {
+          "code": 2,
+          "value": "0",
+          "line": 1559
+        },
+        {
+          "code": 70,
+          "value": 0,
+          "line": 1561
+        },
+        {
+          "code": 62,
+          "value": 7,
+          "line": 1563
+        },
+        {
+          "code": 6,
+          "value": "Continuous",
+          "line": 1565
+        },
+        {
+          "code": 370,
+          "value": -3,
+          "line": 1567
+        },
+        {
+          "code": 390,
+          "value": "13",
+          "line": 1569
+        },
+        {
+          "code": 347,
+          "value": "21",
+          "line": 1571
+        }
+      ],
+      "line": 1549
+    },
+    {
+      "type": "LAYER",
+      "groups": [
+        {
+          "code": 5,
+          "value": "28",
+          "line": 1575
+        },
+        {
+          "code": 330,
+          "value": "1",
+          "line": 1577
+        },
+        {
+          "code": 100,
+          "value": "AcDbSymbolTableRecord",
+          "line": 1579
+        },
+        {
+          "code": 100,
+          "value": "AcDbLayerTableRecord",
+          "line": 1581
+        },
+        {
+          "code": 2,
+          "value": "Defpoints",
+          "line": 1583
+        },
+        {
+          "code": 70,
+          "value": 0,
+          "line": 1585
+        },
+        {
+          "code": 62,
+          "value": 7,
+          "line": 1587
+        },
+        {
+          "code": 6,
+          "value": "Continuous",
+          "line": 1589
+        },
+        {
+          "code": 290,
+          "value": 0,
+          "line": 1591
+        },
+        {
+          "code": 370,
+          "value": -3,
+          "line": 1593
+        },
+        {
+          "code": 390,
+          "value": "13",
+          "line": 1595
+        },
+        {
+          "code": 347,
+          "value": "21",
+          "line": 1597
+        }
+      ],
+      "line": 1573
+    },
+    {
+      "type": "STYLE",
+      "groups": [
+        {
+          "code": 5,
+          "value": "29",
+          "line": 1615
+        },
+        {
+          "code": 330,
+          "value": "5",
+          "line": 1617
+        },
+        {
+          "code": 100,
+          "value": "AcDbSymbolTableRecord",
+          "line": 1619
+        },
+        {
+          "code": 100,
+          "value": "AcDbTextStyleTableRecord",
+          "line": 1621
+        },
+        {
+          "code": 2,
+          "value": "Standard",
+          "line": 1623
+        },
+        {
+          "code": 70,
+          "value": 0,
+          "line": 1625
+        },
+        {
+          "code": 40,
+          "value": 0,
+          "line": 1627
+        },
+        {
+          "code": 41,
+          "value": 1,
+          "line": 1629
+        },
+        {
+          "code": 50,
+          "value": 0,
+          "line": 1631
+        },
+        {
+          "code": 71,
+          "value": 0,
+          "line": 1633
+        },
+        {
+          "code": 42,
+          "value": 2.5,
+          "line": 1635
+        },
+        {
+          "code": 3,
+          "value": "txt",
+          "line": 1637
+        },
+        {
+          "code": 4,
+          "value": "",
+          "line": 1639
+        }
+      ],
+      "line": 1613
+    },
+    {
+      "type": "BLOCK_RECORD",
+      "groups": [
+        {
+          "code": 5,
+          "value": "100000"
+        },
+        {
+          "code": 100,
+          "value": "AcDbSymbolTableRecord"
+        },
+        {
+          "code": 100,
+          "value": "AcDbBlockTableRecord"
+        },
+        {
+          "code": 2,
+          "value": "VALVE_GATE"
+        },
+        {
+          "code": 70,
+          "value": 4
+        },
+        {
+          "code": 280,
+          "value": 1
+        },
+        {
+          "code": 281,
+          "value": 0
+        }
+      ]
+    },
+    {
+      "type": "BLOCK_RECORD",
+      "groups": [
+        {
+          "code": 5,
+          "value": "100007"
+        },
+        {
+          "code": 100,
+          "value": "AcDbSymbolTableRecord"
+        },
+        {
+          "code": 100,
+          "value": "AcDbBlockTableRecord"
+        },
+        {
+          "code": 2,
+          "value": "VALVE_CONTROL"
+        },
+        {
+          "code": 70,
+          "value": 4
+        },
+        {
+          "code": 280,
+          "value": 1
+        },
+        {
+          "code": 281,
+          "value": 0
+        }
+      ]
+    },
+    {
+      "type": "BLOCK_RECORD",
+      "groups": [
+        {
+          "code": 5,
+          "value": "100010"
+        },
+        {
+          "code": 100,
+          "value": "AcDbSymbolTableRecord"
+        },
+        {
+          "code": 100,
+          "value": "AcDbBlockTableRecord"
+        },
+        {
+          "code": 2,
+          "value": "PUMP_CENTRIFUGAL"
+        },
+        {
+          "code": 70,
+          "value": 4
+        },
+        {
+          "code": 280,
+          "value": 1
+        },
+        {
+          "code": 281,
+          "value": 0
+        }
+      ]
+    },
+    {
+      "type": "BLOCK_RECORD",
+      "groups": [
+        {
+          "code": 5,
+          "value": "100019"
+        },
+        {
+          "code": 100,
+          "value": "AcDbSymbolTableRecord"
+        },
+        {
+          "code": 100,
+          "value": "AcDbBlockTableRecord"
+        },
+        {
+          "code": 2,
+          "value": "FLANGE"
+        },
+        {
+          "code": 70,
+          "value": 4
+        },
+        {
+          "code": 280,
+          "value": 1
+        },
+        {
+          "code": 281,
+          "value": 0
+        }
+      ]
+    },
+    {
+      "type": "BLOCK_RECORD",
+      "groups": [
+        {
+          "code": 5,
+          "value": "100022"
+        },
+        {
+          "code": 100,
+          "value": "AcDbSymbolTableRecord"
+        },
+        {
+          "code": 100,
+          "value": "AcDbBlockTableRecord"
+        },
+        {
+          "code": 2,
+          "value": "INSTRUMENT"
+        },
+        {
+          "code": 70,
+          "value": 4
+        },
+        {
+          "code": 280,
+          "value": 1
+        },
+        {
+          "code": 281,
+          "value": 0
+        }
+      ]
+    },
+    {
+      "type": "BLOCK_RECORD",
+      "groups": [
+        {
+          "code": 5,
+          "value": "100029"
+        },
+        {
+          "code": 100,
+          "value": "AcDbSymbolTableRecord"
+        },
+        {
+          "code": 100,
+          "value": "AcDbBlockTableRecord"
+        },
+        {
+          "code": 2,
+          "value": "TANK_VERTICAL"
+        },
+        {
+          "code": 70,
+          "value": 4
+        },
+        {
+          "code": 280,
+          "value": 1
+        },
+        {
+          "code": 281,
+          "value": 0
+        }
+      ]
+    },
+    {
+      "type": "BLOCK_RECORD",
+      "groups": [
+        {
+          "code": 5,
+          "value": "100031"
+        },
+        {
+          "code": 100,
+          "value": "AcDbSymbolTableRecord"
+        },
+        {
+          "code": 100,
+          "value": "AcDbBlockTableRecord"
+        },
+        {
+          "code": 2,
+          "value": "DOOR_SINGLE"
+        },
+        {
+          "code": 70,
+          "value": 4
+        },
+        {
+          "code": 280,
+          "value": 1
+        },
+        {
+          "code": 281,
+          "value": 0
+        }
+      ]
+    },
+    {
+      "type": "BLOCK_RECORD",
+      "groups": [
+        {
+          "code": 5,
+          "value": "100038"
+        },
+        {
+          "code": 100,
+          "value": "AcDbSymbolTableRecord"
+        },
+        {
+          "code": 100,
+          "value": "AcDbBlockTableRecord"
+        },
+        {
+          "code": 2,
+          "value": "DESK"
+        },
+        {
+          "code": 70,
+          "value": 4
+        },
+        {
+          "code": 280,
+          "value": 1
+        },
+        {
+          "code": 281,
+          "value": 0
+        }
+      ]
+    },
+    {
+      "type": "BLOCK_RECORD",
+      "groups": [
+        {
+          "code": 5,
+          "value": "10003E"
+        },
+        {
+          "code": 100,
+          "value": "AcDbSymbolTableRecord"
+        },
+        {
+          "code": 100,
+          "value": "AcDbBlockTableRecord"
+        },
+        {
+          "code": 2,
+          "value": "CHAIR"
+        },
+        {
+          "code": 70,
+          "value": 4
+        },
+        {
+          "code": 280,
+          "value": 1
+        },
+        {
+          "code": 281,
+          "value": 0
+        }
+      ]
+    },
+    {
+      "type": "BLOCK_RECORD",
+      "groups": [
+        {
+          "code": 5,
+          "value": "100045"
+        },
+        {
+          "code": 100,
+          "value": "AcDbSymbolTableRecord"
+        },
+        {
+          "code": 100,
+          "value": "AcDbBlockTableRecord"
+        },
+        {
+          "code": 2,
+          "value": "WORKSTATION"
+        },
+        {
+          "code": 70,
+          "value": 4
+        },
+        {
+          "code": 280,
+          "value": 1
+        },
+        {
+          "code": 281,
+          "value": 0
+        }
+      ]
+    },
+    {
+      "type": "BLOCK_RECORD",
+      "groups": [
+        {
+          "code": 5,
+          "value": "10004B"
+        },
+        {
+          "code": 100,
+          "value": "AcDbSymbolTableRecord"
+        },
+        {
+          "code": 100,
+          "value": "AcDbBlockTableRecord"
+        },
+        {
+          "code": 2,
+          "value": "BOLT_HEX"
+        },
+        {
+          "code": 70,
+          "value": 4
+        },
+        {
+          "code": 280,
+          "value": 1
+        },
+        {
+          "code": 281,
+          "value": 0
+        }
+      ]
+    },
+    {
+      "type": "BLOCK_RECORD",
+      "groups": [
+        {
+          "code": 5,
+          "value": "100052"
+        },
+        {
+          "code": 100,
+          "value": "AcDbSymbolTableRecord"
+        },
+        {
+          "code": 100,
+          "value": "AcDbBlockTableRecord"
+        },
+        {
+          "code": 2,
+          "value": "NORTH_ARROW"
+        },
+        {
+          "code": 70,
+          "value": 4
+        },
+        {
+          "code": 280,
+          "value": 1
+        },
+        {
+          "code": 281,
+          "value": 0
+        }
+      ]
+    },
+    {
+      "type": "BLOCK_RECORD",
+      "groups": [
+        {
+          "code": 5,
+          "value": "100057"
+        },
+        {
+          "code": 100,
+          "value": "AcDbSymbolTableRecord"
+        },
+        {
+          "code": 100,
+          "value": "AcDbBlockTableRecord"
+        },
+        {
+          "code": 2,
+          "value": "DATUM_TARGET"
+        },
+        {
+          "code": 70,
+          "value": 4
+        },
+        {
+          "code": 280,
+          "value": 1
+        },
+        {
+          "code": 281,
+          "value": 0
+        }
+      ]
+    },
+    {
+      "type": "BLOCK_RECORD",
+      "groups": [
+        {
+          "code": 5,
+          "value": "10005E"
+        },
+        {
+          "code": 100,
+          "value": "AcDbSymbolTableRecord"
+        },
+        {
+          "code": 100,
+          "value": "AcDbBlockTableRecord"
+        },
+        {
+          "code": 2,
+          "value": "PUMP_STATION"
+        },
+        {
+          "code": 70,
+          "value": 4
+        },
+        {
+          "code": 280,
+          "value": 1
+        },
+        {
+          "code": 281,
+          "value": 0
+        }
+      ]
+    }
+  ]
+}

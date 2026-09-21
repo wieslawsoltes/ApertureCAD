@@ -1,0 +1,55 @@
+{
+  "suite": "cpu-serialization",
+  "node": "v22.16.0",
+  "entityCount": 200000,
+  "rounds": 7,
+  "warmup": 2,
+  "ordering": "alternating",
+  "explicitGc": true,
+  "identicalPackedBufferSha256": "7a3e95e36009783afdc48bb84170b48209ba144dc336f9c232f9b286598dcede",
+  "caveat": "CPU serialization only. Not GPU frame time. Local process timing, not universal throughput.",
+  "profiles": [
+    {
+      "name": "v2-baseline-packing",
+      "samplesMs": [
+        161.45154000000014,
+        160.74765100000013,
+        177.0896909999999,
+        181.4597450000001,
+        165.2055559999999,
+        172.0085899999999,
+        164.2008850000002
+      ],
+      "summary": {
+        "count": 7,
+        "min": 160.74765100000013,
+        "median": 165.2055559999999,
+        "p95": 181.4597450000001,
+        "p99": 181.4597450000001,
+        "max": 181.4597450000001,
+        "mean": 168.88052257142863
+      }
+    },
+    {
+      "name": "current",
+      "samplesMs": [
+        119.07347900000002,
+        110.82645500000012,
+        141.84228099999996,
+        118.7174329999998,
+        125.69978600000013,
+        117.63686899999993,
+        128.82513199999994
+      ],
+      "summary": {
+        "count": 7,
+        "min": 110.82645500000012,
+        "median": 119.07347900000002,
+        "p95": 141.84228099999996,
+        "p99": 141.84228099999996,
+        "max": 141.84228099999996,
+        "mean": 123.23163357142856
+      }
+    }
+  ]
+}

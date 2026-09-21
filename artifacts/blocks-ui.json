@@ -1,0 +1,19 @@
+{
+  "suite": "blocks-controller-dom-with-test-engine",
+  "version": "2.5.0",
+  "gpuExecuted": false,
+  "status": "passed",
+  "checks": [
+    "Block palette opens an editable workshop in a new tab, retains the old tab, and lists all fourteen definitions",
+    "Numeric INSERT form commits position, nonuniform mirror, rotation, a 2x3 MINSERT array and a real attached ATTRIB through the worker/controller path",
+    "Source block commands have independent undo/redo, including insertion identity and array/attribute state",
+    "Interactive insertion creates a resident preview, updates its placement through the engine boundary, and Escape cancels without source edits",
+    "Graphical Block Studio edits real DXF members in an isolated graph, supports undo/redo, then commits the definition once to update every use",
+    "ATTDEF creation and explicit synchronization update root and nested references while preserving existing matching-tag values",
+    "BLOCK creation converts selected source INSERTs into a nested definition with a nonzero base point",
+    "Command center exposes sixteen block operations and expanded nested counts/data extraction",
+    "Workspace state retains edited block definitions and references across restoration; storage boundary explicitly doubled",
+    "Block palette, tabs and command controls remain contained on a 390px mobile viewport"
+  ],
+  "errors": []
+}

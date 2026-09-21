@@ -1,0 +1,30 @@
+ADAPTER GPUAdapterInfo { subgroupMatrixConfigs: [] }
+
+MODULE font []
+PIPELINE font.bake OK
+
+MODULE scene [
+  {
+    "type": "error",
+    "line": 297,
+    "column": 43,
+    "message": "mixing '||' and '&&' requires parenthesis"
+  }
+]
+
+MODULE pixels []
+PIPELINE pixels.clear OK
+PIPELINE pixels.resolve OK
+PIPELINE pixels.clearFragments OK
+PIPELINE pixels.pick OK
+PIPELINE pixels.measure OK
+
+MODULE index []
+PIPELINE index.spatialClear OK
+PIPELINE index.spatialAssign OK
+PIPELINE index.spatialScan OK
+PIPELINE index.spatialScatter OK
+PIPELINE index.spatialBounds OK
+
+MODULE stroke []
+PIPELINE stroke.compileStroke OK

@@ -1,0 +1,105 @@
+{
+  "hashes": {
+    "font": "c822fcca45947de4bfe81859edfd36583299747a1d01949daadb100c3e95dfc1",
+    "scene": "e5e5478e2e7255d274168490624e82421fb88c6a4239c8d3f7c8519b29e65548",
+    "pixels": "484daec0914ac97ce16f0cd83de2c543d5564bd0934bd28c47653582bb81fb43",
+    "index": "b4cb48219738e12ac585e6a0f8b5e24e970b6b4bd6c3bc92bc59ae23cedace66",
+    "stroke": "62e12d849a01163392f70429041a4367369ab9f6fcdffea7ffdcfab22f052035"
+  },
+  "maps": {
+    "font": [
+      {
+        "generatedLine": 1,
+        "sourceLine": 1,
+        "count": 3,
+        "file": "packages/gpu/shaders/font.wgsl"
+      },
+      {
+        "generatedLine": 4,
+        "sourceLine": 1,
+        "count": 53,
+        "file": "packages/gpu/shaders/font-common.wgsl"
+      },
+      {
+        "generatedLine": 57,
+        "sourceLine": 5,
+        "count": 4,
+        "file": "packages/gpu/shaders/font.wgsl"
+      }
+    ],
+    "scene": [
+      {
+        "generatedLine": 1,
+        "sourceLine": 1,
+        "count": 25,
+        "file": "packages/gpu/shaders/scene.wgsl"
+      },
+      {
+        "generatedLine": 26,
+        "sourceLine": 1,
+        "count": 53,
+        "file": "packages/gpu/shaders/font-common.wgsl"
+      },
+      {
+        "generatedLine": 79,
+        "sourceLine": 1,
+        "count": 28,
+        "file": "packages/gpu/shaders/layout-common.wgsl"
+      },
+      {
+        "generatedLine": 107,
+        "sourceLine": 1,
+        "count": 57,
+        "file": "packages/gpu/shaders/hatch-common.wgsl"
+      },
+      {
+        "generatedLine": 164,
+        "sourceLine": 1,
+        "count": 67,
+        "file": "packages/gpu/shaders/dimension-common.wgsl"
+      },
+      {
+        "generatedLine": 231,
+        "sourceLine": 30,
+        "count": 270,
+        "file": "packages/gpu/shaders/scene.wgsl"
+      }
+    ],
+    "pixels": [
+      {
+        "generatedLine": 1,
+        "sourceLine": 1,
+        "count": 69,
+        "file": "packages/gpu/shaders/pixels.wgsl"
+      }
+    ],
+    "index": [
+      {
+        "generatedLine": 1,
+        "sourceLine": 1,
+        "count": 23,
+        "file": "packages/gpu/shaders/index.wgsl"
+      }
+    ],
+    "stroke": [
+      {
+        "generatedLine": 1,
+        "sourceLine": 1,
+        "count": 3,
+        "file": "packages/gpu/shaders/stroke.wgsl"
+      },
+      {
+        "generatedLine": 4,
+        "sourceLine": 1,
+        "count": 53,
+        "file": "packages/gpu/shaders/font-common.wgsl"
+      },
+      {
+        "generatedLine": 57,
+        "sourceLine": 5,
+        "count": 40,
+        "file": "packages/gpu/shaders/stroke.wgsl"
+      }
+    ]
+  }
+}

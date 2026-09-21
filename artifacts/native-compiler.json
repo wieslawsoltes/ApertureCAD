@@ -1,0 +1,298 @@
+{
+  "suite": "native-wgsl-compiler",
+  "version": "2.5.0",
+  "status": "passed",
+  "startedAt": "2026-09-18T20:11:17.016Z",
+  "node": "v22.16.0",
+  "backend": "null",
+  "shaderHashes": {
+    "font": "c822fcca45947de4bfe81859edfd36583299747a1d01949daadb100c3e95dfc1",
+    "scene": "8b1875e8e7107ac2d633fe82d1317968f1d57d3c97d33f36713fecb1879a2aad",
+    "pixels": "4b82b0c4782d1d55cf5d0207ab5c7b083aa54c54e362d39b6a9a315f719b1181",
+    "index": "b4cb48219738e12ac585e6a0f8b5e24e970b6b4bd6c3bc92bc59ae23cedace66",
+    "stroke": "62e12d849a01163392f70429041a4367369ab9f6fcdffea7ffdcfab22f052035",
+    "edit": "f57da0baf3584b91155b6771e388b7b57906f3d4b7c4503408798cf54169f6c7"
+  },
+  "gpuExecuted": false,
+  "checks": [
+    "All 6 assembled modules and all 34 actual compute pipelines compile and validate"
+  ],
+  "negativeProbes": [
+    {
+      "name": "Mixed logical operators are rejected",
+      "status": "passed",
+      "diagnostic": "fixture:1:82 mixing '||' and '&&' requires parenthesis\nAssembled module fixture:1:82\n>    1 | @compute @workgroup_size(1) fn main(){let a=true;let b=false;let c=true;let bad=a||b&&c;}\n       |                                                                                  ^"
+    },
+    {
+      "name": "Nonuniform workgroup barrier is rejected",
+      "status": "passed",
+      "diagnostic": "fixture:1:94 'workgroupBarrier' must only be called from uniform control flow\nAssembled module fixture:1:94\n>    1 | @compute @workgroup_size(64) fn main(@builtin(local_invocation_index) lane:u32){if(lane==0u){workgroupBarrier();}}\n       |                                                                                              ^"
+    },
+    {
+      "name": "Vector type mismatch is rejected",
+      "status": "passed",
+      "diagnostic": "fixture:1:43 cannot initialize 'let' of type 'vec2<f32>' with value of type 'vec3<f32>'\nAssembled module fixture:1:43\n>    1 | @compute @workgroup_size(1) fn main(){let bad:vec2<f32>=vec3<f32>(1.);}\n       |                                           ^"
+    },
+    {
+      "name": "Missing bind-group resource is rejected",
+      "status": "passed",
+      "diagnostic": "Number of entries (0) did not match the expected number of entries (1) for [BindGroupLayoutInternal (unlabeled)].\nExpected layout: [{ binding: 0, visibility: ShaderStage::Compute, buffer: {type: BufferBindingType::Storage, minBindingSize: 4, hasDynamicOffset: 0} }]\n - While validating [BindGroupDescriptor \"\"\"\"] against [BindGroupLayout (unlabeled)]\n - While calling [Device].CreateBindGroup([BindGroupDescriptor \"\"\"\"]).\n"
+    }
+  ],
+  "limitations": [
+    "Native offscreen textures do not validate browser canvas presentation.",
+    "Software-adapter timings are not hardware-GPU performance claims."
+  ],
+  "dawnBinarySha256": "df769e842f9bdc9f7b5cae5e7c5e808c2f3bae50d1addea471c05b34b8dc563e",
+  "adapter": {
+    "vendor": "",
+    "architecture": "",
+    "device": "null-backend",
+    "description": ""
+  },
+  "softwareAdapter": false,
+  "compilation": {
+    "kind": "webgpu-compiler",
+    "modules": [
+      {
+        "name": "font",
+        "status": "passed",
+        "messages": []
+      },
+      {
+        "name": "scene",
+        "status": "passed",
+        "messages": []
+      },
+      {
+        "name": "pixels",
+        "status": "passed",
+        "messages": []
+      },
+      {
+        "name": "index",
+        "status": "passed",
+        "messages": []
+      },
+      {
+        "name": "stroke",
+        "status": "passed",
+        "messages": []
+      },
+      {
+        "name": "edit",
+        "status": "passed",
+        "messages": []
+      }
+    ],
+    "pipelines": [
+      {
+        "module": "scene",
+        "entryPoint": "identity",
+        "status": "passed",
+        "elapsedMs": 20.480867999999987
+      },
+      {
+        "module": "scene",
+        "entryPoint": "layoutText",
+        "status": "passed",
+        "elapsedMs": 14.880245000000002
+      },
+      {
+        "module": "scene",
+        "entryPoint": "generate",
+        "status": "passed",
+        "elapsedMs": 9.984279
+      },
+      {
+        "module": "scene",
+        "entryPoint": "prepare",
+        "status": "passed",
+        "elapsedMs": 5.494956000000002
+      },
+      {
+        "module": "scene",
+        "entryPoint": "reduceBounds",
+        "status": "passed",
+        "elapsedMs": 18.564149999999984
+      },
+      {
+        "module": "scene",
+        "entryPoint": "reset",
+        "status": "passed",
+        "elapsedMs": 13.656406000000004
+      },
+      {
+        "module": "scene",
+        "entryPoint": "cull",
+        "status": "passed",
+        "elapsedMs": 9.294443000000001
+      },
+      {
+        "module": "scene",
+        "entryPoint": "cullScan",
+        "status": "passed",
+        "elapsedMs": 4.629660000000001
+      },
+      {
+        "module": "scene",
+        "entryPoint": "indirect",
+        "status": "passed",
+        "elapsedMs": 23.131867999999997
+      },
+      {
+        "module": "scene",
+        "entryPoint": "raster",
+        "status": "passed",
+        "elapsedMs": 18.446303999999998
+      },
+      {
+        "module": "scene",
+        "entryPoint": "rasterBatch",
+        "status": "passed",
+        "elapsedMs": 10.516619999999989
+      },
+      {
+        "module": "scene",
+        "entryPoint": "sampleText",
+        "status": "passed",
+        "elapsedMs": 5.014101000000011
+      },
+      {
+        "module": "scene",
+        "entryPoint": "sumViewport",
+        "status": "passed",
+        "elapsedMs": 9.607387999999986
+      },
+      {
+        "module": "scene",
+        "entryPoint": "sumViewportCached",
+        "status": "passed",
+        "elapsedMs": 5.0531500000000165
+      },
+      {
+        "module": "index",
+        "entryPoint": "spatialClear",
+        "status": "passed",
+        "elapsedMs": 0.5825660000000141
+      },
+      {
+        "module": "index",
+        "entryPoint": "spatialAssign",
+        "status": "passed",
+        "elapsedMs": 0.3180720000000008
+      },
+      {
+        "module": "index",
+        "entryPoint": "spatialScan",
+        "status": "passed",
+        "elapsedMs": 1.3919679999999914
+      },
+      {
+        "module": "index",
+        "entryPoint": "spatialScatter",
+        "status": "passed",
+        "elapsedMs": 1.109529000000009
+      },
+      {
+        "module": "index",
+        "entryPoint": "spatialBounds",
+        "status": "passed",
+        "elapsedMs": 0.8986559999999884
+      },
+      {
+        "module": "pixels",
+        "entryPoint": "clear",
+        "status": "passed",
+        "elapsedMs": 0.684316999999993
+      },
+      {
+        "module": "pixels",
+        "entryPoint": "copyViewport",
+        "status": "passed",
+        "elapsedMs": 2.3715649999999755
+      },
+      {
+        "module": "pixels",
+        "entryPoint": "resolve",
+        "status": "passed",
+        "elapsedMs": 1.817672000000016
+      },
+      {
+        "module": "pixels",
+        "entryPoint": "resolveExact",
+        "status": "passed",
+        "elapsedMs": 1.1820069999999987
+      },
+      {
+        "module": "pixels",
+        "entryPoint": "clearFragments",
+        "status": "passed",
+        "elapsedMs": 0.5129220000000032
+      },
+      {
+        "module": "pixels",
+        "entryPoint": "pick",
+        "status": "passed",
+        "elapsedMs": 3.573841999999985
+      },
+      {
+        "module": "pixels",
+        "entryPoint": "measure",
+        "status": "passed",
+        "elapsedMs": 2.9221839999999872
+      },
+      {
+        "module": "font",
+        "entryPoint": "bake",
+        "status": "passed",
+        "elapsedMs": 2.410653000000025
+      },
+      {
+        "module": "stroke",
+        "entryPoint": "compileStroke",
+        "status": "passed",
+        "elapsedMs": 1.348004000000003
+      },
+      {
+        "module": "edit",
+        "entryPoint": "clearSelection",
+        "status": "passed",
+        "elapsedMs": 4.876376999999991
+      },
+      {
+        "module": "edit",
+        "entryPoint": "markSelection",
+        "status": "passed",
+        "elapsedMs": 3.5231860000000097
+      },
+      {
+        "module": "edit",
+        "entryPoint": "snapEntity",
+        "status": "passed",
+        "elapsedMs": 2.5336149999999975
+      },
+      {
+        "module": "edit",
+        "entryPoint": "bakeExplode",
+        "status": "passed",
+        "elapsedMs": 1.2790809999999908
+      },
+      {
+        "module": "edit",
+        "entryPoint": "snapCandidates",
+        "status": "passed",
+        "elapsedMs": 2.4220390000000123
+      },
+      {
+        "module": "edit",
+        "entryPoint": "reduceSnap",
+        "status": "passed",
+        "elapsedMs": 1.0770410000000084
+      }
+    ],
+    "status": "passed",
+    "elapsedMs": 119.75422699999999
+  },
+  "finishedAt": "2026-09-18T20:11:17.161Z"
+}

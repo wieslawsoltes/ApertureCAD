@@ -1,0 +1,283 @@
+{
+  "product": "Aperture CAD",
+  "version": "2.1.0",
+  "createdAt": "2026-09-18T07:33:13.912831+00:00",
+  "overall": "Source, real WGSL compiler and native software-adapter execution checks passed; browser/hardware qualification outstanding.",
+  "reportedIssue": {
+    "location": "scene 297:43 in v2",
+    "message": "mixing '||' and '&&' requires parenthesis",
+    "reproducedWithRealCompiler": true,
+    "fixed": true,
+    "historicalLog": "artifacts/history-v2/original-wgsl-compilation-failure.txt"
+  },
+  "nodeTests": {
+    "passed": 160,
+    "failed": 0,
+    "skipped": 0,
+    "report": "artifacts/tests-v2.1.txt"
+  },
+  "staticChecks": {
+    "kind": "static-contract-checks",
+    "gpuCompilation": false,
+    "passed": [
+      "All package JavaScript files pass Node syntax checks",
+      "CAD engine contains no render-pipeline, render-pass, WebGL or Canvas2D calls",
+      "HTML IDs are unique",
+      "Generated shader sources, original-file maps and SHA-256 hashes match every WGSL source",
+      "font: balanced source, reserved identifiers, entry points, transitive resource bindings, baseline storage limits",
+      "scene: balanced source, reserved identifiers, entry points, transitive resource bindings, baseline storage limits",
+      "pixels: balanced source, reserved identifiers, entry points, transitive resource bindings, baseline storage limits",
+      "index: balanced source, reserved identifiers, entry points, transitive resource bindings, baseline storage limits",
+      "stroke: balanced source, reserved identifiers, entry points, transitive resource bindings, baseline storage limits"
+    ],
+    "errors": []
+  },
+  "compiler": {
+    "status": "passed",
+    "moduleCount": 5,
+    "pipelineCount": 22,
+    "negativeProbeCount": 4,
+    "report": "artifacts/native-compiler.json"
+  },
+  "nativeExecution": {
+    "status": "passed",
+    "gpuExecuted": true,
+    "adapter": {
+      "vendor": "google",
+      "architecture": "swiftshader",
+      "device": "swiftshader-device-subzero-",
+      "description": "SwiftShader driver 5.0.0"
+    },
+    "softwareAdapter": true,
+    "checks": [
+      "Batched/cooperative GPU coverage equality on partial workgroups",
+      "Selection resolve reuses actual GPU coverage without culling or rasterization",
+      "Guard-band visibility survives a conservative pan",
+      "128-byte edit updates the actual GPU entity record",
+      "GPU ordered source-over agrees with an independent interior-pixel reference",
+      "GPU pattern hatch and dimension feature gallery executes",
+      "GPU SHP bytecode compilation, atlas bake and text rasterization",
+      "Offscreen wide-line coverage survives GPU bounds/culling and avoids lane batching",
+      "High-DPR point edge padding is conservative",
+      "777 entities across seven odd-length pages retain byte-identical batched/cooperative coverage",
+      "Zero-visible indirect dispatch clears stale coverage",
+      "129 unique GPU-generated numeric labels render exact glyphs identically in both paths",
+      "Insufficient edit budget rejects before changing GPU or host source records",
+      "Actual compute ID picking and 3-4-5 measurement",
+      "Committed annotation updates preserve stationary base coverage",
+      "Parsed DXF LINE and TEXT complete model upload, preparation and compute rendering",
+      "100,000 unique GPU-generated text records execute with exact visible-queue counts",
+      "1,000,000 unique GPU-generated text records execute with exact visible-queue counts"
+    ],
+    "report": "artifacts/native-gpu.json"
+  },
+  "browserDom": {
+    "suite": "browser-dom",
+    "status": "passed",
+    "checks": [
+      "Unsupported WebGPU state is explicit and readable",
+      "Help dialog opens and closes",
+      "Compute lab exposes six actual stress configurations",
+      "New performance, quality and feature-gallery controls exist",
+      "Mobile layout has no horizontal page overflow"
+    ],
+    "gpuExecuted": false,
+    "errors": []
+  },
+  "browserGpu": {
+    "suite": "webgpu-integration",
+    "status": "blocked",
+    "checks": [],
+    "gpuExecuted": false,
+    "errors": [],
+    "reason": "Page.goto: net::ERR_BLOCKED_BY_ADMINISTRATOR at http://localhost:4173/dist/index.html\nCall log:\n  - navigating to \"http://localhost:4173/dist/index.html\", waiting until \"load\"\n"
+  },
+  "fontLayoutReference": {
+    "suite": "OpenType-program-reference",
+    "status": "passed",
+    "gpuExecuted": false,
+    "reference": "native HarfBuzz with default horizontal Latin shaping",
+    "fontName": "DejaVuSans.ttf",
+    "fontIncluded": false,
+    "checks": [
+      {
+        "text": "AVATAR",
+        "glyphCount": 6,
+        "glyphIdsMatch": true,
+        "maxAdvanceErrorEm": 0.0
+      },
+      {
+        "text": "office affinity",
+        "glyphCount": 11,
+        "glyphIdsMatch": true,
+        "maxAdvanceErrorEm": 0.0
+      },
+      {
+        "text": "fi ffi ff fl ffl",
+        "glyphCount": 9,
+        "glyphIdsMatch": true,
+        "maxAdvanceErrorEm": 0.0
+      },
+      {
+        "text": "To Wa Yo PA",
+        "glyphCount": 11,
+        "glyphIdsMatch": true,
+        "maxAdvanceErrorEm": 0.0
+      },
+      {
+        "text": "Aperture CAD 0123456789",
+        "glyphCount": 23,
+        "glyphIdsMatch": true,
+        "maxAdvanceErrorEm": 0.0
+      },
+      {
+        "text": "LOW FRAME TIME",
+        "glyphCount": 14,
+        "glyphIdsMatch": true,
+        "maxAdvanceErrorEm": 0.0
+      },
+      {
+        "text": "Review: Equipment 125-A",
+        "glyphCount": 23,
+        "glyphIdsMatch": true,
+        "maxAdvanceErrorEm": 0.0
+      },
+      {
+        "text": "minimum MILLION",
+        "glyphCount": 15,
+        "glyphIdsMatch": true,
+        "maxAdvanceErrorEm": 0.0
+      },
+      {
+        "text": "(A+B) / 2 = 125.25",
+        "glyphCount": 18,
+        "glyphIdsMatch": true,
+        "maxAdvanceErrorEm": 0.0
+      }
+    ],
+    "maxAdvanceErrorEm": 0,
+    "reportedUnsupportedLookups": [
+      "GSUB lookup type 6, format 2 is not in the current horizontal profile."
+    ]
+  },
+  "quadraticReference": {
+    "suite": "quadratic-distance-numerical-reference",
+    "status": "passed",
+    "gpuExecuted": false,
+    "candidate": "CPU float32 emulation of the WGSL analytic distance formula",
+    "reference": "independent float64 polynomial roots + endpoint minimum",
+    "seed": 529,
+    "cases": 10000,
+    "maxAbsoluteErrorEm": 5.166644021017963e-07,
+    "p99AbsoluteErrorEm": 2.3067312196145556e-07,
+    "maxAcceptedAbsoluteErrorEm": 2e-06,
+    "worstCase": [
+      5.166644021017963e-07,
+      [
+        [
+          1.0734363794326782,
+          1.5328011512756348
+        ],
+        [
+          -0.91740882396698,
+          -0.2809722125530243
+        ],
+        [
+          1.0526882410049438,
+          1.5472540855407715
+        ],
+        [
+          1.1525399684906006,
+          0.5519545674324036
+        ]
+      ],
+      0.019344691187143326,
+      0.019344174522741224
+    ],
+    "scope": "Random endpoints/control/query coordinates [-1,2] em, including near-linear quadratics. Not a proof for all f32 inputs."
+  },
+  "packingBenchmark": {
+    "suite": "cpu-serialization",
+    "node": "v22.16.0",
+    "entityCount": 200000,
+    "rounds": 7,
+    "warmup": 2,
+    "ordering": "alternating",
+    "explicitGc": true,
+    "identicalPackedBufferSha256": "7a3e95e36009783afdc48bb84170b48209ba144dc336f9c232f9b286598dcede",
+    "caveat": "CPU serialization only. Not GPU frame time. Local process timing, not universal throughput.",
+    "profiles": [
+      {
+        "name": "v2-baseline-packing",
+        "samplesMs": [
+          161.45154000000014,
+          160.74765100000013,
+          177.0896909999999,
+          181.4597450000001,
+          165.2055559999999,
+          172.0085899999999,
+          164.2008850000002
+        ],
+        "summary": {
+          "count": 7,
+          "min": 160.74765100000013,
+          "median": 165.2055559999999,
+          "p95": 181.4597450000001,
+          "p99": 181.4597450000001,
+          "max": 181.4597450000001,
+          "mean": 168.88052257142863
+        }
+      },
+      {
+        "name": "current",
+        "samplesMs": [
+          119.07347900000002,
+          110.82645500000012,
+          141.84228099999996,
+          118.7174329999998,
+          125.69978600000013,
+          117.63686899999993,
+          128.82513199999994
+        ],
+        "summary": {
+          "count": 7,
+          "min": 110.82645500000012,
+          "median": 119.07347900000002,
+          "p95": 141.84228099999996,
+          "p99": 141.84228099999996,
+          "max": 141.84228099999996,
+          "mean": 123.23163357142856
+        }
+      }
+    ]
+  },
+  "qualification": {
+    "productionQualified": false,
+    "nativeSoftwareExecution": true,
+    "browserPresentationValidated": false,
+    "hardwareGpuFrameTimeImprovementMeasured": false,
+    "exhaustiveCadFontConformance": false
+  },
+  "shaderHashes": {
+    "font": "c822fcca45947de4bfe81859edfd36583299747a1d01949daadb100c3e95dfc1",
+    "scene": "84933183683bb331970a439d1f328072180390081764afc59f78a56392c3454a",
+    "pixels": "ed2dc0b0457d4494d2c61b6606a6e3290a663209952155b9f8153d638582caa0",
+    "index": "b4cb48219738e12ac585e6a0f8b5e24e970b6b4bd6c3bc92bc59ae23cedace66",
+    "stroke": "62e12d849a01163392f70429041a4367369ab9f6fcdffea7ffdcfab22f052035"
+  },
+  "cleanPackageVerification": {
+    "status": "passed",
+    "nodeTests": {
+      "passed": 160,
+      "failed": 0
+    },
+    "staticChecks": "passed",
+    "realNativeCompiler": "passed",
+    "modules": 5,
+    "pipelines": 22,
+    "negativeProbes": 4,
+    "standaloneRebuildByteIdentical": true,
+    "previewSha256": "42efc76e8146d8a0bcf3c80f6686221cc0fb9ffe9aa97ae5d339551ee3291870",
+    "note": "Fresh extraction: build, Node tests, static contracts and actual Dawn compilation repeated. GPU execution evidence is from the source-identical working tree."
+  }
+}

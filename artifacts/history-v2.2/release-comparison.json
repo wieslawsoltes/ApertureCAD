@@ -1,0 +1,713 @@
+{
+  "schema": "aperture-release-comparison/1",
+  "createdAt": "2026-09-18T08:28:55.300Z",
+  "baselineVersion": "2.1.0",
+  "candidateVersion": "2.2.0",
+  "adapter": {
+    "vendor": "google",
+    "architecture": "swiftshader",
+    "device": "swiftshader-device-subzero-",
+    "description": "SwiftShader driver 5.0.0"
+  },
+  "softwareAdapter": true,
+  "width": 640,
+  "height": 480,
+  "roundOrder": [
+    {
+      "version": "2.2.0",
+      "file": "profile-v2.2-round1.json",
+      "startedAt": "2026-09-18T08:18:24.249Z"
+    },
+    {
+      "version": "2.1.0",
+      "file": "profile-v2.1-round1.json",
+      "startedAt": "2026-09-18T08:18:39.922Z"
+    },
+    {
+      "version": "2.1.0",
+      "file": "profile-v2.1-round2.json",
+      "startedAt": "2026-09-18T08:18:56.877Z"
+    },
+    {
+      "version": "2.2.0",
+      "file": "profile-v2.2-round2.json",
+      "startedAt": "2026-09-18T08:19:13.304Z"
+    }
+  ],
+  "method": "2 fresh-process rounds per release; 16 measured frames and 5 warmups per workload per round. Combined median uses the middle value for odd sample counts and the mean of the two middle samples for even counts. Positive reduction means lower time.",
+  "limitations": [
+    "Single native software adapter; not hardware-GPU or browser-presentation performance.",
+    "GPU frame timestamps include fills/resolve but exclude uploads and diagnostic sampling; full frame-plus-diagnostics iteration wall times are also provided.",
+    "Coverage identity checks the final frame of each camera trace, not every possible input/view.",
+    "Exact text in all workloads except density-text-100k, which explicitly uses density proxies.",
+    "Raw completion and sample timing distributions can reflect host scheduling variability."
+  ],
+  "cases": [
+    {
+      "name": "lines-full-cull",
+      "entityCount": 32768,
+      "cache": false,
+      "flags": 0,
+      "trace": "pan",
+      "finalCoverageIdentical": true,
+      "coverageSHA256": "411e791c7080249480ecf4684622a09dc366078741a325cd2763ad8b3455c978",
+      "baseline": {
+        "samples": 32,
+        "gpuMs": {
+          "count": 32,
+          "min": 57.212928,
+          "median": 71.86022399999999,
+          "p95": 78.905344,
+          "max": 79.757312
+        },
+        "cpuMs": {
+          "count": 32,
+          "min": 0.23504900000079942,
+          "median": 0.28063650000012785,
+          "p95": 0.4467830000003232,
+          "max": 4.086743999999271
+        },
+        "completionMs": {
+          "count": 32,
+          "min": 57.62020400000074,
+          "median": 72.84053350000022,
+          "p95": 80.088256,
+          "max": 81.35418000000027
+        },
+        "telemetryWallMs": {
+          "count": 32,
+          "min": 0.3018679999995584,
+          "median": 0.533806999999797,
+          "p95": 6.481197999999495,
+          "max": 18.098551000000043
+        },
+        "iterationWallMs": {
+          "count": 32,
+          "min": 58.12617500000033,
+          "median": 74.2146885000002,
+          "p95": 85.62179899999956,
+          "max": 86.24197999999978
+        },
+        "uploadedBytes": 4096
+      },
+      "candidate": {
+        "samples": 32,
+        "gpuMs": {
+          "count": 32,
+          "min": 38.33856,
+          "median": 47.742976,
+          "p95": 61.997056,
+          "max": 62.849024
+        },
+        "cpuMs": {
+          "count": 32,
+          "min": 0.15136400000028516,
+          "median": 0.17584600000009232,
+          "p95": 0.34326900000087335,
+          "max": 0.35155200000008335
+        },
+        "completionMs": {
+          "count": 32,
+          "min": 38.62979399999949,
+          "median": 48.040766500000245,
+          "p95": 62.235709999999926,
+          "max": 63.06555599999956
+        },
+        "telemetryWallMs": {
+          "count": 32,
+          "min": 0.3296790000003966,
+          "median": 0.40971300000001065,
+          "p95": 5.479863999999907,
+          "max": 6.386739999999918
+        },
+        "iterationWallMs": {
+          "count": 32,
+          "min": 38.972562999999354,
+          "median": 50.82872550000047,
+          "p95": 66.11556800000017,
+          "max": 67.10936299999958
+        },
+        "uploadedBytes": 480
+      },
+      "reductionsPercent": {
+        "gpuMs": 33.561331509347916,
+        "cpuMs": 37.340296076949286,
+        "completionMs": 34.04665755228152,
+        "telemetryWallMs": 23.246978776942516,
+        "iterationWallMs": 31.51123244288717
+      },
+      "uploadReductionPercent": 88.28125
+    },
+    {
+      "name": "lines-cached-pan",
+      "entityCount": 32768,
+      "cache": true,
+      "flags": 0,
+      "trace": "pan",
+      "finalCoverageIdentical": true,
+      "coverageSHA256": "411e791c7080249480ecf4684622a09dc366078741a325cd2763ad8b3455c978",
+      "baseline": {
+        "samples": 32,
+        "gpuMs": {
+          "count": 32,
+          "min": 11.79648,
+          "median": 47.120384,
+          "p95": 62.128128,
+          "max": 67.895296
+        },
+        "cpuMs": {
+          "count": 32,
+          "min": 0.10274299999946379,
+          "median": 0.22043699999994715,
+          "p95": 0.3263440000000628,
+          "max": 0.36832700000013574
+        },
+        "completionMs": {
+          "count": 32,
+          "min": 11.955935000000864,
+          "median": 47.42574749999994,
+          "p95": 62.423831000000064,
+          "max": 68.16520900000069
+        },
+        "telemetryWallMs": {
+          "count": 32,
+          "min": 0.1963210000003528,
+          "median": 0.300195000000258,
+          "p95": 4.523434000000634,
+          "max": 5.410455000000184
+        },
+        "iterationWallMs": {
+          "count": 32,
+          "min": 12.939354000000094,
+          "median": 50.424143500000355,
+          "p95": 66.95232299999952,
+          "max": 71.8251909999999
+        },
+        "uploadedBytes": 4096
+      },
+      "candidate": {
+        "samples": 32,
+        "gpuMs": {
+          "count": 32,
+          "min": 7.405568,
+          "median": 38.699008,
+          "p95": 64.684032,
+          "max": 69.861376
+        },
+        "cpuMs": {
+          "count": 32,
+          "min": 0.07479100000000471,
+          "median": 0.14709399999992456,
+          "p95": 0.19989600000008068,
+          "max": 0.22297100000014325
+        },
+        "completionMs": {
+          "count": 32,
+          "min": 7.5338610000007975,
+          "median": 40.30476200000021,
+          "p95": 70.0877129999999,
+          "max": 72.28245100000004
+        },
+        "telemetryWallMs": {
+          "count": 32,
+          "min": 0.15111399999932473,
+          "median": 0.3461489999999685,
+          "p95": 4.891849999999977,
+          "max": 6.097039000000223
+        },
+        "iterationWallMs": {
+          "count": 32,
+          "min": 7.689812999999958,
+          "median": 41.676004999999805,
+          "p95": 70.5422179999996,
+          "max": 76.35219200000029
+        },
+        "uploadedBytes": 480
+      },
+      "reductionsPercent": {
+        "gpuMs": 17.8720445062587,
+        "cpuMs": 33.27163770149302,
+        "completionMs": 15.015020058460316,
+        "telemetryWallMs": -15.308049767541432,
+        "iterationWallMs": 17.349106782548496
+      },
+      "uploadReductionPercent": 88.28125
+    },
+    {
+      "name": "exact-text-full-cull",
+      "entityCount": 2048,
+      "cache": false,
+      "flags": 0,
+      "trace": "pan",
+      "finalCoverageIdentical": true,
+      "coverageSHA256": "2a91ff2ba32ad261113336d8f4de1ff4b87cf100cef0ebeaca46037363b19646",
+      "baseline": {
+        "samples": 32,
+        "gpuMs": {
+          "count": 32,
+          "min": 78.774272,
+          "median": 93.84755200000001,
+          "p95": 111.673344,
+          "max": 120.520704
+        },
+        "cpuMs": {
+          "count": 32,
+          "min": 0.21693199999936041,
+          "median": 0.24423299999989467,
+          "p95": 0.4262929999995322,
+          "max": 3.6024259999994683
+        },
+        "completionMs": {
+          "count": 32,
+          "min": 79.04016300000058,
+          "median": 95.51886599999989,
+          "p95": 114.39999299999909,
+          "max": 120.83758000000034
+        },
+        "telemetryWallMs": {
+          "count": 32,
+          "min": 0.27476800000022195,
+          "median": 3.822533499999736,
+          "p95": 14.74567500000012,
+          "max": 20.34999400000015
+        },
+        "iterationWallMs": {
+          "count": 32,
+          "min": 79.3191369999995,
+          "median": 100.43408600000066,
+          "p95": 123.89924200000041,
+          "max": 128.10821099999976
+        },
+        "uploadedBytes": 4096
+      },
+      "candidate": {
+        "samples": 32,
+        "gpuMs": {
+          "count": 32,
+          "min": 67.50208,
+          "median": 84.08268799999999,
+          "p95": 115.34336,
+          "max": 117.899264
+        },
+        "cpuMs": {
+          "count": 32,
+          "min": 0.1577449999995224,
+          "median": 0.17868049999970026,
+          "p95": 0.4009550000009767,
+          "max": 0.40442000000075495
+        },
+        "completionMs": {
+          "count": 32,
+          "min": 67.77554700000019,
+          "median": 84.33027250000032,
+          "p95": 115.55154100000073,
+          "max": 118.19602599999962
+        },
+        "telemetryWallMs": {
+          "count": 32,
+          "min": 1.357255000000805,
+          "median": 6.112391499999831,
+          "p95": 18.23801900000035,
+          "max": 19.51832800000011
+        },
+        "iterationWallMs": {
+          "count": 32,
+          "min": 69.14219500000036,
+          "median": 91.10281599999962,
+          "p95": 123.79673800000091,
+          "max": 125.65078100000028
+        },
+        "uploadedBytes": 480
+      },
+      "reductionsPercent": {
+        "gpuMs": 10.405027932960909,
+        "cpuMs": 26.840148546765864,
+        "completionMs": 11.71349071501705,
+        "telemetryWallMs": -59.904197046284956,
+        "iterationWallMs": 9.290939333087556
+      },
+      "uploadReductionPercent": 88.28125
+    },
+    {
+      "name": "exact-text-cached-pan",
+      "entityCount": 2048,
+      "cache": true,
+      "flags": 0,
+      "trace": "pan",
+      "finalCoverageIdentical": true,
+      "coverageSHA256": "2a91ff2ba32ad261113336d8f4de1ff4b87cf100cef0ebeaca46037363b19646",
+      "baseline": {
+        "samples": 32,
+        "gpuMs": {
+          "count": 32,
+          "min": 11.534336,
+          "median": 93.683712,
+          "p95": 116.916224,
+          "max": 130.351104
+        },
+        "cpuMs": {
+          "count": 32,
+          "min": 0.14789999999993597,
+          "median": 0.22729699999945296,
+          "p95": 0.2653940000000148,
+          "max": 0.6716670000005251
+        },
+        "completionMs": {
+          "count": 32,
+          "min": 11.721668000000136,
+          "median": 95.89660550000099,
+          "p95": 117.82891200000086,
+          "max": 130.66938000000118
+        },
+        "telemetryWallMs": {
+          "count": 32,
+          "min": 0.1551610000005894,
+          "median": 3.7680924999995113,
+          "p95": 5.691788000000088,
+          "max": 15.294280000000072
+        },
+        "iterationWallMs": {
+          "count": 32,
+          "min": 11.879612000000634,
+          "median": 99.46429250000074,
+          "p95": 121.61454000000049,
+          "max": 134.2672509999993
+        },
+        "uploadedBytes": 4096
+      },
+      "candidate": {
+        "samples": 32,
+        "gpuMs": {
+          "count": 32,
+          "min": 6.619136,
+          "median": 85.426176,
+          "p95": 102.105088,
+          "max": 102.498304
+        },
+        "cpuMs": {
+          "count": 32,
+          "min": 0.061341999999058316,
+          "median": 0.16608149999956368,
+          "p95": 0.6336410000003525,
+          "max": 0.9294090000003052
+        },
+        "completionMs": {
+          "count": 32,
+          "min": 6.718109999999797,
+          "median": 86.02965949999998,
+          "p95": 114.62560800000028,
+          "max": 115.29866100000072
+        },
+        "telemetryWallMs": {
+          "count": 32,
+          "min": 0.1317349999990256,
+          "median": 5.095927999999731,
+          "p95": 8.292686999999205,
+          "max": 10.910965000000942
+        },
+        "iterationWallMs": {
+          "count": 32,
+          "min": 6.851289000000179,
+          "median": 88.45748000000003,
+          "p95": 119.76178100000106,
+          "max": 120.81894399999874
+        },
+        "uploadedBytes": 480
+      },
+      "reductionsPercent": {
+        "gpuMs": 8.814270724029383,
+        "cpuMs": 26.931943668432325,
+        "completionMs": 10.289150432963867,
+        "telemetryWallMs": -35.23893057297271,
+        "iterationWallMs": 11.066094397645898
+      },
+      "uploadReductionPercent": 88.28125
+    },
+    {
+      "name": "density-text-100k",
+      "entityCount": 100000,
+      "cache": false,
+      "flags": 2,
+      "trace": "pan",
+      "finalCoverageIdentical": true,
+      "coverageSHA256": "d6b2749f89814ac307c632e93e43f13dbb7e07817c42bfec2ee5f4424d918015",
+      "baseline": {
+        "samples": 32,
+        "gpuMs": {
+          "count": 32,
+          "min": 160.628736,
+          "median": 177.14380799999998,
+          "p95": 220.659712,
+          "max": 230.68672
+        },
+        "cpuMs": {
+          "count": 32,
+          "min": 0.25850399999944784,
+          "median": 0.3156840000001466,
+          "p95": 0.8411689999993541,
+          "max": 0.9329039999993256
+        },
+        "completionMs": {
+          "count": 32,
+          "min": 160.94897300000048,
+          "median": 177.48876850000033,
+          "p95": 231.2091419999997,
+          "max": 236.86992399999872
+        },
+        "telemetryWallMs": {
+          "count": 32,
+          "min": 0.3165499999995518,
+          "median": 0.5787890000001426,
+          "p95": 9.709531000000425,
+          "max": 17.580063000001246
+        },
+        "iterationWallMs": {
+          "count": 32,
+          "min": 164.82071799999903,
+          "median": 180.21864950000054,
+          "p95": 231.60475899999983,
+          "max": 241.95348000000013
+        },
+        "uploadedBytes": 4096
+      },
+      "candidate": {
+        "samples": 32,
+        "gpuMs": {
+          "count": 32,
+          "min": 102.432768,
+          "median": 112.689152,
+          "p95": 136.708096,
+          "max": 144.113664
+        },
+        "cpuMs": {
+          "count": 32,
+          "min": 0.2604559999999765,
+          "median": 0.2826194999997824,
+          "p95": 4.835285999999542,
+          "max": 5.127851000001101
+        },
+        "completionMs": {
+          "count": 32,
+          "min": 102.71679400000176,
+          "median": 113.19819749999988,
+          "p95": 138.22238899999866,
+          "max": 148.66239399999904
+        },
+        "telemetryWallMs": {
+          "count": 32,
+          "min": 34.26883200000157,
+          "median": 44.88010200000099,
+          "p95": 62.874987999999576,
+          "max": 67.42657899999904
+        },
+        "iterationWallMs": {
+          "count": 32,
+          "min": 145.31508500000018,
+          "median": 161.17370149999988,
+          "p95": 184.91786400000092,
+          "max": 188.42172500000015
+        },
+        "uploadedBytes": 480
+      },
+      "reductionsPercent": {
+        "gpuMs": 36.3854975952645,
+        "cpuMs": 10.473923290489495,
+        "completionMs": 36.22233200632091,
+        "telemetryWallMs": -7654.138727582925,
+        "iterationWallMs": 10.567689888276854
+      },
+      "uploadReductionPercent": 88.28125
+    },
+    {
+      "name": "feature-gallery",
+      "entityCount": 32,
+      "cache": true,
+      "flags": 0,
+      "trace": "pan",
+      "finalCoverageIdentical": true,
+      "coverageSHA256": "4a1958fa31e191cb4aa3bd5c8a6cbec84ef892a78e66c374342458f2eb2d8424",
+      "baseline": {
+        "samples": 32,
+        "gpuMs": {
+          "count": 32,
+          "min": 12.582912,
+          "median": 70.713344,
+          "p95": 102.89152,
+          "max": 110.952448
+        },
+        "cpuMs": {
+          "count": 32,
+          "min": 0.1182360000002518,
+          "median": 0.23045250000086526,
+          "p95": 0.38553200000023935,
+          "max": 0.5206629999993311
+        },
+        "completionMs": {
+          "count": 32,
+          "min": 16.959152000001268,
+          "median": 71.9542109999993,
+          "p95": 103.19833300000028,
+          "max": 111.52608399999917
+        },
+        "telemetryWallMs": {
+          "count": 32,
+          "min": 0.25596000000041386,
+          "median": 2.209504499999639,
+          "p95": 7.141719999999623,
+          "max": 8.817428000000291
+        },
+        "iterationWallMs": {
+          "count": 32,
+          "min": 17.7434659999999,
+          "median": 74.16929450000043,
+          "p95": 110.14411300000029,
+          "max": 117.60940300000038
+        },
+        "uploadedBytes": 4096
+      },
+      "candidate": {
+        "samples": 32,
+        "gpuMs": {
+          "count": 32,
+          "min": 6.684672,
+          "median": 60.6208,
+          "p95": 68.878336,
+          "max": 77.594624
+        },
+        "cpuMs": {
+          "count": 32,
+          "min": 0.0652669999999489,
+          "median": 0.14829549999922165,
+          "p95": 0.3412370000005467,
+          "max": 0.3463340000016615
+        },
+        "completionMs": {
+          "count": 32,
+          "min": 6.80251700000008,
+          "median": 61.05634649999956,
+          "p95": 76.00547200000074,
+          "max": 77.96125399999983
+        },
+        "telemetryWallMs": {
+          "count": 32,
+          "min": 0.12805000000116706,
+          "median": 0.6761985000002824,
+          "p95": 5.62097200000062,
+          "max": 5.932675999998537
+        },
+        "iterationWallMs": {
+          "count": 32,
+          "min": 6.932178999999451,
+          "median": 62.75805500000024,
+          "p95": 79.80212500000016,
+          "max": 82.33252200000061
+        },
+        "uploadedBytes": 480
+      },
+      "reductionsPercent": {
+        "gpuMs": 14.272474513438372,
+        "cpuMs": 35.650296699465244,
+        "completionMs": 15.145554858491671,
+        "telemetryWallMs": 69.39592112166358,
+        "iterationWallMs": 15.385395771831323
+      },
+      "uploadReductionPercent": 88.28125
+    },
+    {
+      "name": "selection-resolve",
+      "entityCount": 32768,
+      "cache": true,
+      "flags": 0,
+      "trace": "select",
+      "finalCoverageIdentical": true,
+      "coverageSHA256": "411e791c7080249480ecf4684622a09dc366078741a325cd2763ad8b3455c978",
+      "baseline": {
+        "samples": 32,
+        "gpuMs": {
+          "count": 32,
+          "min": 11.534336,
+          "median": 13.533183999999999,
+          "p95": 27.131904,
+          "max": 32.178176
+        },
+        "cpuMs": {
+          "count": 32,
+          "min": 0.10514600000169594,
+          "median": 0.1515144999993936,
+          "p95": 0.31381599999804166,
+          "max": 0.3811059999989084
+        },
+        "completionMs": {
+          "count": 32,
+          "min": 11.693185000000085,
+          "median": 13.892159499999252,
+          "p95": 27.287531000001763,
+          "max": 43.37538999999924
+        },
+        "telemetryWallMs": {
+          "count": 32,
+          "min": 0.13372800000070129,
+          "median": 0.2398204999999507,
+          "p95": 6.863627999999153,
+          "max": 14.433852999998635
+        },
+        "iterationWallMs": {
+          "count": 32,
+          "min": 11.829196999999112,
+          "median": 14.187227000001258,
+          "p95": 35.7526659999985,
+          "max": 46.7364600000019
+        },
+        "uploadedBytes": 4096
+      },
+      "candidate": {
+        "samples": 32,
+        "gpuMs": {
+          "count": 32,
+          "min": 6.619136,
+          "median": 7.897088,
+          "p95": 14.811136,
+          "max": 22.806528
+        },
+        "cpuMs": {
+          "count": 32,
+          "min": 0.06399499999861291,
+          "median": 0.07347900000058871,
+          "p95": 0.10877200000140874,
+          "max": 0.12275200000112818
+        },
+        "completionMs": {
+          "count": 32,
+          "min": 6.728075999999419,
+          "median": 8.01109500000075,
+          "p95": 21.316197000000102,
+          "max": 22.903848000001744
+        },
+        "telemetryWallMs": {
+          "count": 32,
+          "min": 0.11790499999915482,
+          "median": 0.1504835000005187,
+          "p95": 4.5445829999989655,
+          "max": 4.902416999999332
+        },
+        "iterationWallMs": {
+          "count": 32,
+          "min": 6.929635000000417,
+          "median": 8.277508999999554,
+          "p95": 21.691844999999375,
+          "max": 23.070917000000918
+        },
+        "uploadedBytes": 120
+      },
+      "reductionsPercent": {
+        "gpuMs": 41.64648910411621,
+        "cpuMs": 51.50365146511866,
+        "completionMs": 42.333695492042246,
+        "telemetryWallMs": 37.25161110057329,
+        "iterationWallMs": 41.65520154150758
+      },
+      "uploadReductionPercent": 97.0703125
+    }
+  ],
+  "status": "passed"
+}

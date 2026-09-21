@@ -1,0 +1,16 @@
+{
+  "suite": "document-controller-dom-with-test-engine",
+  "version": "2.3.0",
+  "gpuExecuted": false,
+  "status": "passed",
+  "checks": [
+    "Multi-file chooser imports both DXFs in real workers; duplicate filenames have distinct tabs; all four spaces and saved views are listed",
+    "Paper and Model tabs retain independent annotations, undo stacks and camera state",
+    "File switching restores source identity and does not leak reviews between identically named files",
+    "Workspace v3 serializes and restores all tabs and per-space state (storage boundary doubled; actual IndexedDB not exercised)",
+    "Invalid GPU duration never reaches the metric hero; unavailable reason is shown",
+    "Six file tabs and four layout tabs remain horizontally contained on mobile",
+    "Closing all saved tabs releases document ownership and leaves a usable empty workbench"
+  ],
+  "errors": []
+}

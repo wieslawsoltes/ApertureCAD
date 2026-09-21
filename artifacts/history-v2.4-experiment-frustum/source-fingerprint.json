@@ -1,0 +1,5 @@
+{
+  "packages/gpu/index.js": "1c17a762917ee5af12fdfda40246baabca581fa722a66fea08b61787c3e3dcd3",
+  "packages/gpu/shaders/scene.wgsl": "4014bcc23cb5043cd2b9cfed9542248958da6a915193a7ca8add0c49446768a9",
+  "packages/gpu/shaders.js": "ec1245cfce16459beb20bcf1d5347e44db9b0c2de1e5f4905a427458529a3b9c"
+}

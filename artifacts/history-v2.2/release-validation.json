@@ -1,0 +1,107 @@
+{
+  "schema": "aperture-release-validation/1",
+  "version": "2.2.0",
+  "createdAt": "2026-09-18T08:29:37.340217+00:00",
+  "status": "passed-with-explicit-qualification-boundaries",
+  "qualification": {
+    "nativeCompiler": "passed",
+    "nativeComputeExecution": "passed",
+    "browserDOM": "passed",
+    "browserComputePresentation": "blocked",
+    "hardwareGPUPerformance": "not-tested",
+    "productionQualification": "not-claimed"
+  },
+  "coreTests": {
+    "passed": 178,
+    "failed": 0,
+    "skipped": 0,
+    "evidence": "artifacts/tests-v2.2.txt"
+  },
+  "staticChecks": {
+    "status": "passed",
+    "evidence": "artifacts/static-checks.json"
+  },
+  "nativeCompiler": {
+    "modules": 5,
+    "pipelines": 25,
+    "negativeProbes": 4,
+    "status": "passed",
+    "evidence": "artifacts/native-compiler.json"
+  },
+  "nativeExecution": {
+    "status": "passed",
+    "checks": 29,
+    "backend": "vulkan",
+    "adapter": {
+      "vendor": "google",
+      "architecture": "swiftshader",
+      "device": "swiftshader-device-subzero-",
+      "description": "SwiftShader driver 5.0.0"
+    },
+    "softwareAdapter": true,
+    "uncapturedErrors": [],
+    "evidence": "artifacts/native-gpu.json"
+  },
+  "browserDOM": {
+    "status": "passed",
+    "checks": 5,
+    "evidence": "artifacts/browser-dom.json"
+  },
+  "browserGPU": {
+    "status": "blocked",
+    "reason": "Page.goto: net::ERR_BLOCKED_BY_ADMINISTRATOR at http://localhost:4173/dist/index.html\nCall log:\n  - navigating to \"http://localhost:4173/dist/index.html\", waiting until \"load\"\n",
+    "evidence": "artifacts/browser-gpu.json"
+  },
+  "releaseComparison": {
+    "status": "passed",
+    "baselineVersion": "2.1.0",
+    "candidateVersion": "2.2.0",
+    "workloads": 7,
+    "roundOrder": [
+      {
+        "version": "2.2.0",
+        "file": "profile-v2.2-round1.json",
+        "startedAt": "2026-09-18T08:18:24.249Z"
+      },
+      {
+        "version": "2.1.0",
+        "file": "profile-v2.1-round1.json",
+        "startedAt": "2026-09-18T08:18:39.922Z"
+      },
+      {
+        "version": "2.1.0",
+        "file": "profile-v2.1-round2.json",
+        "startedAt": "2026-09-18T08:18:56.877Z"
+      },
+      {
+        "version": "2.2.0",
+        "file": "profile-v2.2-round2.json",
+        "startedAt": "2026-09-18T08:19:13.304Z"
+      }
+    ],
+    "method": "2 fresh-process rounds per release; 16 measured frames and 5 warmups per workload per round. Combined median uses the middle value for odd sample counts and the mean of the two middle samples for even counts. Positive reduction means lower time.",
+    "allFinalFrameCoverageHashesMatch": true,
+    "evidence": "artifacts/release-comparison.json"
+  },
+  "cleanPackage": {
+    "status": "passed",
+    "sourceFilesByteIdentical": 58,
+    "rebuiltStandaloneByteIdentical": true,
+    "evidence": "artifacts/clean-package-verification.json"
+  },
+  "shaderHashes": {
+    "font": "c822fcca45947de4bfe81859edfd36583299747a1d01949daadb100c3e95dfc1",
+    "scene": "c07b2030aad5da67cf1222f76720428a797df3daaaf7301f6be17c6f8ab22737",
+    "pixels": "f16cbc1c12df54a4f7c846078045e035128584d6e55a793ce1ea2730094e27ca",
+    "index": "b4cb48219738e12ac585e6a0f8b5e24e970b6b4bd6c3bc92bc59ae23cedace66",
+    "stroke": "62e12d849a01163392f70429041a4367369ab9f6fcdffea7ffdcfab22f052035"
+  },
+  "limitations": [
+    "Vulkan/SwiftShader measurements are software-adapter results, not hardware GPU FPS or browser presentation latency.",
+    "Rendering GPU timestamps include clears but exclude uploads and explicitly sampled diagnostics; full frame-plus-diagnostics wall times are reported separately.",
+    "100,000/1,000,000 stress text records use adaptive density proxies, not exact-glyph throughput.",
+    "Final trace coverage identity and finite regression tests are not a proof for every drawing, camera or GPU driver.",
+    "General DXF/OpenType/3D conformance boundaries of 2.1 remain. See docs/CONFORMANCE.md.",
+    "Historical numerical/font reference tests are retained as prior evidence and were not rerun in 2.2."
+  ]
+}

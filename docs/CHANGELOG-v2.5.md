@@ -1,0 +1,9 @@
+# 2.5.0 — static block authoring and insertion
+
+Added the semantic BLOCK/INSERT graph, library shelf, fourteen original definitions, portable DXF/JSON libraries, nested reference identity, unit-aware INSERT/MINSERT, mirrors, on-screen placement and repeat, root/nested attributes, definition properties, dependency-aware create/purge, reference copying/replacement/polar arrays, counts/CSV and source undo/redo. Added isolated graphical Block Studio, immutable record transactions and workspace persistence of edited source state.
+
+Added compute-only edit kernels and host resource orchestration: persistent-transform previews, unchanged GPU page retention, selected-range masks, spatial object snap with32-byte winner readback, and explicit GPU affine explode/burst. Six assembled modules expose34 validated pipelines. Retained normal render/cache/timing APIs. This release has no new before/after frame-rate comparison; prior performance reports remain historical.
+
+Correctness work includes attributes transformed exactly once, compound handle allocation, nested attribute synchronization, unit/locked-layer policy, conflict/dependency rewriting, paper-space root normalization and correct inactive-sheet serialization, atomic failed edits, stale placement query ownership, and accurate mirrored nonuniform conic export parameters. Unknown dynamic/evaluated and external content is protected rather than claimed editable.
+
+Tests:265 core; 62 native execution/scale (15 new block checks); 6 modules/34 pipelines; 4 negative compiler probes; 5 DOM, 7 workspace and10 block-controller checks; 7 independent interoperability checks over9 DXFs. Native execution is SwiftShader software; browser WebGPU is policy-blocked; controller doubles are explicit. See VALIDATION.md and BLOCKS.md for exact scope and command limitations.

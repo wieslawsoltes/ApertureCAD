@@ -1,0 +1,34 @@
+{
+  "version": "2.4.0",
+  "status": "passed",
+  "startedAt": "2026-09-18T17:51:51.011037+00:00",
+  "extractionVerifiedFiles": 184,
+  "commands": [
+    {
+      "name": "build",
+      "command": "npm run build",
+      "exitCode": 0
+    },
+    {
+      "name": "tests",
+      "command": "npm test",
+      "exitCode": 0
+    },
+    {
+      "name": "static",
+      "command": "npm run check",
+      "exitCode": 0
+    },
+    {
+      "name": "compiler",
+      "command": "node tools/native-webgpu.mjs",
+      "exitCode": 0
+    }
+  ],
+  "nativeCompilerBackend": "null (validation only; execution tested separately on Vulkan)",
+  "tests": 219,
+  "pipelines": 28,
+  "previewByteIdentical": true,
+  "previewSHA256": "7e2cfc2f4351d5a5d6d5e2b3ca18f2e6d0f1ebb1f64fef3938b05be82e0b7811",
+  "finishedAt": "2026-09-18T17:51:52.806653+00:00"
+}

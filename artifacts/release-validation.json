@@ -1,0 +1,131 @@
+{
+  "schema": "aperture-release-validation/5",
+  "version": "2.5.0",
+  "generatedAt": "2026-09-18T20:15:50.026511+00:00",
+  "status": "passed-finite-suites; hardware and browser presentation not qualified",
+  "core": {
+    "status": "passed",
+    "tests": 265,
+    "failed": 0,
+    "skipped": 0,
+    "newBlockTests": 46,
+    "report": "tests-v2.5.txt"
+  },
+  "compiler": {
+    "status": "passed",
+    "modules": 6,
+    "computePipelines": 34,
+    "negativeProbes": 4,
+    "backend": "null",
+    "gpuExecuted": false,
+    "report": "native-compiler.json"
+  },
+  "nativeExecution": {
+    "status": "passed",
+    "checks": 62,
+    "newBlockChecks": 15,
+    "backend": "vulkan",
+    "adapter": {
+      "vendor": "google",
+      "architecture": "swiftshader",
+      "device": "swiftshader-device-subzero-",
+      "description": "SwiftShader driver 5.0.0"
+    },
+    "softwareAdapter": true,
+    "gpuExecuted": true,
+    "report": "native-gpu.json",
+    "scaleMode": "100,000 and 1,000,000 GPU-generated records with adaptive density proxies; not exact-glyph throughput"
+  },
+  "independentDxf": {
+    "status": "passed",
+    "reader": "ezdxf 1.4.4",
+    "checks": 7,
+    "files": 9,
+    "auditErrors": 0,
+    "auditRepairs": 0,
+    "report": "blocks-interop.json"
+  },
+  "browserDom": {
+    "status": "passed",
+    "checks": 5,
+    "gpuExecuted": false,
+    "report": "browser-dom.json"
+  },
+  "workspaceController": {
+    "status": "passed",
+    "checks": 7,
+    "gpuExecuted": false,
+    "realIndexedDB": false,
+    "report": "workspace-ui.json"
+  },
+  "blocksController": {
+    "status": "passed",
+    "checks": 10,
+    "gpuExecuted": false,
+    "realIndexedDB": false,
+    "boundaries": "Real UI, semantic graph, parser workers and controller; explicit engine/storage test doubles",
+    "report": "blocks-ui.json"
+  },
+  "browserWebGPU": {
+    "status": "blocked",
+    "gpuExecuted": false,
+    "reason": "Page.goto: net::ERR_BLOCKED_BY_ADMINISTRATOR at http://localhost:4173/dist/index.html\nCall log:\n  - navigating to \"http://localhost:4173/dist/index.html\", waiting until \"load\"\n",
+    "report": "browser-gpu.json"
+  },
+  "performance": {
+    "baselineCandidateComparison": "not performed for 2.5",
+    "hardwareGPU": false,
+    "verifiedContracts": [
+      "No-op reconciliation retains all entity/aux pages and uploads zero geometry bytes",
+      "Resident preview movement coalesces into one 32-byte root-transform write per preview page",
+      "GPU snap reads back a 32-byte winner, not a CPU candidate list",
+      "Cached base coverage retained during preview and selection-only updates"
+    ],
+    "historicalReports": "history-v2.4/"
+  },
+  "capabilityProfile": "Static 2D DXF BLOCK/INSERT/MINSERT, libraries, attributes, isolated graphical editing and bounded compute-assisted placement/baking; not full AutoCAD parity",
+  "boundaries": [
+    "No native DWG, dynamic actions/constraints, XREF binding, complete annotative or 3D/UCS insertion",
+    "Rendered primitive records still expanded per occurrence; not shared-template block GPU instancing",
+    "CPU source serialization/reparse on commit remains; unchanged GPU pages can be reused",
+    "Explode recursively bakes supported rendered 2D primitives; not native one-level EXPLODE semantics",
+    "WBLOCK is dependency-library export, not every native mode",
+    "Browser canvas presentation and representative hardware-GPU behavior unvalidated"
+  ],
+  "sourceFingerprints": {
+    "packages/blocks/preview.js": "a5b1c38b09dc5dcafdabef6219f315e368fc79c4d3278a06dd1c757924d697d4",
+    "packages/blocks/library.js": "84ccb3ff2a1822145ad7f41447fc6f5a34fb1b0225947e97db3d3851a8a1c52b",
+    "packages/blocks/serialize.js": "3288a41107f9534c6bf81ac15d34318f4ef0ff8941d1f17ca29f539c22218271",
+    "packages/blocks/explode.js": "c304c115b7a89eaa2693686b45b6d8dfdb03517562769dbca853fb48be8d3e83",
+    "packages/blocks/document.js": "9af7a918de3964adc5bafb1a28a32499d050f81bb41c193e4ab2f3ac5567f4aa",
+    "packages/blocks/template.js": "ca985a8be0a6ded69569c9bd34ab1495b449cc3a055067a70d2d3fe5f7152cc4",
+    "packages/app/blocks.js": "29cb79bf81b861bb9423586eb6a8f3dbb82c6df329dc59d96a5aba5283ec1782",
+    "packages/app/block-studio.js": "191b07162ae239672a4505c824dce2850ae8120b1a331cc45c76cc0e5d1fe44e",
+    "packages/gpu/block-tools.js": "cfb0675c7c6e2fdbeab4d55734d77276c5d209ef734e902acc5f3bf2be878bff",
+    "packages/gpu/edit-tools.js": "5bbe972d76da0cabf139f94fec599fbfcd09adb36567174b70940b6b0972133b",
+    "packages/gpu/shaders/edit.wgsl": "f57da0baf3584b91155b6771e388b7b57906f3d4b7c4503408798cf54169f6c7",
+    "packages/gpu/index.js": "36774dbe1d2f0411a98c9d6bad1680554f59bfaf66be874cbd4d1b7ef0e3b51c",
+    "packages/dxf/index.js": "e02b41ac3ab12eee43d0b740651b91927dc3b234b3c14c7e74a803fecb3ee6b5"
+  },
+  "shaderHashes": {
+    "font": "c822fcca45947de4bfe81859edfd36583299747a1d01949daadb100c3e95dfc1",
+    "scene": "8b1875e8e7107ac2d633fe82d1317968f1d57d3c97d33f36713fecb1879a2aad",
+    "pixels": "4b82b0c4782d1d55cf5d0207ab5c7b083aa54c54e362d39b6a9a315f719b1181",
+    "index": "b4cb48219738e12ac585e6a0f8b5e24e970b6b4bd6c3bc92bc59ae23cedace66",
+    "stroke": "62e12d849a01163392f70429041a4367369ab9f6fcdffea7ffdcfab22f052035",
+    "edit": "f57da0baf3584b91155b6771e388b7b57906f3d4b7c4503408798cf54169f6c7"
+  },
+  "filesManifest": "../SHA256SUMS.json",
+  "cleanPackage": {
+    "status": "passed",
+    "report": "clean-package-verification.json",
+    "previewByteIdentical": true
+  },
+  "cliExample": {
+    "status": "passed",
+    "file": "examples/block-authoring.mjs",
+    "independentReader": "ezdxf 1.4.4",
+    "auditErrors": 0,
+    "auditRepairs": 0
+  }
+}

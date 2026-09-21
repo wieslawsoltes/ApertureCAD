@@ -1,0 +1,153 @@
+{
+  "application": "Aperture CAD",
+  "version": "2.0.0",
+  "recordedAt": "2026-09-18T06:24:13.293765+00:00",
+  "coreTests": {
+    "passed": 135,
+    "failed": 0,
+    "log": "artifacts/tests-v2.txt"
+  },
+  "dom": {
+    "suite": "browser-dom",
+    "status": "passed",
+    "checks": [
+      "Unsupported WebGPU state is explicit and readable",
+      "Help dialog opens and closes",
+      "Compute lab exposes six actual stress configurations",
+      "New performance, quality and feature-gallery controls exist",
+      "Mobile layout has no horizontal page overflow"
+    ],
+    "gpuExecuted": false,
+    "errors": []
+  },
+  "staticContracts": {
+    "kind": "static-contract-checks",
+    "gpuCompilation": false,
+    "passed": [
+      "All package JavaScript files pass Node syntax checks",
+      "CAD engine contains no render-pipeline, render-pass, WebGL or Canvas2D calls",
+      "HTML IDs are unique",
+      "font: balanced source, reserved identifiers, entry points, transitive resource bindings, baseline storage limits",
+      "scene: balanced source, reserved identifiers, entry points, transitive resource bindings, baseline storage limits",
+      "pixels: balanced source, reserved identifiers, entry points, transitive resource bindings, baseline storage limits",
+      "index: balanced source, reserved identifiers, entry points, transitive resource bindings, baseline storage limits",
+      "stroke: balanced source, reserved identifiers, entry points, transitive resource bindings, baseline storage limits"
+    ],
+    "errors": []
+  },
+  "fontLayout": {
+    "suite": "OpenType-program-reference",
+    "status": "passed",
+    "gpuExecuted": false,
+    "reference": "native HarfBuzz with default horizontal Latin shaping",
+    "fontName": "DejaVuSans.ttf",
+    "fontIncluded": false,
+    "checks": [
+      {
+        "text": "AVATAR",
+        "glyphCount": 6,
+        "glyphIdsMatch": true,
+        "maxAdvanceErrorEm": 0.0
+      },
+      {
+        "text": "office affinity",
+        "glyphCount": 11,
+        "glyphIdsMatch": true,
+        "maxAdvanceErrorEm": 0.0
+      },
+      {
+        "text": "fi ffi ff fl ffl",
+        "glyphCount": 9,
+        "glyphIdsMatch": true,
+        "maxAdvanceErrorEm": 0.0
+      },
+      {
+        "text": "To Wa Yo PA",
+        "glyphCount": 11,
+        "glyphIdsMatch": true,
+        "maxAdvanceErrorEm": 0.0
+      },
+      {
+        "text": "Aperture CAD 0123456789",
+        "glyphCount": 23,
+        "glyphIdsMatch": true,
+        "maxAdvanceErrorEm": 0.0
+      },
+      {
+        "text": "LOW FRAME TIME",
+        "glyphCount": 14,
+        "glyphIdsMatch": true,
+        "maxAdvanceErrorEm": 0.0
+      },
+      {
+        "text": "Review: Equipment 125-A",
+        "glyphCount": 23,
+        "glyphIdsMatch": true,
+        "maxAdvanceErrorEm": 0.0
+      },
+      {
+        "text": "minimum MILLION",
+        "glyphCount": 15,
+        "glyphIdsMatch": true,
+        "maxAdvanceErrorEm": 0.0
+      },
+      {
+        "text": "(A+B) / 2 = 125.25",
+        "glyphCount": 18,
+        "glyphIdsMatch": true,
+        "maxAdvanceErrorEm": 0.0
+      }
+    ],
+    "maxAdvanceErrorEm": 0,
+    "reportedUnsupportedLookups": [
+      "GSUB lookup type 6, format 2 is not in the current horizontal profile."
+    ]
+  },
+  "quadraticDistance": {
+    "suite": "quadratic-distance-numerical-reference",
+    "status": "passed",
+    "gpuExecuted": false,
+    "candidate": "CPU float32 emulation of the WGSL analytic distance formula",
+    "reference": "independent float64 polynomial roots + endpoint minimum",
+    "seed": 529,
+    "cases": 10000,
+    "maxAbsoluteErrorEm": 5.166644021017963e-07,
+    "p99AbsoluteErrorEm": 2.3067312196145556e-07,
+    "maxAcceptedAbsoluteErrorEm": 2e-06,
+    "worstCase": [
+      5.166644021017963e-07,
+      [
+        [
+          1.0734363794326782,
+          1.5328011512756348
+        ],
+        [
+          -0.91740882396698,
+          -0.2809722125530243
+        ],
+        [
+          1.0526882410049438,
+          1.5472540855407715
+        ],
+        [
+          1.1525399684906006,
+          0.5519545674324036
+        ]
+      ],
+      0.019344691187143326,
+      0.019344174522741224
+    ],
+    "scope": "Random endpoints/control/query coordinates [-1,2] em, including near-linear quadratics. Not a proof for all f32 inputs."
+  },
+  "gpu": {
+    "suite": "webgpu-integration",
+    "status": "blocked",
+    "checks": [],
+    "gpuExecuted": false,
+    "errors": [],
+    "reason": "Page.goto: net::ERR_BLOCKED_BY_ADMINISTRATOR at http://localhost:4173/dist/index.html\nCall log:\n  - navigating to \"http://localhost:4173/dist/index.html\", waiting until \"load\"\n"
+  },
+  "measuredFrameTimeImprovement": null,
+  "productionQualified": false,
+  "publishedLiveSite": null
+}

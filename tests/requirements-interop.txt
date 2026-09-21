@@ -1,0 +1,2 @@
+# Independent DXF verification only. Not an application dependency.
+ezdxf==1.4.4

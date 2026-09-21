@@ -1,0 +1,251 @@
+{
+  "version": "2.1.0",
+  "scope": "Complete packaged source tree inventoried and checked; focused semantic/runtime audit of shader assembly, compute orchestration, culling, resource lifetime, parsing-worker handoff and annotation transactions. This is not a proof that every algorithm/input is correct.",
+  "files": [
+    {
+      "path": "packages/annotations/index.js",
+      "bytes": 6300,
+      "sha256": "f0999f9da64285a6bc363af2430baecbc06317b45ee7990e752ef8854c640e6d"
+    },
+    {
+      "path": "packages/app/index.js",
+      "bytes": 43918,
+      "sha256": "868bebba863ab7734151567e640faa741f4ddee1b62ed1c467351dd149c4b08b"
+    },
+    {
+      "path": "packages/app/styles.css",
+      "bytes": 23521,
+      "sha256": "60515b48a1b0ecf099dbc9a8cb0a371338cb7533df0a66c8d544750f83c1f0a5"
+    },
+    {
+      "path": "packages/dxf/client.js",
+      "bytes": 2449,
+      "sha256": "60a92208a7750238da9b7fc81a607fbd017d8c51826155ecc1eb826db92fa637"
+    },
+    {
+      "path": "packages/dxf/hatch.js",
+      "bytes": 4380,
+      "sha256": "bb3ffa15a101664331e8d5e7f34128eae1b2849035ff85e7aacde047747830b1"
+    },
+    {
+      "path": "packages/dxf/index.js",
+      "bytes": 29310,
+      "sha256": "6ea3021e97ac1153ea10b6add3c79836547ff980bb5a62c03e79b05544a48cb1"
+    },
+    {
+      "path": "packages/dxf/worker-source.js",
+      "bytes": 51684,
+      "sha256": "79b21533b7b29f20bb2b7617601bdd7b1c022fe0cfb1efa96caaf859ddc81189"
+    },
+    {
+      "path": "packages/dxf/worker.js",
+      "bytes": 495,
+      "sha256": "33822a7faad3e1b2bd881c2bf30ca837cbedc67b9192b648d4d3a86ac7d02e4a"
+    },
+    {
+      "path": "packages/font/index.js",
+      "bytes": 20719,
+      "sha256": "007a13caf1961efc5d45b95a77b25c133690bec3d43910f8f34c06f780cd8cea"
+    },
+    {
+      "path": "packages/font/layout.js",
+      "bytes": 10649,
+      "sha256": "477ac752b3f5a89b480c078ea2c9b0ca3ef17bc2bcee4489cef050d67c2eca84"
+    },
+    {
+      "path": "packages/font/stroke.js",
+      "bytes": 10928,
+      "sha256": "62e48c45d29699b1277af0e43c89ab6f305dd3d1128a5e965bd3cf6382b9658d"
+    },
+    {
+      "path": "packages/gpu/compiler.js",
+      "bytes": 5369,
+      "sha256": "af81d2512d6adbbda25da905cc85b6c70b54f5cdd44daf6d3eb73e0196172232"
+    },
+    {
+      "path": "packages/gpu/index.js",
+      "bytes": 58623,
+      "sha256": "3e41fdc7643d1a7ead260c712200927c8c18c5b14b07466bbe167d1a0c3b556f"
+    },
+    {
+      "path": "packages/gpu/shaders/dimension-common.wgsl",
+      "bytes": 7382,
+      "sha256": "15ffd4011e663c00fd65800b420cb770a5b883cec9aa5de32f35ad23d97a5463"
+    },
+    {
+      "path": "packages/gpu/shaders/font-common.wgsl",
+      "bytes": 4467,
+      "sha256": "4101352694e3ec1edcf0b41e1e40617a175c654e902422bfa8f2f309697634ff"
+    },
+    {
+      "path": "packages/gpu/shaders/font.wgsl",
+      "bytes": 836,
+      "sha256": "19dfb838ef7f6341f423665c31a5818d0357598d6c9c625699a66483e3423d67"
+    },
+    {
+      "path": "packages/gpu/shaders/hatch-common.wgsl",
+      "bytes": 4400,
+      "sha256": "ef8ad29f06617a7827934acef137564cb95b41a2713fe26c3854060ce09b0a82"
+    },
+    {
+      "path": "packages/gpu/shaders/index.wgsl",
+      "bytes": 2471,
+      "sha256": "b4cb48219738e12ac585e6a0f8b5e24e970b6b4bd6c3bc92bc59ae23cedace66"
+    },
+    {
+      "path": "packages/gpu/shaders/layout-common.wgsl",
+      "bytes": 2853,
+      "sha256": "07404e9af3c324719fa227e2b8ef0ced944f1c6a41d478b957aa480af45a7c33"
+    },
+    {
+      "path": "packages/gpu/shaders/pixels.wgsl",
+      "bytes": 5506,
+      "sha256": "ed2dc0b0457d4494d2c61b6606a6e3290a663209952155b9f8153d638582caa0"
+    },
+    {
+      "path": "packages/gpu/shaders/scene.wgsl",
+      "bytes": 29004,
+      "sha256": "1d564a2e4cc5a8d61ac6c149b19512ca51b3c32fd150263dd330db2a7a9c7994"
+    },
+    {
+      "path": "packages/gpu/shaders/stroke.wgsl",
+      "bytes": 4288,
+      "sha256": "b144ba18b57c1a688b48801d5fb29857b014eb8d2efa5d9b6cd517422ec78dde"
+    },
+    {
+      "path": "packages/gpu/shaders.js",
+      "bytes": 72614,
+      "sha256": "5d24dd28deefa03192092149174d4f417fbf99c2d6b05d2e432c7ff85b7777c4"
+    },
+    {
+      "path": "packages/model/demo.js",
+      "bytes": 9440,
+      "sha256": "78903e0bdf73af60c8dad4b61b94e5d6fd60edc274116b5f46b6d619722c7e81"
+    },
+    {
+      "path": "packages/model/features.js",
+      "bytes": 3355,
+      "sha256": "1804bb6d2355c949cf0ae33f39d976ba11a2ddfc0b223228751eecf137a8a395"
+    },
+    {
+      "path": "packages/model/index.js",
+      "bytes": 15768,
+      "sha256": "36b799e12482ad83aa50e166cdc2ff14436977e8cc38caeed75d0ee9d572e203"
+    },
+    {
+      "path": "packages/performance/index.js",
+      "bytes": 4364,
+      "sha256": "c39d81c4e7df3161043150dace56474f4a9705b1aa3fd7495738ef077c8c4194"
+    },
+    {
+      "path": "public/index.html",
+      "bytes": 10882,
+      "sha256": "f6757a69c8a79b73c8160fc25dea6fd8ddbf80a4f3deb86c842930fc30cf1ba4"
+    },
+    {
+      "path": "tests/audit.test.mjs",
+      "bytes": 5479,
+      "sha256": "2fa1d64d06dfd05f54ee1441648f1fc3f5ed9ba9e84866f603008e7d675bf1c2"
+    },
+    {
+      "path": "tests/browser.py",
+      "bytes": 6434,
+      "sha256": "9afdbee253f8130d05430f2cdc37c5c5e47e14974fda6785936cee96f1f72d45"
+    },
+    {
+      "path": "tests/compiler.test.mjs",
+      "bytes": 3926,
+      "sha256": "542a0cfed23bcb9d8c90230a61286995b35d99c5bcc2fa54ea28896d6dc80d78"
+    },
+    {
+      "path": "tests/core.test.mjs",
+      "bytes": 16092,
+      "sha256": "47b9bbfd68c002a2b2c94a37c114eaf59cd0df7801ebfb54b48fdf82a7dc90e1"
+    },
+    {
+      "path": "tests/font-reference.mjs",
+      "bytes": 856,
+      "sha256": "4810d1db2e3bf24ba7dc3703c222da6dde423a54a88bbbae13db881782eb2f18"
+    },
+    {
+      "path": "tests/font_reference.py",
+      "bytes": 3725,
+      "sha256": "61df7f5fe6d6f3b81d9934388b00b9be71bc395ac392c628e3969b6aaeba8a64"
+    },
+    {
+      "path": "tests/gpu-audit-regressions.js",
+      "bytes": 6441,
+      "sha256": "fd9b9490f1cc2395803623dc547d2259e42885b09e156352ce0696eb80bc9bc5"
+    },
+    {
+      "path": "tests/gpu-harness.html",
+      "bytes": 1373,
+      "sha256": "fdeb00d80edab29c74fb23f0311192a95c20a7a2d2ab41e3cb275869af4b572d"
+    },
+    {
+      "path": "tests/gpu-regressions.js",
+      "bytes": 6824,
+      "sha256": "cff7abb6fc6231e34bfe8f4e22ba29cf6db6f8ed30d692107e2935c6739cbd78"
+    },
+    {
+      "path": "tests/layout.test.mjs",
+      "bytes": 4977,
+      "sha256": "a46e3803883f551f5d40a2005eadf14db4f7bceeae899e9fa8bba3154529f168"
+    },
+    {
+      "path": "tests/math_reference.py",
+      "bytes": 3003,
+      "sha256": "54430a2329f77e884c07deb2ad5a589c9a3a0698b9ce8a142a6ea038243eef30"
+    },
+    {
+      "path": "tests/reference-oracles.mjs",
+      "bytes": 2452,
+      "sha256": "1589ab4543c9d2df0762f5f2c4358aa714b2bcdb76ef529176d34dd4766b929b"
+    },
+    {
+      "path": "tests/requirements.txt",
+      "bytes": 19,
+      "sha256": "df7696acf1e200684a962c8b7cb25363273b8239093235e68bb3f60231a9799f"
+    },
+    {
+      "path": "tests/v2.test.mjs",
+      "bytes": 15708,
+      "sha256": "ea5ab9e7e14a197966ee655968d1b1d973a6ea99ba885fc3b3b86b0537421ec8"
+    },
+    {
+      "path": "tools/benchmark-packing.mjs",
+      "bytes": 2113,
+      "sha256": "b2b606468fa0d3360c847387a1e9f3bf1f79b0207c0653c376fe8c573c08b2c5"
+    },
+    {
+      "path": "tools/build.mjs",
+      "bytes": 3694,
+      "sha256": "a65c881bb6316c0a41e29a1a457818f202f9f10e89fca5592914fcb5ff137927"
+    },
+    {
+      "path": "tools/check.mjs",
+      "bytes": 6846,
+      "sha256": "d8f48981d6c8d411880a2e3894324c0b2bbc4cbd2656e783d8fc8b1d01daaf6b"
+    },
+    {
+      "path": "tools/native-webgpu.mjs",
+      "bytes": 11776,
+      "sha256": "3d44a79174b5c1743513cb65062498cbb1072161a02b3a85bda39c58dc1b086f"
+    },
+    {
+      "path": "tools/serve.mjs",
+      "bytes": 1280,
+      "sha256": "6e631b3e5061f722cab154d113787138d13c66bf2d2532288b8465c4a989ec82"
+    },
+    {
+      "path": "tools/shader-sources.mjs",
+      "bytes": 2350,
+      "sha256": "aea27233ffe23ac1ea74fd1d4140618d278b1802c0a07a25ecea88a2bcd2e694"
+    },
+    {
+      "path": "tools/wgsl-lint.mjs",
+      "bytes": 1888,
+      "sha256": "054969ab40ce50a721867b82a87900a9619858cf4f361138820dc7264cf9ea0c"
+    }
+  ]
+}

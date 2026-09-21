@@ -1,0 +1,16 @@
+{
+  "kind": "static-contract-checks",
+  "gpuCompilation": false,
+  "passed": [
+    "All package JavaScript files pass Node syntax checks",
+    "CAD engine contains no render-pipeline, render-pass, WebGL or Canvas2D calls",
+    "HTML IDs are unique",
+    "Generated shader sources, original-file maps and SHA-256 hashes match every WGSL source",
+    "font: balanced source, reserved identifiers, entry points, transitive resource bindings, baseline storage limits",
+    "scene: balanced source, reserved identifiers, entry points, transitive resource bindings, baseline storage limits",
+    "pixels: balanced source, reserved identifiers, entry points, transitive resource bindings, baseline storage limits",
+    "index: balanced source, reserved identifiers, entry points, transitive resource bindings, baseline storage limits",
+    "stroke: balanced source, reserved identifiers, entry points, transitive resource bindings, baseline storage limits"
+  ],
+  "errors": []
+}

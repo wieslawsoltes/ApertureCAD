@@ -1,0 +1,73 @@
+{
+  "suite": "independent-block-dxf-interoperability",
+  "version": "2.5.0",
+  "status": "passed",
+  "gpuExecuted": false,
+  "startedAt": "2026-09-18T20:11:17.593078+00:00",
+  "checks": [
+    "Nine independently read R2007 DXFs have zero audit errors and zero requested repairs, including compound INSERT/ATTRIB/SEQEND ownership",
+    "Fourteen authored static definitions and six top-level references retain their nested dependency graph",
+    "Independent INSERT matrix agrees with the serialized nonuniform mirrored ATTRIB position; Unicode value and six MINSERT cells survive",
+    "Dependency-closure export and rename-on-conflict keep every nested reference bound to the intended copied definition",
+    "Create BLOCK with a nonzero base point preserves the independently evaluated ellipse center",
+    "New references belong to their actual first/second paper-layout BLOCK_RECORD owners, not the default sheet",
+    "Attribute synchronization preserves values by tag and follows the reordered definition prompts"
+  ],
+  "files": [
+    {
+      "name": "workshop.dxf",
+      "auditErrors": 0,
+      "auditRepairs": 0,
+      "modelEntities": 6
+    },
+    {
+      "name": "mirrored-array.dxf",
+      "auditErrors": 0,
+      "auditRepairs": 0,
+      "modelEntities": 1
+    },
+    {
+      "name": "dependency-library.dxf",
+      "auditErrors": 0,
+      "auditRepairs": 0,
+      "modelEntities": 1
+    },
+    {
+      "name": "dependency-rename.dxf",
+      "auditErrors": 0,
+      "auditRepairs": 0,
+      "modelEntities": 1
+    },
+    {
+      "name": "create-basepoint.dxf",
+      "auditErrors": 0,
+      "auditRepairs": 0,
+      "modelEntities": 1
+    },
+    {
+      "name": "isolated-editor.dxf",
+      "auditErrors": 0,
+      "auditRepairs": 0,
+      "modelEntities": 8
+    },
+    {
+      "name": "editor-commit.dxf",
+      "auditErrors": 0,
+      "auditRepairs": 0,
+      "modelEntities": 7
+    },
+    {
+      "name": "separate-sheet-owners.dxf",
+      "auditErrors": 0,
+      "auditRepairs": 0,
+      "modelEntities": 0
+    },
+    {
+      "name": "attribute-sync.dxf",
+      "auditErrors": 0,
+      "auditRepairs": 0,
+      "modelEntities": 1
+    }
+  ],
+  "reader": "ezdxf 1.4.4"
+}

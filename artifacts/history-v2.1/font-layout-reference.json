@@ -1,0 +1,68 @@
+{
+  "suite": "OpenType-program-reference",
+  "status": "passed",
+  "gpuExecuted": false,
+  "reference": "native HarfBuzz with default horizontal Latin shaping",
+  "fontName": "DejaVuSans.ttf",
+  "fontIncluded": false,
+  "checks": [
+    {
+      "text": "AVATAR",
+      "glyphCount": 6,
+      "glyphIdsMatch": true,
+      "maxAdvanceErrorEm": 0.0
+    },
+    {
+      "text": "office affinity",
+      "glyphCount": 11,
+      "glyphIdsMatch": true,
+      "maxAdvanceErrorEm": 0.0
+    },
+    {
+      "text": "fi ffi ff fl ffl",
+      "glyphCount": 9,
+      "glyphIdsMatch": true,
+      "maxAdvanceErrorEm": 0.0
+    },
+    {
+      "text": "To Wa Yo PA",
+      "glyphCount": 11,
+      "glyphIdsMatch": true,
+      "maxAdvanceErrorEm": 0.0
+    },
+    {
+      "text": "Aperture CAD 0123456789",
+      "glyphCount": 23,
+      "glyphIdsMatch": true,
+      "maxAdvanceErrorEm": 0.0
+    },
+    {
+      "text": "LOW FRAME TIME",
+      "glyphCount": 14,
+      "glyphIdsMatch": true,
+      "maxAdvanceErrorEm": 0.0
+    },
+    {
+      "text": "Review: Equipment 125-A",
+      "glyphCount": 23,
+      "glyphIdsMatch": true,
+      "maxAdvanceErrorEm": 0.0
+    },
+    {
+      "text": "minimum MILLION",
+      "glyphCount": 15,
+      "glyphIdsMatch": true,
+      "maxAdvanceErrorEm": 0.0
+    },
+    {
+      "text": "(A+B) / 2 = 125.25",
+      "glyphCount": 18,
+      "glyphIdsMatch": true,
+      "maxAdvanceErrorEm": 0.0
+    }
+  ],
+  "maxAdvanceErrorEm": 0,
+  "reportedUnsupportedLookups": [
+    "GSUB lookup type 6, format 2 is not in the current horizontal profile."
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "version": "2.5.0",
+  "status": "passed",
+  "verifiedAt": "2026-09-18T20:16:48.955539+00:00",
+  "fromZip": "preflight archive with the final runtime source",
+  "coreTests": 265,
+  "coreFailed": 0,
+  "staticChecks": "passed",
+  "nativeCompiler": {
+    "modules": 6,
+    "pipelines": 34,
+    "negativeProbes": 4,
+    "status": "passed",
+    "backend": "null",
+    "gpuExecuted": false
+  },
+  "previewByteIdentical": true,
+  "appBundleByteIdentical": true,
+  "generatedShadersByteIdentical": true,
+  "previewSha256": "278849afa26a9cace3694afacfaa900a9e342607259be681116dcc3a33ff7be5",
+  "runtimeFiles": 92,
+  "runtimeFingerprint": "85cc0426cbef8b507184b5a4e3280f5867dced30dfc78727f862131823ac364b",
+  "note": "Only documentation/evidence/manifest additions follow the clean build. Final archive manifest verified separately."
+}

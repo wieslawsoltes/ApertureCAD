@@ -1,0 +1,14 @@
+{
+  "suite": "browser-dom",
+  "version": "2.3.0",
+  "status": "passed",
+  "checks": [
+    "Unsupported WebGPU state is explicit and readable",
+    "Help dialog opens and closes",
+    "Compute lab exposes six actual stress configurations",
+    "New performance, quality and feature-gallery controls exist",
+    "Mobile layout has no horizontal page overflow"
+  ],
+  "gpuExecuted": false,
+  "errors": []
+}

@@ -1,0 +1,63 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Embedded compute CAD</title>
+<style>
+  body { margin: 0; font: 14px system-ui; background: #0b1118; color: white; }
+  #toolbar { height: 48px; display: flex; align-items: center; gap: 16px; padding: 0 16px; }
+  canvas { width: 100vw; height: calc(100vh - 48px); display: block; touch-action: none; }
+</style>
+<div id="toolbar"><input id="file" type="file" accept=".dxf"><span id="status">Starting…</span></div>
+<canvas id="cad"></canvas>
+<script type="module">
+  import { ComputeCad } from '../packages/gpu/index.js';
+  import { makeBuiltinFont } from '../packages/font/index.js';
+  import { ModelBuilder, rgba } from '../packages/model/index.js';
+  import { DxfWorkerClient } from '../packages/dxf/client.js';
+
+  const canvas = document.querySelector('#cad');
+  const status = document.querySelector('#status');
+  const font = makeBuiltinFont();
+  const engine = new ComputeCad(canvas, { memoryBudget: 768 * 1024 * 1024 });
+  const importer = new DxfWorkerClient();
+  let drag = null;
+  const report = error => { status.textContent = error.message; console.error(error); };
+  engine.addEventListener('error', event => report(event.detail));
+  try {
+    await engine.initialize(font);
+    const builder = new ModelBuilder(font, { name: 'CAD-independent model' });
+    builder.rect(0, 0, 200, 120);
+    builder.circle(100, 60, 35, 0, rgba('#72e0b0'));
+    builder.text('COMPUTE CAD', 20, 140, 15);
+    await engine.setModel(builder.finish());
+    status.textContent = 'Drag to pan · wheel to zoom';
+  } catch (error) { report(error); }
+
+  document.querySelector('#file').onchange = async event => {
+    const file = event.target.files[0];
+    if (!file) return;
+    try {
+      const model = await importer.parse(await file.arrayBuffer(), font, {
+        name: file.name,
+        onProgress: progress => { status.textContent = `${progress.phase}: ${progress.entities}`; }
+      });
+      await engine.setModel(model);
+      status.textContent = `${model.count.toLocaleString()} entities`;
+    } catch (error) { report(error); }
+  };
+  canvas.onpointerdown = event => {
+    canvas.setPointerCapture(event.pointerId); drag = [event.clientX, event.clientY];
+  };
+  canvas.onpointermove = event => {
+    if (!drag) return;
+    engine.pan(event.clientX - drag[0], event.clientY - drag[1]);
+    drag = [event.clientX, event.clientY];
+  };
+  canvas.onpointerup = canvas.onpointercancel = () => { drag = null; };
+  canvas.addEventListener('wheel', event => {
+    event.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    engine.zoomAt(event.clientX - rect.left, event.clientY - rect.top,
+                  Math.exp(-Math.max(-600, Math.min(600, event.deltaY)) * .0015));
+  }, { passive: false });
+  window.addEventListener('beforeunload', () => { importer.cancel(); engine.dispose(); });
+</script>

@@ -1,0 +1,120 @@
+{
+  "schema": "aperture-release-validation/4",
+  "version": "2.4.0",
+  "generatedAt": "2026-09-18T17:51:01.897510+00:00",
+  "status": "qualified-finite-suites; browser/hardware boundaries remain",
+  "core": {
+    "status": "passed",
+    "tests": 219,
+    "failed": 0,
+    "skipped": 0,
+    "log": "tests-v2.4.txt"
+  },
+  "compiler": {
+    "status": "passed",
+    "modules": 5,
+    "computePipelines": 28,
+    "negativeProbes": 4,
+    "backend": "null",
+    "gpuExecuted": false,
+    "report": "native-compiler.json"
+  },
+  "nativeExecution": {
+    "status": "passed",
+    "checks": 47,
+    "backend": "vulkan",
+    "adapter": {
+      "vendor": "google",
+      "architecture": "swiftshader",
+      "device": "swiftshader-device-subzero-",
+      "description": "SwiftShader driver 5.0.0"
+    },
+    "softwareAdapter": true,
+    "gpuExecuted": true,
+    "report": "native-gpu.json",
+    "scale": [
+      {
+        "records": 100000,
+        "mode": "adaptive density proxies, exact visible count"
+      },
+      {
+        "records": 1000000,
+        "mode": "adaptive density proxies, exact visible count"
+      }
+    ]
+  },
+  "browserDom": {
+    "status": "passed",
+    "checks": 5,
+    "gpuExecuted": false,
+    "report": "browser-dom.json"
+  },
+  "documentController": {
+    "status": "passed",
+    "checks": 7,
+    "gpuExecuted": false,
+    "realIndexedDB": false,
+    "boundaries": "Real UI/controller and parser workers; explicitly doubled engine/storage",
+    "report": "workspace-ui.json"
+  },
+  "browserWebGPU": {
+    "status": "blocked",
+    "gpuExecuted": false,
+    "reason": "Page.goto: net::ERR_BLOCKED_BY_ADMINISTRATOR at http://localhost:4173/dist/index.html\nCall log:\n  - navigating to \"http://localhost:4173/dist/index.html\", waiting until \"load\"\n",
+    "report": "browser-gpu.json"
+  },
+  "performance": {
+    "status": "passed",
+    "report": "release-comparison.json",
+    "baselineVersion": "2.3.0",
+    "candidateVersion": "2.4.0",
+    "workloads": 10,
+    "roundsPerSide": 2,
+    "warmupFramesPerRound": 6,
+    "measuredFramesPerWorkloadPerSide": 40,
+    "allFinalCoverageHashesEqual": true,
+    "hardwareGPU": false,
+    "timingScope": "compute-pass (clears, uploads, waits, diagnostics, presentation excluded)",
+    "allWorkloadsFaster": false,
+    "regressionsRetained": [
+      "exact-text-full-cull",
+      "exact-text-cached-pan",
+      "density-text-100k compute-only median",
+      "selection-resolve compute median",
+      "paper-zoom CPU encoding"
+    ]
+  },
+  "newCapabilities": [
+    "Bounded paper viewport GPU visibility/indirect caches without duplicated geometry",
+    "Exact phase-sensitive viewport coverage reuse, with same-quality cache-miss/zero-budget compute path",
+    "512-entry GPU diagnostic tiles",
+    "Coalesced 16-byte timing-only readback with separate timing/counter frames",
+    "Monotonic single-consumption resolution-governor updates"
+  ],
+  "unchangedBoundaries": [
+    "CPU DXF/container/structural parsing and GPU-record packing remain explicit",
+    "No 3D/perspective/nonrectangular viewport extension",
+    "No new font/DXF conformance claim",
+    "No actual hardware-GPU or browser-presentation qualification",
+    "Million-text scale checks use density proxies, not exact glyph throughput"
+  ],
+  "sourceFingerprints": {
+    "packages/gpu/index.js": "37c509edf803b88be125936bf00e9f507d084460bafd66f00fbfb484167ddd80",
+    "packages/gpu/shaders.js": "b5bffb6d7bde36ddf1250bf3c3af5bb4833d3ad163724aaea56f48fe244f0ec8",
+    "packages/gpu/paper-cache.js": "00278b0cd351791a8bbfe4ffbada23f760933677c73f891ac6b8245785a7deaf",
+    "packages/performance/index.js": "046e578a7c91850970b28de295ebcf158708e421b1ee0cd986ba7222aab34c5a"
+  },
+  "shaderHashes": {
+    "font": "c822fcca45947de4bfe81859edfd36583299747a1d01949daadb100c3e95dfc1",
+    "scene": "70a471bd784aa53d105cf3d5717d728f306dafac081676d16c1bd1d989cf37f5",
+    "pixels": "484daec0914ac97ce16f0cd83de2c543d5564bd0934bd28c47653582bb81fb43",
+    "index": "b4cb48219738e12ac585e6a0f8b5e24e970b6b4bd6c3bc92bc59ae23cedace66",
+    "stroke": "62e12d849a01163392f70429041a4367369ab9f6fcdffea7ffdcfab22f052035"
+  },
+  "cleanPackage": {
+    "report": "clean-package-verification.json",
+    "status": "passed",
+    "previewByteIdentical": true
+  },
+  "filesManifest": "../SHA256SUMS.json"
+}

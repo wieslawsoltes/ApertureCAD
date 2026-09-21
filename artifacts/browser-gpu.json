@@ -1,0 +1,9 @@
+{
+  "suite": "webgpu-integration",
+  "version": "2.5.0",
+  "status": "blocked",
+  "checks": [],
+  "gpuExecuted": false,
+  "errors": [],
+  "reason": "Page.goto: net::ERR_BLOCKED_BY_ADMINISTRATOR at http://localhost:4173/dist/index.html\nCall log:\n  - navigating to \"http://localhost:4173/dist/index.html\", waiting until \"load\"\n"
+}

@@ -1,0 +1,4318 @@
+(function(){"use strict";const factories={"packages/app/index.js":function(module,exports,require){
+const { BlockWorkbench }=require("packages/app/blocks.js");
+const { BlockDrawing }=require("packages/blocks/document.js");
+const { DocumentWorkspace }=require("packages/app/documents.js");
+const { formatGpuTiming }=require("packages/performance/timing.js");
+const { parseStrokeFont }=require("packages/font/stroke.js");
+const { ComputeCad, makeSyntheticModel }=require("packages/gpu/index.js");
+const { makeBuiltinFont, parseTrueType }=require("packages/font/index.js");
+const { makeFeatureGallery }=require("packages/model/features.js");
+const { makeCampus }=require("packages/model/demo.js");
+const { ModelBuilder, TYPE, FLAGS, rgba, colorHex }=require("packages/model/index.js");
+const { DxfWorkerClient }=require("packages/dxf/client.js");
+const { annotationsToDxf, parseDxfDocument }=require("packages/dxf/index.js");
+const { AnnotationStore, LocalWorkspace }=require("packages/annotations/index.js");
+const $ = id => document.getElementById(id), q = s => document.querySelectorAll(s);
+const ICONS = { folder: 'M3 6h6l2 2h10v11H3z M3 10h18', save: 'M5 3h12l3 3v15H4V3z M8 3v6h8V3 M8 21v-8h8v8', export: 'M12 16V3 M7 8l5-5 5 5 M4 14v7h16v-7', help: 'M9 8a3 3 0 1 1 4 2.8L12 12v2 M12 17h.01 M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0', cursor: 'M5 3l14 10-7 1-3 7z', hand: 'M8 12V6a2 2 0 0 1 3 0V4a2 2 0 0 1 3 0v2a2 2 0 0 1 3 0v3a2 2 0 0 1 3 0v7l-4 5H9l-5-8a2 2 0 0 1 3-2z', line: 'M5 19L19 5 M3 17h4v4H3z M17 3h4v4h-4z', rect: 'M4 5h16v14H4z', circle: 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0', text: 'M4 5h16 M12 5v15 M8 20h8', cloud: 'M6 17a4 4 0 0 1-3-6 4 4 0 0 1 4-6 5 5 0 0 1 9-1 4 4 0 0 1 5 6 5 5 0 0 1-4 9 4 4 0 0 1-7 1 4 4 0 0 1-4-3z', ruler: 'M3 16L16 3l5 5L8 21z M7 12l3 3 M11 8l3 3 M15 4l3 3', undo: 'M9 4L4 9l5 5 M4 9h10a6 6 0 0 1 0 12', redo: 'M15 4l5 5-5 5 M20 9H10a6 6 0 0 0 0 12', fit: 'M3 9V3h6 M15 3h6v6 M21 15v6h-6 M9 21H3v-6 M8 8h8v8H8z', layers: 'M12 3L2 8l10 5 10-5z M2 12l10 5 10-5 M2 16l10 5 10-5', panel: 'M3 4h18v16H3z M15 4v16', history: 'M3 10a9 9 0 1 1 1 8 M3 4v6h6 M12 7v6l4 2', drawing: 'M6 2h8l5 5v15H6z M14 2v6h5 M9 12h7 M9 16h5', shield: 'M12 2l8 4v6c0 5-8 10-8 10S4 17 4 12V6z M8 11l3 3 5-6', report: 'M5 3h14v18H5z M9 7h6 M9 11h6 M9 15h6 M9 18h3', chip: 'M6 6h12v12H6z M9 9h6v6H9z M9 2v4 M15 2v4 M9 18v4 M15 18v4 M2 9h4 M2 15h4 M18 9h4 M18 15h4', grid: 'M3 3h18v18H3z M3 9h18 M3 15h18 M9 3v18 M15 3v18', pulse: 'M2 12h5l3-8 4 16 3-8h5', close: 'M5 5l14 14 M19 5L5 19', trash: 'M3 6h18 M9 6V3h6v3 M5 6l1 15h12l1-15 M10 10v7 M14 10v7', lock: 'M7 10V7a5 5 0 0 1 10 0v3 M5 10h14v11H5z M12 14v3' };
+function icon(name) { return `<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="${ICONS[name] || ICONS.chip}"/></svg>`; }
+function decorate(root = document) { for (const node of root.querySelectorAll('[data-icon]')) {
+    if (node.querySelector('svg'))
+        continue;
+    node.insertAdjacentHTML('afterbegin', icon(node.dataset.icon));
+} }
+const esc = x => String(x).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const number = n => Number(n || 0).toLocaleString('en-US'), bytes = n => n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(1) + ' KB' : (n / 1048576).toFixed(1) + ' MB';
+const waitFrame = () => new Promise(requestAnimationFrame);
+let toastTimer;
+function toast(message, error = false) { $('toast').textContent = message; $('toast').classList.toggle('error', error); $('toast').hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => $('toast').hidden = true, error ? 7500 : 4300); }
+function status(message, error = false) { $('status-message').textContent = message; $('status-dot').classList.toggle('error', error); }
+function busy(title, detail, cancel = false) { $('busy-title').textContent = title; $('busy-detail').textContent = detail; $('busy').hidden = false; $('cancel-import').hidden = !cancel; }
+function hideBusy() { $('busy').hidden = true; }
+function showError(error, fatal = false) { console.error(error); status(error.message || String(error), true); if (fatal) {
+    $('unsupported').hidden = false;
+    $('error-title').textContent = error.message || 'Unable to initialize the GPU';
+    $('error-detail').textContent = 'Aperture draws CAD entities exclusively with WebGPU compute shaders. No alternate renderer is substituted.';
+    $('error-extra').textContent = error.details || 'Serve the ZIP locally with npm start, or deploy dist/ to an HTTPS host. Check that your browser and graphics driver support WebGPU.';
+    $('engine-state').textContent = 'GPU UNAVAILABLE';
+}
+else
+    toast(error.message || String(error), true); hideBusy(); }
+function dialog(title, content, eyebrow = 'APERTURE CAD') { $('dialog-title').textContent = title; $('dialog-eyebrow').textContent = eyebrow; $('dialog-content').innerHTML = content; decorate($('dialog')); if (!$('dialog').open)
+    $('dialog').showModal(); }
+function closeDialog() { $('dialog').close(); }
+function download(data, name, type = 'application/json') { const blob = data instanceof Blob ? data : new Blob([typeof data === 'string' ? data : JSON.stringify(data, null, 2)], { type }); const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 15000); }
+const canvas = $('cad-canvas'), engine = new ComputeCad(canvas), annotations = new AnnotationStore(), workspace = new LocalWorkspace(), importer = new DxfWorkerClient();
+let font = makeBuiltinFont(), fontFile = null, sourceFile = null, sourceKind = 'demo', tool = 'select', ready = false, loading = false, gesture = null, space = false, annotationFrame = 0, annotationBusy = false, annotationDirty = false, annotationCommitDirty = false, lastHover = 0, lastTelemetryFrame = -1, benchmarking = false;
+const documents = new DocumentWorkspace();
+let documentQueue = Promise.resolve();
+const pointers = new Map();
+let pinch = null;
+const api = { engine, annotations, importer, workspace, saveWorkspace, restoreWorkspace, documents, openFiles, switchDocument, closeDocument, switchSpace, renderTabs, font, ready: null, loadDxf, loadStress, loadDemo, loadFeatures, ModelBuilder, parseDxfDocument, parseStrokeFont, parseTrueType, makeSyntheticModel, TYPE, FLAGS, rgba, version: '2.5.0' };
+globalThis.Aperture = api;
+const blocks = new BlockWorkbench({ engine, canvas, current:()=>documents.current, font:()=>font, run, enqueue:enqueueDocument,
+    dialog, closeDialog, download, toast, setTool, hint:message=>$('tool-hint').textContent=message,
+    quiet:quietAnnotations, clearPreview:async()=>{if(engine.model&&!engine.preparing)await engine.setPreview(annotations.buildPreview(font,engine.model,engine.annotationLayer));},
+    openDrawing:openBlockDrawing, commit:commitBlockDrawing, prepare:prepareBlockDrawing });
+api.blocks=blocks;api.BlockDrawing=BlockDrawing;
+function openBlockDrawing(drawing){return enqueueDocument(async()=>{
+    if(!ready||loading||benchmarking)throw new Error('The workbench is busy.');loading=true;busy('Opening '+drawing.name,'Retaining block definitions, attributes and editable reference identities.');
+    try {const file=new File([drawing.write()],drawing.name,{type:'application/dxf'}),model=await importer.parse(await file.arrayBuffer(),font,{name:drawing.name,document:true,editMap:'inserts'});
+        const doc=await useModel(model,{sourceKind:'dxf',sourceFile:file});doc.blockDrawing=drawing;doc.blockPrepared=true;blocks.onDocument();return doc;
+    }finally{loading=false;hideBusy();}
+});}
+function prepareBlockDrawing(drawing){return enqueueDocument(async()=>{if(documents.current?.blockDrawing!==drawing)return;await commitBlockDrawing(drawing,{dirty:false});});}
+async function commitBlockDrawing(drawing,{dirty=true}={}){
+    const doc=documents.current;if(!doc||doc.blockDrawing!==drawing)throw new Error('The edited drawing is no longer active.');
+    const oldModel=doc.model,oldSpace=doc.activeSpace;loading=true;engine.suspended=true;
+    busy('Preparing block edit','Parsing source parameters in a worker; retaining unchanged GPU pages.');
+    try{await quietAnnotations();snapshotDocument();const model=await importer.parse(new TextEncoder().encode(drawing.write()).buffer,font,{name:doc.name,document:true,editMap:'inserts'});
+        const size=DocumentWorkspace.modelBytes(model,doc.sourceFile);if(documents.residentBytes-doc.residentBytes+size>documents.maxResidentBytes)throw new Error('Block edit exceeds the open-document CPU budget.');
+        const oldLayers=new Map(engine.layers.slice(0,oldModel.layers.length).map(l=>[l.name,l]));model.layers=model.layers.map(l=>({...l,visible:oldLayers.get(l.name)?.visible??l.visible}));
+        await engine.reconcileModel(model);documents.replaceModel(doc.id,model);doc.blockPrepared=true;doc.activeSpace=model.spaces.some(sp=>sp.id===oldSpace)?oldSpace:'model';
+        // Preserve world camera coordinates across a changed per-space floating origin.
+        for(const [id,state] of doc.spaceStates){const before=oldModel.spaces?.find(sp=>sp.id===id)?.origin||oldModel.origin,after=model.spaces.find(sp=>sp.id===id)?.origin||model.origin;if(state.camera){state.camera.x+=before[0]-after[0];state.camera.y+=before[1]-after[1];}state.selected=0;}
+        if(engine.activeSpace?.id!==doc.activeSpace)engine.setSpace(doc.activeSpace,{fit:false});await restoreSpaceState(doc);doc.dirty=doc.dirty||dirty;
+        onModel(model);renderTabs();if(dirty)status('Block edit committed · '+(engine.metrics.blockPagesReused||0)+' GPU pages reused · '+(engine.metrics.blockEntityUploadBytes||0)+' geometry bytes uploaded');
+    }finally{loading=false;engine.suspended=false;hideBusy();engine.requestFrame();}
+}
+
+function setTool(value) { tool = value; canvas.parentElement.dataset.tool = value; q('[data-tool]').forEach(el => el.classList.toggle('active', el.dataset.tool === value)); $('tool-hint').textContent = ({ select: 'Wheel to zoom · Drag to pan · Click to select', pan: 'Drag to pan · Wheel or pinch to zoom', text: 'Click to place a text annotation', line: 'Drag to add a review line', rect: 'Drag to create a review box', circle: 'Drag from center to set the radius', cloud: 'Drag to create a revision cloud', measure: 'Drag to measure · computed on the GPU' })[value]; annotations.setPreview(null); }
+function updateLayers() { if (!ready || !engine.layers)
+    return; const filter = $('layer-filter').value.toLowerCase(); $('layer-count').textContent = engine.layers.length; $('layers').replaceChildren(); engine.layers.forEach((layer, index) => { if (!layer.name.toLowerCase().includes(filter))
+    return; const row = document.createElement('div'); row.className = 'layer-row' + (layer.visible ? '' : ' dimmed'); row.innerHTML = `<input type="checkbox" aria-label="Show ${esc(layer.name)}" ${layer.visible ? 'checked' : ''}><input class="layer-color" type="color" value="${colorHex(layer.color)}" aria-label="Color of ${esc(layer.name)}"><span class="layer-name" title="${esc(layer.name)}">${esc(layer.name)}</span>${layer.locked ? '<span class="layer-lock">' + icon('lock') + '</span>' : ''}`; row.querySelector('[type=checkbox]').onchange = e => { engine.updateLayer(index, { visible: e.target.checked }); row.classList.toggle('dimmed', !e.target.checked); }; row.querySelector('[type=color]').oninput = e => engine.updateLayer(index, { color: rgba(e.target.value) }); $('layers').append(row); }); }
+function updateAnnotations() { const items = annotations.items; $('annotation-count').textContent = items.length; $('undo').disabled = !annotations.undoStack.length; $('redo').disabled = !annotations.redoStack.length; $('annotations').innerHTML = items.length ? '' : '<p class="empty-hint">Draw a cloud, add a note, or measure a distance. Your source drawing stays untouched.</p>'; for (const item of items) {
+    const row = document.createElement('div');
+    row.className = 'annotation-item';
+    row.innerHTML = `<button>${esc(item.label)}<span>${item.entities.length} ${item.entities.length === 1 ? 'entity' : 'entities'} · ${esc(item.author)}</span></button><button class="icon-button" aria-label="Delete ${esc(item.label)}">${icon('trash')}</button>`;
+    row.firstElementChild.onclick = () => { const e = item.entities[0]; engine.camera.x = e.anchor[0] - engine.model.origin[0]; engine.camera.y = e.anchor[1] - engine.model.origin[1]; engine.requestFrame(); };
+    row.lastElementChild.onclick = () => annotations.remove(item.id);
+    $('annotations').append(row);
+} }
+async function flushAnnotations() { annotationFrame = 0; if (!ready || loading || benchmarking || !engine.model)
+    return; annotationDirty = true; if (annotationBusy)
+    return; annotationBusy = true; try {
+    while (annotationDirty) {
+        annotationDirty = false;
+        if (annotationCommitDirty) {
+            annotationCommitDirty = false;
+            const model = annotations.build(font, engine.model, engine.model.layers.length);
+            await engine.setAnnotations(model);
+        }
+        const preview = annotations.buildPreview(font, engine.model, engine.model.layers.length);
+        await engine.setPreview(preview);
+    }
+}
+catch (e) {
+    showError(e);
+}
+finally {
+    annotationBusy = false;
+} }
+annotations.addEventListener('change', e => { if (e.detail?.kind !== 'preview') {
+    annotationCommitDirty = true;
+    if (documents.current) { documents.current.dirty = true; renderTabs(); }
+    updateAnnotations();
+} if (!annotationFrame)
+    annotationFrame = requestAnimationFrame(flushAnnotations); });
+function frameUI() { const m = engine.metrics; $('cpu-ms').textContent = m.cpuMs.toFixed(2) + ' ms'; $('zoom-value').textContent = (engine.camera.zoom * 100 < .1 ? (engine.camera.zoom * 100).toFixed(3) : Math.round(engine.camera.zoom * 100)) + '%'; $('resolution').textContent = canvas.width + ' × ' + canvas.height; $('transfer-stats').textContent = '↑ ' + bytes(m.bytesUploaded) + '  ↓ ' + bytes(m.bytesReadback); }
+function metricsUI(m) {
+    $('gpu-ms').textContent = formatGpuTiming(m);
+    $('gpu-memory').textContent = bytes(m.gpuBytes || engine.gpuBytes);
+    $('visible-count').textContent = number(m.visible); $('glyph-count').textContent = m.glyphs === null ? '—' : number(m.glyphs);
+    $('visible-summary').textContent = number(m.visible) + ' candidates';
+    $('telemetry-note').textContent = (m.gpuTimingStatus === 'valid' || m.gpuTimingStatus === 'below-resolution' ? `GPU compute pass · frame ${m.timingSampleFrame ?? m.measuredFrame}. ` : `GPU time unavailable (${m.gpuTimingStatus || 'not sampled'}). `) +
+        ((m.timingBaseRasterized ?? m.sampledBaseRasterized) ? 'Base redrawn. ' : 'Base coverage reused. ') + `Counters from frame ${m.countersSampleFrame ?? m.measuredFrame ?? '—'}. ` + number(m.executedRasterWorkgroups) + ' raster workgroups. ' +
+        (m.proxyTexts ? number(m.proxyTexts) + ' text proxies. ' : 'No active text proxies. ') +
+        (m.curveCapHits ? 'WARNING: ' + number(m.curveCapHits) + ' curve sampling caps. ' : '') +
+        (m.fragmentOverflow ? 'ERROR: fragment capacity exceeded. ' : '') +
+        'Last uniform upload: ' + (m.frameUniformBytes || 0) + ' B. Diagnostics: ' + (m.telemetryWallMs || 0).toFixed(2) + ' ms wall time, outside GPU compute. Uploads, native clears, queue waits and presentation are excluded. ' + (m.paperViewportCount ? m.paperViewportCount + ' sheet viewports (' + (m.viewportCoverageHits || 0) + ' exact coverage hits); counts include repeated model instances. Glyph counts are not sampled for sheet instances. ' : 'Counts include guard-band candidates and logical glyph slots. ') + 'Allocation is an estimate.';
+    frameUI();
+}
+engine.addEventListener('frame', frameUI);
+engine.addEventListener('metrics', e => metricsUI(e.detail));
+engine.addEventListener('error', e => { if (engine.lost)
+    ready = false; showError(e.detail, !ready); });
+async function selectAt(x, y, add=false) { const epoch = engine.sceneEpoch; const id = await engine.pick(x, y); if (epoch !== engine.sceneEpoch) return; engine.selected = id; engine.requestFrame(); const blockRoot=blocks.selectEntity(id,{add}); const d = engine.describe(id); $('selection-id').textContent = id ? '#' + id : 'NONE'; if (!d) {
+    $('selection').innerHTML = '<div class="selection-placeholder">' + icon('cursor') + '</div><p>Select an entity to inspect its ID, source handle, and layer.</p>';
+    return;
+} const item = annotations.itemForEntity(id, engine.model.count); const type = Object.entries(TYPE).find(([, v]) => v === d.type)?.[0] || 'ENTITY'; $('selection').innerHTML = `<div class="selection-table"><span>Entity</span><span>${type}</span><span>GPU ID</span><span>${id}</span><span>Layer</span><span title="${esc(d.layer)}">${esc(d.layer)}</span><span>DXF handle</span><span>${esc(d.handle || '—')}</span><span>Storage</span><span>GPU-resident</span></div>${item ? '<button class="button wide small" id="delete-selection" style="margin-top:14px">Delete annotation</button>' : ''}`; if(blockRoot?.type==='INSERT'){$('selection').insertAdjacentHTML('beforeend',`<div class="block-selection-chip"><strong>INSERT · ${esc(blockRoot.block)}</strong><br>Source #${esc(blockRoot.handle)}${buttonBlockInspector()}</div>`);$('inspect-block-reference').onclick=()=>run(()=>blocks.referenceDialog());$('inspect-block-tree').onclick=()=>run(()=>blocks.showSelectionTree());} if (item)
+    $('delete-selection').onclick = () => { annotations.remove(item.id); engine.selected = 0; }; }
+function buttonBlockInspector(){return '<div><button class="button small" id="inspect-block-reference">Edit INSERT</button> <button class="button small" id="inspect-block-tree">Show in tree</button></div>';}
+function onModel(model) { $('drawing-name').textContent = model.name.toUpperCase(); $('drawing-short').textContent = model.name.replace(/\.dxf$/i, ''); $('source-kind').textContent = sourceKind === 'dxf' ? 'Local DXF · ' + (model.binary ? 'binary' : 'text') : sourceKind === 'stress' ? 'Generated directly on GPU' : 'Built-in engineering scene'; $('entity-summary').textContent = number(model.count) + ' entities'; $('diagnostic-count').textContent = model.diagnostics.length; $('engine-state').textContent = 'GPU RESIDENT · ' + model.pages.length + ' PAGES'; $('gpu-memory').textContent = bytes(engine.gpuBytes); $('selection-id').textContent = 'NONE'; updateLayers(); status(number(model.count) + ' entities · ' + model.pages.length + ' GPU pages · ' + model.diagnostics.length + ' import notices'); api.model = model; }
+function enqueueDocument(action) {
+    const job = documentQueue.then(action); documentQueue = job.catch(() => {}); return job;
+}
+function snapshotDocument() {
+    documents.capture({ spaceId: engine.activeSpace?.id || 'model', camera: engine.camera, selected: engine.selected,
+        items: annotations.items, undo: annotations.undoStack, redo: annotations.redoStack, layers: engine.layers,
+        display: { flags: engine.flags, settings: {...engine.settings}, compositing: engine.compositing } });
+}
+async function quietAnnotations() {
+    if(blocks?.placement||blocks?.pickPoint)await blocks.cancel();
+    if (annotationFrame) cancelAnimationFrame(annotationFrame); annotationFrame=0;
+    while (annotationBusy) await waitFrame();
+    gesture=null;pinch=null;pointers.clear();annotations.preview=null;annotationDirty=false;annotationCommitDirty=false;
+}
+function sourceFor(doc) { sourceKind=doc.sourceKind;sourceFile=doc.sourceFile;fontFile=doc.fontFile;font=doc.font;api.font=font;
+    $('font-name').textContent=(fontFile?.name || 'Aperture Engineering')+' · '+font.count+' glyphs'; }
+async function restoreSpaceState(doc) {
+    const state=documents.restore(doc.activeSpace,doc);
+    annotations.items=state.items;annotations.undoStack=state.undo;annotations.redoStack=state.redo;annotations.preview=null;
+    if(state.camera)engine.camera={...state.camera};engine.selected=state.selected;
+    await engine.setAnnotations(annotations.build(font,doc.model,doc.model.layers.length));
+    await engine.setPreview(annotations.buildPreview(font,doc.model,doc.model.layers.length));
+    annotationDirty=false;annotationCommitDirty=false;updateAnnotations();syncDisplay();renderTabs();metricsUI(engine.metrics);
+}
+async function activateDocument(doc,{remember=true}={}) {
+    await quietAnnotations();if(remember)snapshotDocument();engine.suspended=true;
+    try {
+        if(engine.font!==doc.font)await engine.setFont(doc.font);
+        await engine.setModel(doc.model);documents.activate(doc.id);sourceFor(doc);
+        if(doc.display){engine.flags=doc.display.flags;Object.assign(engine.settings,doc.display.settings);}
+        if(doc.model.spaces)engine.setSpace(doc.activeSpace);
+        if(doc.layers)doc.layers.forEach((l,i)=>{if(engine.layers[i])engine.updateLayer(i,l);});
+        if(doc.display?.compositing && !(engine.activeSpace?.kind==='paper'&&engine.activeSpace.viewports.some(v=>v.number!==1&&v.supported)))await engine.setCompositing(doc.display.compositing);
+        await restoreSpaceState(doc);onModel(doc.model);renderTabs();blocks.onDocument();
+    } finally {engine.suspended=false;engine.requestFrame();}
+}
+async function useModel(model,{sourceKind:kind='demo',sourceFile:file=null}={}) {
+    // Keep the old tab and its packed records until the candidate has uploaded successfully.
+    const previous=documents.current;await quietAnnotations();snapshotDocument();
+    const doc=documents.add(model,{sourceKind:kind,sourceFile:file,font,fontFile});
+    try {await activateDocument(doc,{remember:false});}
+    catch(error){documents.close(doc.id);if(previous)await activateDocument(previous,{remember:false});throw error;}
+    await waitFrame();engine.render();await engine.captureMetrics();return doc;
+}
+function switchDocument(id) { return enqueueDocument(async()=>{
+    if(!ready||benchmarking||documents.activeId===id)return;
+    const doc=documents.get(id);if(!doc)return;
+    const old=documents.current;loading=true;busy('Opening '+doc.name,'Uploading the existing packed model. DXF is not reparsed.');
+    try {await activateDocument(doc);}catch(e){if(old)await activateDocument(old,{remember:false});throw e;}
+    finally {loading=false;hideBusy();}
+}); }
+function switchSpace(id) { return enqueueDocument(async()=>{
+    if(!ready||benchmarking||!documents.current)return;loading=true;
+    try {await quietAnnotations();snapshotDocument();const doc=documents.current;
+        engine.suspended=true;const wasExact=engine.compositing==='exact';engine.setSpace(id);doc.activeSpace=id;
+        await restoreSpaceState(doc);onModel(doc.model);renderTabs();blocks.onDocument();
+        if(wasExact&&engine.compositing==='opaque')toast('Paper viewports use opaque composition. Ordered alpha remains available in Model.');
+    }finally{engine.suspended=false;loading=false;engine.requestFrame();}
+}); }
+function closeDocument(id) {return enqueueDocument(async()=>{
+    const doc=documents.get(id);if(!doc||!ready||benchmarking)return;
+    if(doc.dirty&&!confirm('Close '+doc.name+'? Unsaved block edits and review changes in this tab will be discarded.'))return;
+    if(id!==documents.activeId){documents.close(id);renderTabs();return;}
+    loading=true;try{await quietAnnotations();snapshotDocument();const index=documents.documents.indexOf(doc);
+        const next=documents.documents[index+1] || documents.documents[index-1];
+        if(next){await activateDocument(next,{remember:false});documents.close(id);}
+        else {await engine.device.queue.onSubmittedWorkDone();engine.disposeScene();documents.close(id);
+            annotations.items=[];annotations.undoStack=[];annotations.redoStack=[];annotations.preview=null;sourceFile=null;
+            // An empty resident Model keeps the canvas, controls and compute path valid without retaining a closed file.
+            const empty=new ModelBuilder(font,{name:'No open drawing'}).finish();empty.spaces=[{id:'model',name:'Model',kind:'model',pageIndices:[],count:0,viewports:[]}];empty.initialSpace='model';
+            await engine.setModel(empty);api.model=null;updateAnnotations();$('drawing-short').textContent='Open a drawing';$('drawing-name').textContent='NO OPEN DRAWING';$('entity-summary').textContent='0 entities';$('layers').replaceChildren();}
+        renderTabs();metricsUI(engine.metrics);blocks.onDocument();
+    }finally{loading=false;engine.requestFrame();}
+});}
+function renderTabs() {
+    const focusDocument=document.activeElement?.dataset.documentId,focusSpace=document.activeElement?.dataset.spaceId;
+    const tabs=$('file-tabs'),fileScroll=tabs.scrollLeft,spaceScroll=$('space-tabs').scrollLeft;tabs.replaceChildren();
+    for(const doc of documents.documents){const row=document.createElement('div');row.className='file-tab'+(doc.id===documents.activeId?' active':'');
+        const b=document.createElement('button');b.className='file-tab-title';b.type='button';b.role='tab';b.id=doc.id+'-tab';b.dataset.documentId=doc.id;b.setAttribute('aria-selected',String(doc.id===documents.activeId));b.setAttribute('aria-controls','canvas-wrap');b.tabIndex=doc.id===documents.activeId?0:-1;b.textContent=doc.name+(doc.dirty?' •':'');b.title=doc.name+' · '+number(doc.model.count)+' entities';b.onclick=()=>run(()=>switchDocument(doc.id));
+        const close=document.createElement('button');close.className='file-tab-close';close.type='button';close.setAttribute('aria-label','Close '+doc.name);close.textContent='×';close.onclick=()=>run(()=>closeDocument(doc.id));row.append(b,close);tabs.append(row);
+    }
+    if(!documents.documents.length){const t=document.createElement('span');t.className='empty-tabs';t.textContent='Open DXF drawings · multiple files supported';tabs.append(t);}
+    const spaces=$('space-tabs');spaces.replaceChildren();for(const sp of documents.spaces()){const b=document.createElement('button');b.className='view-tab'+(sp.id===documents.current.activeSpace?' active':'');b.role='tab';b.dataset.spaceId=sp.id;b.setAttribute('aria-selected',String(sp.id===documents.current.activeSpace));b.tabIndex=sp.id===documents.current.activeSpace?0:-1;b.textContent=sp.name;b.title=(sp.kind==='model'?'Model space':'Paper space')+' · '+number(sp.count)+' entities';b.onclick=()=>run(()=>switchSpace(sp.id));spaces.append(b);}
+    const doc=documents.current, select=$('named-views');select.replaceChildren(new Option('Saved views & viewports…',''));
+    if(doc){const all=[...(doc.model.namedViews || []),...documents.spaces(doc).flatMap(sp=>(sp.viewports || []).filter(v=>v.number!==1).map(v=>({...v,label:sp.name+' / '+v.name+(v.status===0?' (off)':'')})))];
+        all.forEach((v,i)=>{const option=new Option((v.label||v.name)+(v.supported?'':' · unsupported projection'),String(i));option.disabled=!v.supported;select.add(option);});select.disabled=!all.length;
+        select.onchange=()=>{const view=all[Number(select.value)];if(select.value==='')return;run(()=>enqueueDocument(async()=>{if(!ready||loading)return;loading=true;engine.suspended=true;try{await quietAnnotations();snapshotDocument();engine.setNamedView(view);doc.activeSpace=engine.activeSpace?.id || 'model';const camera={...engine.camera};await restoreSpaceState(doc);engine.camera=camera;renderTabs();}finally{loading=false;engine.suspended=false;engine.requestFrame();}}));};
+    }else select.disabled=true;
+    $('document-space').textContent=doc?(documents.spaces(doc).find(s=>s.id===doc.activeSpace)?.name || 'Model'):'EMPTY';
+    tabs.scrollLeft=fileScroll;spaces.scrollLeft=spaceScroll;
+    if(doc)$('canvas-wrap').setAttribute('aria-labelledby',doc.id+'-tab');else $('canvas-wrap').removeAttribute('aria-labelledby');
+    const focus=[...tabs.querySelectorAll('[role=tab]'),...spaces.querySelectorAll('[role=tab]')].find(b=>(focusDocument&&b.dataset.documentId===focusDocument)||(focusSpace&&b.dataset.spaceId===focusSpace));
+    focus?.focus({preventScroll:true});tabs.querySelector('[aria-selected=true]')?.scrollIntoView({block:'nearest',inline:'nearest'});
+}
+function tabKeys(event) {
+    if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+    const buttons=[...event.currentTarget.querySelectorAll('[role=tab]')];if(!buttons.length)return;
+    let index=buttons.indexOf(event.target);if(index<0)return;
+    index=event.key==='Home'?0:event.key==='End'?buttons.length-1:(index+(event.key==='ArrowLeft'?-1:1)+buttons.length)%buttons.length;
+    event.preventDefault();buttons[index].focus();buttons[index].click();
+}
+$('file-tabs').addEventListener('keydown',tabKeys);$('space-tabs').addEventListener('keydown',tabKeys);
+function loadDemo(){return enqueueDocument(loadDemoInternal);}
+function loadFeatures(){return enqueueDocument(loadFeaturesInternal);}
+function loadStress(count=1000000,mode=1){return enqueueDocument(()=>loadStressInternal(count,mode));}
+function loadDxf(file){return enqueueDocument(()=>loadDxfInternal(file));}
+function openFiles(files){const list=Array.from(files);return enqueueDocument(async()=>{const results=[];for(const file of list){try{if(!/\.dxf$/i.test(file.name))throw new Error(file.name+': not a DXF drawing.');const doc=await loadDxfInternal(file);if(doc)results.push(doc);}catch(error){showError(error);}}return results;});}
+async function loadDemoInternal() { if (loading || benchmarking || !ready)
+    return; loading = true; busy('Opening Eastworks campus', 'Building the original sample drawing and uploading compact GPU pages.'); try {
+    await useModel(makeCampus(font),{sourceKind:'demo'});
+}
+finally {
+    loading = false;
+    hideBusy();
+} }
+async function loadFeaturesInternal() {
+    if (loading || benchmarking || !ready) return;
+    loading = true; busy('Opening the compute feature gallery', 'Uploading parameter records for hatches, dimensions, text and overlapping transparent fills.');
+    try { await useModel(makeFeatureGallery(font),{sourceKind:'features'}); }
+    finally { loading = false; hideBusy(); }
+}
+async function loadStressInternal(count = 1000000, mode = 1) { if (loading || benchmarking || !ready)
+    return; loading = true; busy('Generating ' + number(count) + ' entities on the GPU', mode === 2 ? 'Every text entity receives a unique eight-digit identifier. No CPU glyph expansion.' : 'Raw entities, transforms and bounds are created by compute kernels.'); await waitFrame(); try {
+    await useModel(makeSyntheticModel(font, count, mode),{sourceKind:'stress'});
+}
+finally {
+    loading = false;
+    hideBusy();
+} }
+async function loadDxfInternal(file) { if (loading || benchmarking || !ready)
+    return; loading = true; busy('Importing ' + file.name, 'Parsing DXF records in an isolated worker. Your drawing never leaves this device.', true); try {
+    const buffer = await file.arrayBuffer();
+    const model = await importer.parse(buffer, font, { name: file.name, document: true, editMap: 'inserts', onProgress: p => { $('busy-detail').textContent = p.phase + ' · ' + number(p.entities) + ' entities'; } });
+    $('cancel-import').hidden = true;
+    busy('Preparing GPU model', 'Projecting transforms, laying out glyphs, computing bounds and building the GPU pages.');
+    const doc = await useModel(model,{sourceKind:'dxf',sourceFile:file});
+    if (model.diagnostics.length)
+        toast('Imported with ' + model.diagnostics.length + ' diagnostic categories. Review Import diagnostics.');
+    return doc;
+}
+catch (e) {
+    if (e.name === 'AbortError')
+        toast('DXF import cancelled.');
+    else
+        throw e;
+}
+finally {
+    loading = false;
+    hideBusy();
+} }
+async function run(action) { try {
+    await action();
+}
+catch (e) {
+    showError(e);
+} }
+function showReport() { const m = engine.model; if (!m) {
+    toast('Open a drawing first.');
+    return;
+} dialog('Import diagnostics', `<p class="dialog-intro">${esc(m.name)} · ${number(m.count)} rendered entities · ${number(m.sourceCount ?? m.count)} source records. Unsupported constructs and substitutions are reported here; an empty report is not a claim of full DXF conformance.</p>${[...m.diagnostics,...(font.diagnostics || []).map(message=>({code:'FONT-LAYOUT',count:1,message}))].length ? [...m.diagnostics,...(font.diagnostics || []).map(message=>({code:'FONT-LAYOUT',count:1,message}))].map(d => `<div class="report-row"><strong>${esc(d.code)}</strong><span>${number(d.count)} occurrences</span><p>${esc(d.message)}</p></div>`).join('') : '<div class="lab-note">No import diagnostics were emitted for this drawing.</div>'}<div class="lab-options"><button class="button" id="export-report">Export report JSON</button></div>`, 'DXF / NORMALIZATION'); $('export-report').onclick = () => download({ name: m.name, diagnostics: m.diagnostics, header: m.header || {}, count: m.count }, 'aperture-import-report.json'); }
+function showHelp() {
+    dialog('GPU-resident by construction.', `<p class="dialog-intro">Aperture 2 is a local-first 2D drawing and review workbench. CAD marks, text, pattern evaluation, dimensions, picking and compositing use WebGPU compute pipelines. HTML and CSS provide the workbench interface.</p>
+    <div class="help-grid"><div><h3>Navigation & review</h3><div class="shortcuts"><kbd>Wheel / pinch</kbd><span>Pointer-centered zoom</span><kbd>Drag / Space</kbd><span>Pan the drawing</span><kbd>F</kbd><span>Fit drawing extents</span><kbd>V / H</kbd><span>Select / Pan</span><kbd>L / R / C</kbd><span>Line / Box / Circle</span><kbd>T / M</kbd><span>Text / Measure</span><kbd>G</kbd><span>Compute grid</span><kbd>Ctrl / ⌘ + O</kbd><span>Open DXF</span><kbd>Ctrl / ⌘ + Z</kbd><span>Undo annotations</span><kbd>Shift + Ctrl / ⌘ + Z</kbd><span>Redo annotations</span><kbd>Escape</kbd><span>Cancel / Select</span></div>
+    <h3>Two render modes</h3><p>Opaque CAD prioritizes frame work reduction: batched small entities, cached visibility and separate base/overlay coverage. Ordered alpha uses a bounded fragment arena and source-over in entity order; it costs more and reports overflow explicitly.</p></div>
+    <div><h3>Files, layouts and views</h3><p>Open several DXF files at once or drop a group of drawings. File tabs retain independent cameras, layer settings and per-layout reviews. The second tab strip lists Model and every paper layout, including empty sheets. The saved-view menu lists named VIEW records and paper viewports. Rectangular top-XY viewports compose model geometry on the sheet, including twist and viewport-frozen layers. Unsupported 3D/perspective/nonrectangular views stay listed with diagnostics. Only the active file occupies GPU model memory; switching its layouts reuses resident geometry.</p><h3>Implemented in this revision</h3><p>Pattern hatches with line, bulge, conic and rational-spline boundaries; seven parametric dimension kinds; SHP/SHX GPU glyph compilation; horizontal OpenType single substitutions, ligatures and pair/class kerning; closed-form quadratic glyph distance; fixed-record GPU edits.</p>
+    <h3>Conformance boundaries</h3><p>This remains a top/XY engine, not a 3D solid modeler. Full DXF rewrite, associative constraints, complete DIMSTYLE, wide polyline ribbons, gradient hatches and complex linetypes remain outside this build. The original file can be exported unchanged.</p><p>Font support is bounded: no general bidirectional or complex-script shaping, variable-font deltas, CFF, BIGFONT, or automatic per-style font resolution. Unsupported layout lookups produce diagnostics.</p>
+    <p>Use HTTPS or localhost in a WebGPU-enabled browser. Browser/driver GPU validation and measured frame times must be obtained on the target hardware. This package does not assert unmeasured throughput.</p></div></div>
+    <div class="lab-note" style="margin-top:22px">The host parses file containers and serializes compact parameters. All CAD geometry evaluation and drawing kernels stay on the GPU. Analytic curves use f32 arithmetic; general spline sampling still has explicit caps rather than a universal geometric-error proof.</div>`, 'ARCHITECTURE / SHORTCUTS');
+}
+function showLab() {
+    dialog('Less frame work. More drawing.', `<p class="dialog-intro">Inspect the new compute features, generate million-entity workloads, or compare optimization-off and optimization-on profiles on the same camera trace. No generated result is presented as a measurement.</p>
+    <div class="lab-grid">${[[100000,1,'100 K','Mixed entities','Pipeline validation'],[1000000,1,'1 M','Mixed entities','60% lines · 30% text · 10% circles'],[3000000,1,'3 M','Mixed entities','Preflight GPU memory guard'],[100000,2,'100 K','Unique TEXT','~1.2 million logical slots'],[1000000,2,'1 M','Unique TEXT','~12 million logical slots'],[2000000,2,'2 M','Unique TEXT','~24 million logical slots']].map(([count,mode,title,desc,note])=>`<button class="lab-card ${mode===2?'text-card':''}" data-count="${count}" data-mode="${mode}"><strong>${title}</strong><span>${desc}</span><small>${note}</small></button>`).join('')}</div>
+    <div class="lab-options"><button class="button primary" id="load-features">Open feature gallery</button><button class="button" id="load-demo">Campus sample</button></div>
+    <div class="lab-controls"><label class="setting-row">Small-entity batching<input id="perf-batch" type="checkbox" ${engine.planner.batch?'checked':''}></label>
+    <label class="setting-row">Coverage / visibility cache<input id="perf-cache" type="checkbox" ${engine.planner.cache?'checked':''}></label>
+    <label class="setting-row">Paper viewport caches<input id="perf-paper-cache" type="checkbox" ${engine.paperCache?'checked':''}></label>
+    <label class="setting-row">Visibility guard<select id="perf-guard"><option value="0">None</option><option value="0.25">25% per side</option><option value="0.5">50% per side</option></select></label>
+    <label class="setting-row">GPU queue compaction<select id="perf-compaction"><option value="mask">Bit mask · default</option><option value="scan">Prefix scan · reference</option></select></label>
+    <label class="setting-row">Compositing<select id="perf-alpha"><option value="opaque">Opaque CAD · fast</option><option value="exact">Ordered alpha · bounded</option></select></label>
+    <label class="setting-row">Adaptive resolution · 12 ms target<input id="perf-resolution" type="checkbox" ${engine.governor?'checked':''} ${engine.hasTimestamps?'':'disabled'}></label>
+    <label class="setting-row">Benchmark quality<select id="benchmark-quality"><option value="exact">Exact text · fixed resolution</option><option value="current">Current text mode · fixed resolution</option></select></label></div>
+    <div class="lab-note">Exact text disables density proxies. Adaptive resolution is opt-in, requires real GPU timestamps and changes pixel density; it is disabled for A/B runs. Paper queues and exact coverage share a ${bytes(engine.options.paperCacheBudget)} optional cache cap; integer-phase pan can reuse coverage, subpixel pan rerasterizes. Ordered alpha uses extra memory and can be slower under overlap. The reference profile is this same v2.5 renderer with scan compaction, batching and caches disabled—not the previous release.</div>
+    <div class="lab-options"><button class="button primary" id="benchmark">Run moving-camera A/B · 60 + 60 frames</button></div>
+    <h3 class="dialog-subtitle">Measured results</h3><pre id="benchmark-result" class="benchmark-result">No benchmark has been run in this session.</pre><button id="download-benchmark" class="button small" hidden>Export raw benchmark JSON</button>`, 'COMPUTE LAB / REPRODUCIBLE PROFILES');
+    q('.lab-card').forEach(b=>b.onclick=()=>{closeDialog();run(()=>loadStress(Number(b.dataset.count),Number(b.dataset.mode)));});
+    $('load-demo').onclick=()=>{closeDialog();run(loadDemo);}; $('load-features').onclick=()=>{closeDialog();run(loadFeatures);};
+    $('perf-compaction').value=engine.compaction; $('perf-guard').value=String(engine.planner.guardBand); $('perf-alpha').value=engine.compositing;
+    const update=()=>run(()=>engine.setPerformance({cache:$('perf-cache').checked,batch:$('perf-batch').checked,guardBand:Number($('perf-guard').value),compaction:$('perf-compaction').value,paperCache:$('perf-paper-cache').checked}));
+    $('perf-batch').onchange=update; $('perf-cache').onchange=update; $('perf-guard').onchange=update; $('perf-compaction').onchange=update; $('perf-paper-cache').onchange=update;
+    $('perf-alpha').onchange=()=>run(async()=>{try {await engine.setCompositing($('perf-alpha').value);}finally {$('perf-alpha').value=engine.compositing;}});
+    $('perf-resolution').onchange=()=>run(()=>{try {engine.setAdaptiveResolution($('perf-resolution').checked?{targetMs:12}:null);if(engine.governor)$('auto-metrics').checked=true;}finally {$('perf-resolution').checked=!!engine.governor;}});
+    $('benchmark').onclick=()=>run(benchmark);
+    if (api.lastBenchmark) displayBenchmark(api.lastBenchmark);
+    if (!ready) { for (const node of $('dialog-content').querySelectorAll('button,input,select')) node.disabled=true; $('benchmark-result').textContent='WebGPU is unavailable here. The controls become active after the engine initializes on a supported HTTPS/localhost page.'; }
+}
+function displayBenchmark(data) {
+    if (!$('benchmark-result')) return;
+    $('benchmark-result').textContent=JSON.stringify({...data,profiles:data.profiles.map(({samples,...summary})=>summary)},null,2);
+    $('download-benchmark').hidden=false; $('download-benchmark').onclick=()=>download(data,'aperture-benchmark-v2.5.json');
+}
+async function benchmark() {
+    if (!ready || loading || benchmarking) return;
+    benchmarking=true; gesture=null; pointers.clear(); pinch=null;
+    const controls=[...$('dialog-content').querySelectorAll('button,input,select')].map(node=>[node,node.disabled]);
+    const oldFlags=engine.flags, exact=$('benchmark-quality').value==='exact';
+    controls.forEach(([node])=>node.disabled=true);
+    $('benchmark-result').textContent='Measuring identical moving-camera traces. Raw CPU encode, GPU timestamp and queue-completion samples remain separate.';
+    try {
+        if (exact) engine.flags &= ~2;
+        const data=await engine.benchmarkProfiles({frames:60,warmup:8,panPixels:160});
+        Object.assign(data,{application:'Aperture CAD',version:api.version,browser:navigator.userAgent,scene:engine.model.name});
+        api.lastBenchmark=data; displayBenchmark(data); toast('A/B trace captured on this GPU. Inspect the raw result before drawing conclusions.');
+    } catch(error) { if($('benchmark-result')) $('benchmark-result').textContent='No valid result: '+error.message; throw error; }
+    finally { engine.flags=oldFlags; syncDisplay(); benchmarking=false; controls.forEach(([node,disabled])=>{if(node.isConnected)node.disabled=disabled;});engine.requestFrame(); }
+}
+function showExport() { dialog('Keep your work portable.', `<p class="dialog-intro">Annotations are independent of the source drawing. Export them losslessly as JSON, or exchange supported review entities as a DXF overlay. Local workspace saves include the original file and camera state.</p><div class="export-grid"><button class="export-card" id="export-png"><strong>Viewport snapshot · PNG</strong><span>Capture the current compute-rendered surface at its current pixel resolution.</span></button><button class="export-card" id="export-json"><strong>Annotations · JSON</strong><span>Lossless review groups, text, measurement marks, colors and revision clouds.</span></button><button class="export-card" id="export-dxf"><strong>Review overlay · DXF</strong><span>Export annotation geometry as a separate editable exchange drawing.</span></button><button class="export-card" id="import-json"><strong>Import annotations</strong><span>Replace current annotation groups with a previously exported JSON file.</span></button></div><div class="lab-options">${documents.current?.blockDrawing?'<button class="button primary" id="export-edited">Edited drawing · BLOCK / INSERT DXF</button>':''}${sourceFile?'<button class="button" id="export-original">Original source DXF · unchanged</button>':''}<button class="button" id="save-dialog">Save local workspace</button><button class="button" id="restore-dialog">Restore saved workspace</button></div>`, 'LOCAL FILES / EXPORT'); if($('export-edited'))$('export-edited').onclick=()=>run(()=>blocks.exportDrawing()); if ($('export-original')) $('export-original').onclick = () => download(sourceFile, sourceFile.name, 'application/dxf'); $('export-png').onclick = () => run(async () => { download(await engine.exportPng(), 'aperture-viewport.png'); toast('PNG exported.'); }); $('export-json').onclick = () => download(annotations.toJSON(), 'aperture-annotations.json'); $('export-dxf').onclick = () => run(() => download(annotationsToDxf(annotations.items.flatMap(x => x.entities)), 'aperture-review.dxf', 'application/dxf')); $('import-json').onclick = () => $('annotations-file').click(); $('save-dialog').onclick = () => run(saveWorkspace); $('restore-dialog').onclick = () => { closeDialog(); run(restoreWorkspace); }; }
+function saveWorkspace() { return enqueueDocument(async()=>{
+    if(!ready||loading||benchmarking)return;snapshotDocument();
+    const data={version:3,activeIndex:documents.documents.findIndex(d=>d.id===documents.activeId),savedAt:new Date().toISOString(),
+        performance:{cache:engine.planner.cache,batch:engine.planner.batch,guardBand:engine.planner.guardBand,compaction:engine.compaction},
+        documents:documents.documents.map(d=>({sourceKind:d.sourceKind,sourceFile:d.sourceFile,fontFile:d.fontFile,synthetic:d.model.synthetic || null,
+            activeSpace:d.activeSpace,spaceStates:[...d.spaceStates],layers:d.layers,display:d.display,blockState:d.blockDrawing?.toState()||null}))};
+    await workspace.save(data);for(const doc of documents.documents)doc.dirty=false;renderTabs();toast('All '+data.documents.length+' drawing tabs and layout reviews saved in this browser.');
+});}
+async function parseLocalFont(file,previous=font,missing=[]) {
+    if(!file)return makeBuiltinFont();const buffer=await file.arrayBuffer();
+    return /\.(shx|shp)$/i.test(file.name)?parseStrokeFont(buffer,{name:file.name}):parseTrueType(buffer,[...new Set([...previous.map.keys(),...missing.map(c=>c.codePointAt(0))])]);
+}
+async function sourceModel(entry,face) {
+    if(entry.blockDrawing||entry.blockState){const drawing=entry.blockDrawing||BlockDrawing.fromState(entry.blockState);return importer.parse(new TextEncoder().encode(drawing.write()).buffer,face,{name:drawing.name,document:true,editMap:'inserts'});}
+    if(entry.sourceKind==='dxf'&&entry.sourceFile)return importer.parse(await entry.sourceFile.arrayBuffer(),face,{name:entry.sourceFile.name,document:true,editMap:'inserts'});
+    if(entry.sourceKind==='features')return makeFeatureGallery(face);
+    if(entry.synthetic)return makeSyntheticModel(face,entry.synthetic.total,entry.synthetic.mode);
+    return makeCampus(face);
+}
+function restoreWorkspace() {return enqueueDocument(async()=>{
+    if(!ready||loading||benchmarking)return;const saved=await workspace.load();if(!saved){toast('There is no saved workspace in this browser.');return;}
+    // v2 migration opens a new document; never overwrite an unsaved open tab.
+    const entries=saved.version===3?saved.documents:[{...saved,activeSpace:'model',display:{flags:saved.flags,settings:saved.settings,compositing:saved.compositing},
+        spaceStates:[['model',{camera:saved.camera,items:saved.annotations?.items || [],undo:[],redo:[],selected:0}]]}];
+    if(!Array.isArray(entries)||entries.length>documents.maxDocuments)throw new Error('Invalid saved document list.');
+    if(entries.length+documents.documents.length>documents.maxDocuments)throw new Error('Close some tabs before restoring this workspace; no tabs have been replaced.');
+    loading=true;busy('Restoring saved drawing tabs','Rebuilding packed models from browser-local source files. Existing tabs are retained.');
+    const added=[];try{await quietAnnotations();snapshotDocument();
+        for(const entry of entries){const face=await parseLocalFont(entry.fontFile),model=await sourceModel(entry,face),doc=documents.add(model,{...entry,font:face});
+            doc.activeSpace=documents.spaces(doc).some(s=>s.id===entry.activeSpace)?entry.activeSpace:'model';
+            if(entry.blockState){doc.blockDrawing=BlockDrawing.fromState(entry.blockState);doc.blockPrepared=true;}doc.spaceStates=new Map(entry.spaceStates || []);doc.layers=entry.layers;doc.display=entry.display;added.push(doc);}
+        if(saved.performance)engine.setPerformance(saved.performance);
+        if(added.length)await activateDocument(added[Math.max(0,Math.min(added.length-1,saved.activeIndex || 0))],{remember:false});
+        toast('Restored '+added.length+' saved tabs. Existing open drawings were kept.');
+    }finally{loading=false;hideBusy();renderTabs();}
+});}
+function replaceFont(file) {return enqueueDocument(async()=>{
+    if(!ready||loading||benchmarking)return;loading=true;engine.suspended=true;
+    const doc=documents.current,oldFont=font,oldFile=fontFile,oldModel=doc?.model;
+    try{await quietAnnotations();snapshotDocument();const parsed=await parseLocalFont(file,font,engine.model?.missing || []);
+        if(doc){const model=await sourceModel({...doc,synthetic:doc.model.synthetic},parsed);documents.replaceModel(doc.id,model);doc.font=parsed;doc.fontFile=file;
+            try{await activateDocument(doc,{remember:false});}catch(error){documents.replaceModel(doc.id,oldModel);doc.font=oldFont;doc.fontFile=oldFile;await activateDocument(doc,{remember:false});throw error;}
+            doc.dirty=true;renderTabs();
+        }else{await engine.setFont(parsed);font=parsed;fontFile=file;api.font=parsed;}
+        if(parsed.diagnostics?.length)toast('Font loaded with '+parsed.diagnostics.length+' explicit notices; see Import diagnostics.');
+    }finally{loading=false;engine.suspended=false;engine.requestFrame();}
+});}
+function syncDisplay() { $('grid').classList.toggle('active', !!(engine.flags & 1)); $('exact').classList.toggle('active', !(engine.flags & 2)); $('text-quality').value = engine.flags & 2 ? 'adaptive' : 'exact'; $('view-quality').textContent = engine.flags & 2 ? 'ADAPTIVE TEXT' : 'EXACT TEXT'; $('monochrome').checked = !!(engine.flags & 4); $('curve-quality').value = String(engine.settings.curveTolerance); $('stroke-width').value = String(engine.settings.strokeWidth); }
+function noteAt(point) { const epoch=engine.sceneEpoch;dialog('Place a text annotation', `<form class="note-form" id="note-form"><label for="note-text">Review note</label><textarea id="note-text" required maxlength="16384" placeholder="Add your note…">REVIEW: </textarea><div class="note-fields"><div><label for="note-height">Height · units</label><input type="number" id="note-height" min="0.000001" step="any" value="${(12 / engine.camera.zoom).toPrecision(4)}" required></div><div><label for="note-color">Ink</label><input type="color" id="note-color" value="#ffb05c"></div><button class="button primary" type="submit">Place annotation</button></div></form>`, 'REVIEW / TEXT'); $('note-text').focus(); $('note-text').setSelectionRange(8, 8); $('note-form').onsubmit = e => { e.preventDefault(); if(epoch!==engine.sceneEpoch){closeDialog();toast('The drawing view changed; place the note again.');return;} const text = $('note-text').value, height = Number($('note-height').value); if (!(height > 0 && Number.isFinite(height)))
+    return; annotations.add([{ type: TYPE.TEXT, anchor: point, p: [height, 1, 0, 0], text, color: rgba($('note-color').value) }], { label: text.slice(0, 48) }); closeDialog(); }; }
+function geometryFor(kind, a, b, preview = true) { const dx = b[0] - a[0], dy = b[1] - a[1], color = rgba(preview ? '#ddc27e' : '#ffb05c'); if (kind === 'line' || kind === 'measure')
+    return [{ type: TYPE.LINE, anchor: a, p: [dx, dy, 0, 0], color }]; if (kind === 'rect')
+    return [{ type: TYPE.POLYLINE, anchor: a, points: [a, [b[0], a[1]], b, [a[0], b[1]]], flags: FLAGS.CLOSED, color }]; if (kind === 'circle')
+    return [{ type: TYPE.ELLIPSE, anchor: a, p: [Math.hypot(dx, dy), 0, 1, 0], q: [0, Math.PI * 2, 0, 0], color }]; if (kind === 'cloud') {
+    const origin = [Math.min(a[0], b[0]), Math.min(a[1], b[1])];
+    return [{ type: TYPE.CLOUD, anchor: origin, p: [Math.abs(dx), Math.abs(dy), 0, 0], q: [18 / engine.camera.zoom, 0, 0, 0], color }];
+} return []; }
+async function finishGeometry(kind, a, b) { const epoch=engine.sceneEpoch; if (kind === 'measure') {
+    const m = await engine.measure(a, b);
+    if (!m || epoch !== engine.sceneEpoch)
+        return;
+    const height = 11 / engine.camera.zoom;
+    annotations.add([{ type: TYPE.LINE, anchor: a, p: [b[0] - a[0], b[1] - a[1], 0, 0], measurement: true, color: rgba('#bbacff') }, { type: TYPE.TEXT, anchor: [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2 + height * .8], p: [height, 1, 0, 0], text: m[0].toFixed(3) + ' units', measurement: true, color: rgba('#bbacff') }, { type: TYPE.POINT, anchor: a, measurement: true, color: rgba('#bbacff') }, { type: TYPE.POINT, anchor: b, measurement: true, color: rgba('#bbacff') }], { label: 'Measure · ' + m[0].toFixed(3) });
+    toast('GPU length ' + m[0].toFixed(6) + ' · ΔX ' + m[1].toFixed(4) + ' · ΔY ' + m[2].toFixed(4));
+}
+else
+    annotations.add(geometryFor(kind, a, b, false), { label: ({ line: 'Review line', rect: 'Review box', circle: 'Review circle', cloud: 'Revision cloud' })[kind] }); }
+function position(e) { const r = canvas.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+function pinchState() { const p = [...pointers.values()]; return { distance: Math.hypot(p[1][0] - p[0][0], p[1][1] - p[0][1]), center: [(p[0][0] + p[1][0]) / 2, (p[0][1] + p[1][1]) / 2] }; }
+canvas.addEventListener('pointerdown', e => { if (!ready || loading || benchmarking || !engine.model)
+    return; if(blocks.pointerDown(e,space||tool==='pan')){e.preventDefault();canvas.focus();return;} e.preventDefault(); canvas.focus(); canvas.setPointerCapture(e.pointerId); const p = position(e); pointers.set(e.pointerId, p); if (pointers.size === 2) {
+    gesture = null;
+    annotations.setPreview(null);
+    pinch = pinchState();
+    return;
+} const pan = e.button === 1 || e.button === 2 || space || tool === 'pan'; gesture = { kind: pan ? 'pan' : tool, start: p, last: p, world: engine.worldAt(...p), moved: 0 }; });
+canvas.addEventListener('pointermove', e => { if (!ready || !engine.model || loading || benchmarking)
+    return; const p = position(e), world = engine.worldAt(...p); $('cursor-position').textContent = 'X ' + world[0].toFixed(3) + '   Y ' + world[1].toFixed(3); if (pointers.has(e.pointerId))
+    pointers.set(e.pointerId, p); if (pointers.size >= 2 && pinch) {
+    const current = pinchState();
+    engine.pan(current.center[0] - pinch.center[0], current.center[1] - pinch.center[1]);
+    if (pinch.distance > 0)
+        engine.zoomAt(...current.center, current.distance / pinch.distance);
+    pinch = current;
+    return;
+} if(!gesture&&blocks.pointerMove(e))return; if (gesture) {
+    const dx = p[0] - gesture.last[0], dy = p[1] - gesture.last[1];
+    gesture.moved = Math.max(gesture.moved, Math.hypot(p[0] - gesture.start[0], p[1] - gesture.start[1]));
+    if (gesture.kind === 'pan' || gesture.kind === 'select')
+        engine.pan(dx, dy);
+    else if (gesture.kind !== 'text')
+        annotations.setPreview(geometryFor(gesture.kind, gesture.world, world));
+    gesture.last = p;
+}
+else if (tool === 'select' && !engine.queryBusy && performance.now() - lastHover > 120) {
+    lastHover = performance.now();
+    const epoch=engine.sceneEpoch;engine.pick(...p, 3).then(id => { if (epoch===engine.sceneEpoch && id !== engine.hovered) {
+        engine.hovered = id;
+        engine.requestFrame();
+    } }).catch(e => showError(e));
+} });
+async function pointerUp(e, cancelled = false) { pointers.delete(e.pointerId); if (pinch) {
+    pinch = null;
+    gesture = null;
+    return;
+} const g = gesture; gesture = null; if (!g)
+    return; annotations.setPreview(null); if (cancelled)
+    return; const p = position(e); if (g.kind === 'select' && g.moved < 4)
+    await selectAt(...p,e.shiftKey);
+else if (g.kind === 'text' && g.moved < 5)
+    noteAt(engine.worldAt(...p));
+else if (!['select', 'pan', 'text'].includes(g.kind) && g.moved >= 2)
+    await finishGeometry(g.kind, g.world, engine.worldAt(...p)); }
+canvas.addEventListener('pointerup', e => run(() => pointerUp(e)));
+canvas.addEventListener('pointercancel', e => run(() => pointerUp(e, true)));
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+canvas.addEventListener('wheel', e => { if (!ready || loading || benchmarking)
+    return; e.preventDefault(); const p = position(e), delta = e.deltaY * (e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? window.innerHeight : 1); engine.zoomAt(...p, Math.exp(-Math.max(-600, Math.min(600, delta)) * .0015)); }, { passive: false });
+window.addEventListener('keydown', e => { if (benchmarking) return; if (e.target.matches('input,textarea,select') || $('dialog').open)
+    return; if(blocks.key(e))return; if (e.code === 'Space') {
+    space = true;
+    e.preventDefault();
+    return;
+} if ((e.ctrlKey || e.metaKey) && ['PageUp','PageDown'].includes(e.key)) {e.preventDefault();const list=documents.documents,index=list.findIndex(d=>d.id===documents.activeId);if(list.length)run(()=>switchDocument(list[(index+(e.key==='PageUp'?-1:1)+list.length)%list.length].id));return;} const key = e.key.toLowerCase(); if ((e.metaKey || e.ctrlKey) && key === 'o') {
+    e.preventDefault();
+    $('dxf-file').click();
+    return;
+} if ((e.metaKey || e.ctrlKey) && key === 'z') {
+    e.preventDefault();
+    e.shiftKey ? annotations.redo() : annotations.undo();
+    return;
+} if ((e.metaKey || e.ctrlKey) && key === 'y') {
+    e.preventDefault();
+    annotations.redo();
+    return;
+} if (key === 'escape') {
+    gesture = null;
+    annotations.setPreview(null);
+    setTool('select');
+    return;
+} if (key === 'f') {
+    engine.fit();
+    return;
+} if (key === 'g') {
+    $('grid').click();
+    return;
+} const map = { v: 'select', h: 'pan', l: 'line', r: 'rect', c: 'circle', t: 'text', m: 'measure' }; if (map[key])
+    setTool(map[key]); });
+window.addEventListener('keyup', e => { if (e.code === 'Space')
+    space = false; });
+window.addEventListener('blur', () => { space = false; gesture = null; pointers.clear(); pinch = null; annotations.setPreview(null); });
+let dragDepth = 0;
+window.addEventListener('dragenter', e => { if ([...e.dataTransfer.types].includes('Files')) {
+    e.preventDefault();
+    dragDepth++;
+    $('drop-zone').hidden = false;
+} });
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('dragleave', () => { if (--dragDepth <= 0) {
+    dragDepth = 0;
+    $('drop-zone').hidden = true;
+} });
+window.addEventListener('drop', e => { e.preventDefault(); dragDepth = 0; $('drop-zone').hidden = true; const files = [...e.dataTransfer.files]; if (files.length) run(() => openFiles(files)); });
+decorate();renderTabs();
+q('[data-tool]').forEach(el => el.onclick = () => setTool(el.dataset.tool));
+$('open-dxf').onclick = () => $('dxf-file').click();
+$('dxf-file').onchange = e => { const files = [...e.target.files]; if (files.length) run(() => openFiles(files)); e.target.value = ''; };
+$('cancel-import').onclick = () => importer.cancel();
+$('load-font').onclick = () => $('font-file').click();
+$('font-file').onchange = e => { const file = e.target.files[0]; if (file)
+    run(async () => { if (!ready || loading || benchmarking)
+        return; busy('Compiling the GPU font', 'Decoding the font container and layout tables; glyph compilation and atlas generation run on compute shaders.'); try {
+        await replaceFont(file);
+    }
+    finally {
+        hideBusy();
+    } }); e.target.value = ''; };
+$('annotations-file').onchange = e => { const file = e.target.files[0]; if (file)
+    run(async () => { annotations.load(JSON.parse(await file.text())); closeDialog(); }); e.target.value = ''; };
+$('fit').onclick = () => engine.fit();
+$('zoom-value').onclick = () => engine.fit();
+$('zoom-in').onclick = () => engine.zoomAt(engine.cssWidth / 2, engine.cssHeight / 2, 1.25);
+$('zoom-out').onclick = () => engine.zoomAt(engine.cssWidth / 2, engine.cssHeight / 2, .8);
+$('undo').onclick = () => annotations.undo();
+$('redo').onclick = () => annotations.redo();
+$('grid').onclick = () => { engine.flags ^= 1; syncDisplay(); engine.requestFrame(); };
+$('exact').onclick = () => { engine.flags ^= 2; syncDisplay(); engine.requestFrame(); };
+$('text-quality').onchange = e => { engine.flags = e.target.value === 'adaptive' ? engine.flags | 2 : engine.flags & ~2; syncDisplay(); engine.requestFrame(); };
+$('curve-quality').onchange = e => { engine.settings.curveTolerance = Number(e.target.value); engine.requestFrame(); };
+$('stroke-width').oninput = e => { engine.settings.strokeWidth = Number(e.target.value); engine.requestFrame(); };
+$('monochrome').onchange = e => { engine.flags = e.target.checked ? engine.flags | 4 : engine.flags & ~4; engine.requestFrame(); };
+$('layer-filter').oninput = updateLayers;
+$('sample-metrics').onclick = () => run(async () => { engine.render(); await engine.captureMetrics(); });
+$('help').onclick = showHelp;
+$('error-help').onclick = showHelp;
+$('reload').onclick = () => location.reload();
+$('lab-tab').onclick = showLab;
+$('import-report').onclick = showReport;
+$('export').onclick = showExport;
+$('save').onclick = () => run(saveWorkspace);
+$('restore').onclick = () => run(restoreWorkspace);
+$('dialog-close').onclick = closeDialog;
+$('dialog').onclick = e => { if (e.target === $('dialog')) {
+    const r = $('dialog').getBoundingClientRect();
+    if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom)
+        closeDialog();
+} };
+$('toggle-left').onclick = () => document.body.classList.toggle('left-open');
+$('toggle-right').onclick = () => { if (innerWidth <= 980)
+    document.body.classList.toggle('right-open');
+else
+    document.body.classList.toggle('hide-inspector'); };
+const resize = new ResizeObserver(entries => { if (ready) {
+    const { width, height } = entries[0].contentRect;
+    try { engine.setSize(width, height, engine.options.pixelRatio * (engine.governor?.scale || 1)); } catch(error) { showError(error); }
+} });
+resize.observe($('canvas-wrap'));
+setInterval(() => { if (ready && !loading && !benchmarking && $('auto-metrics').checked && document.visibilityState === 'visible' && engine.metrics.frames !== lastTelemetryFrame) {
+    lastTelemetryFrame = engine.metrics.frames;
+    engine.captureTiming().catch(e => showError(e));
+} }, 1500);
+api.ready = (async () => { try {
+    await engine.initialize(font);
+    ready = true;
+    $('adapter-name').textContent = [engine.info.vendor, engine.info.architecture, engine.info.description].filter(Boolean).join(' · ');
+    engine.setSize($('canvas-wrap').clientWidth, $('canvas-wrap').clientHeight, devicePixelRatio || 1);
+    await loadDemo();
+    setTool('select');
+    syncDisplay();
+    api.initialized = true;
+    return api;
+}
+catch (error) {
+    showError(error, true);
+    api.initializationError = { message: error.message, details: error.details };
+    return api;
+} })();
+window.addEventListener('pagehide', e => { if (!e.persisted) {
+    importer.cancel();
+    engine.dispose();
+} });
+
+Object.assign(exports,{});
+},
+"packages/app/blocks.js":function(module,exports,require){
+const { BlockStudio }=require("packages/app/block-studio.js");
+const { validateExplodable, explodedRecords }=require("packages/blocks/explode.js");
+/** Static DXF BLOCK/INSERT workbench. UI owns no CAD rasterization path. */
+const { BlockDrawing, UNIT_NAMES, group, record, recordSpace, readInsert, unitFactor, canonical }=require("packages/blocks/document.js");
+const { BlockShelf, engineeringLibrary, blockSampleDxf }=require("packages/blocks/library.js");
+const { placementPreview, ownerOf }=require("packages/blocks/preview.js");
+const { DxfWorkerClient }=require("packages/dxf/client.js");
+const { ComputeCad }=require("packages/gpu/index.js");
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const field=(name,label,value=0,attrs='')=>`<label>${label}<input name="${name}" type="number" value="${Number(value)}" step="any" required ${attrs}></label>`;
+const check=(name,label,on=false)=>`<label class="block-check"><input name="${name}" type="checkbox" ${on?'checked':''}>${label}</label>`;
+const units=(name,value)=>`<label>Insertion units<select name="${name}">${UNIT_NAMES.map((s,i)=>`<option value="${i}" ${i===value?'selected':''}>${s}</option>`).join('')}</select></label>`;
+const button=(id,label,cls='')=>`<button type="button" id="${id}" class="button small ${cls}">${label}</button>`;
+const encode=s=>new TextEncoder().encode(s).buffer;
+const numeric=(form,name)=>Number(form.elements.namedItem(name).value);
+const checked=(form,name)=>!!form.elements.namedItem(name)?.checked;
+const text=(form,name)=>String(form.elements.namedItem(name)?.value||'');
+const keyOf=(library,name)=>library+'\0'+canonical(name);
+class BlockWorkbench {
+ constructor(host){
+  this.h=host;this.shelf=new BlockShelf();this.shelf.add(engineeringLibrary());this.activeSource='drawing';this.filter='';this.selected=null;this.selection=new Set();this.docId=null;this.opened=false;this.placement=null;this.previewSerial=0;this.placementSerial=0;this.previewDevice=null;this.previewQueue=Promise.resolve();this.previewImporter=new DxfWorkerClient();this.placementImporter=new DxfWorkerClient();this.selectionFocus=false;this.lastInsert=null;
+  this.root=$('blocks-panel');this.root.innerHTML=`<div class="block-panel-head"><div><span class="eyebrow">REUSABLE GEOMETRY</span><h2>Blocks</h2></div><button id="blocks-close" class="icon-button" aria-label="Close block palette">×</button></div>
+   <div class="block-actions">${button('block-new','New drawing')}${button('block-workshop','Workshop')}${button('block-create','Create block')}${button('block-import','Import library')}</div>
+   <div class="block-source-tabs" role="tablist" aria-label="Block sources">${[['drawing','Drawing'],['libraries','Libraries'],['recent','Recent'],['favorites','Favorites']].map(([id,label])=>`<button data-block-source="${id}" role="tab" aria-selected="${id==='drawing'}">${label}</button>`).join('')}</div>
+   <div class="block-search"><input id="block-search" class="search-input" type="search" placeholder="Search blocks, tags, description…" aria-label="Search blocks"><select id="block-library-select" aria-label="Library selection"></select></div>
+   <div class="block-countline"><span id="block-count">0 blocks</span><button class="text-button" id="block-refresh">Refresh drawing</button></div><div id="block-list" class="block-list" role="listbox" aria-label="Block definitions"></div>
+   <section class="block-preview"><canvas id="block-preview-canvas" aria-label="Selected block preview, WebGPU compute only"></canvas><span id="block-preview-state">Select a block</span><span class="block-preview-chip">COMPUTE</span></section>
+   <section id="block-details" class="block-details"><p>Select a reusable definition to inspect its attributes and nested references.</p></section>
+   <div class="block-selection-bar"><span id="block-selection-count">No source selection</span>${button('block-selected-properties','Properties')}${button('block-show-tree','Show in tree')}</div>
+   <div class="block-footer">${button('block-undo','Undo block edit')}${button('block-redo','Redo')}${button('block-purge','Purge')}${button('block-commands','All block tools')}${button('block-export-drawing','Save edited DXF')}${button('block-save-shelf','Save libraries locally')}${button('block-load-shelf','Restore libraries')}</div>
+   <input id="block-library-file" type="file" accept=".dxf,.json" multiple hidden>`;
+  $('blocks-close').onclick=()=>this.close();$('blocks-open').onclick=()=>this.h.run(()=>this.open());
+  $('block-new').onclick=()=>this.h.run(()=>this.newDrawing(false));$('block-workshop').onclick=()=>this.h.run(()=>this.newDrawing(true));$('block-create').onclick=()=>this.h.run(()=>this.createDialog());
+  $('block-import').onclick=()=>$('block-library-file').click();$('block-library-file').onchange=e=>this.h.run(async()=>{for(const file of e.target.files)await this.importLibraryFile(file);e.target.value='';});
+  $('block-search').oninput=e=>{this.filter=e.target.value;this.renderList();};$('block-library-select').onchange=()=>this.renderList();
+  this.root.querySelectorAll('[data-block-source]').forEach(b=>b.onclick=()=>{this.activeSource=b.dataset.blockSource;this.renderList();});
+  $('block-refresh').onclick=()=>this.h.run(async()=>{await this.ensureDrawing(false);this.render();});
+  $('block-selected-properties').onclick=()=>this.h.run(()=>this.referenceDialog());$('block-show-tree').onclick=()=>this.h.run(()=>this.showSelectionTree());
+  $('block-undo').onclick=()=>this.h.run(()=>this.history(false));$('block-redo').onclick=()=>this.h.run(()=>this.history(true));
+  $('block-commands').onclick=()=>this.commandDialog();
+  $('block-purge').onclick=()=>this.h.run(()=>this.purge());$('block-export-drawing').onclick=()=>this.h.run(()=>this.exportDrawing());
+  $('block-save-shelf').onclick=()=>this.h.run(async()=>{await this.shelf.save();this.h.toast('Libraries, favorites and recent blocks saved in this browser.');});
+  $('block-load-shelf').onclick=()=>this.h.run(async()=>{if(await this.shelf.load()){this.selected=null;this.render();this.h.toast('Browser-local block libraries restored.');}else this.h.toast('No saved block library was found.');});
+  this.root.addEventListener('keydown',e=>{if(e.key==='Escape'){this.cancel();e.stopPropagation();}});
+  const list=$('block-list');list.addEventListener('keydown',e=>{if(!['ArrowDown','ArrowUp','Home','End','Enter'].includes(e.key))return;const items=[...list.querySelectorAll('[data-block-key]')],at=items.indexOf(document.activeElement);if(e.key==='Enter'){document.activeElement?.click();if(this.selected)this.h.run(()=>this.insertDialog());}else {e.preventDefault();const i=e.key==='Home'?0:e.key==='End'?items.length-1:Math.max(0,Math.min(items.length-1,at+(e.key==='ArrowUp'?-1:1)));items[i]?.focus();items[i]?.click();}});
+  this.h.canvas.addEventListener('dblclick',()=>{if(this.selection.size===1&&!this.placement)this.h.run(()=>this.referenceDialog());});
+  this.h.canvas.addEventListener('dragover',e=>{if(e.dataTransfer.types.includes('application/x-aperture-block')){e.preventDefault();e.dataTransfer.dropEffect='copy';e.stopPropagation();}});
+  this.h.canvas.addEventListener('drop',e=>{const value=e.dataTransfer.getData('application/x-aperture-block');if(!value)return;e.preventDefault();e.stopPropagation();this.h.run(async()=>{const k=JSON.parse(value),entry=this.entries().find(x=>x.library===k.library&&x.meta.name===k.name);if(!entry)throw new Error('The dragged definition is no longer available.');await this.select(entry);this.insertDialog(null,this.point(e));});});
+ }
+ get drawing(){return this.h.current()?.blockDrawing||null;}
+ get engine(){return this.h.engine;}
+ get font(){return this.h.font();}
+ get doc(){return this.h.current();}
+ async open(){this.opened=true;document.body.classList.add('blocks-open');this.root.hidden=false;this.h.engine.requestFrame();await this.ensureDrawing(false);this.render();$('block-search').focus();}
+ close(){this.opened=false;document.body.classList.remove('blocks-open');this.root.hidden=true;this.previewSerial++;this.previewImporter.cancel();this.previewDevice?.dispose();this.previewDevice=null;this.h.engine.requestFrame();}
+ async ensureDrawing(create=false){
+  if(this.drawing){if(!this.doc.blockPrepared)await this.h.prepare(this.drawing);return this.drawing;}
+  const doc=this.doc;
+  if(doc?.sourceFile){const id=doc.id,source=await doc.sourceFile.arrayBuffer(),d=new BlockDrawing(source,{name:doc.name});if(this.doc?.id!==id)throw new Error('The active document changed.');doc.blockDrawing=d;this.docId=id;await this.h.prepare(d);return d;}
+  if(create){await this.newDrawing(false);return this.drawing;}
+  return null;
+ }
+ async newDrawing(sample=false){await this.cancel();const d=sample?new BlockDrawing(blockSampleDxf(),{name:'Block workshop.dxf'}):new BlockDrawing(null,{name:'Untitled blocks.dxf'});await this.h.openDrawing(d);this.docId=this.doc.id;this.selection.clear();this.activeSource=sample?'drawing':'libraries';this.selected=null;this.render();this.h.toast(sample?'Block workshop opened. Double-click a definition to insert it.':'New editable drawing opened; the previous tab was kept.');}
+ onDocument(){if(this.docId!==this.doc?.id||this.spaceId!==this.doc?.activeSpace){this.spaceId=this.doc?.activeSpace;this.docId=this.doc?.id;this.selection.clear();this.selected=null;this.previewSerial++;}if(this.opened){this.h.run(async()=>{await this.ensureDrawing(false);this.render();});}this.renderSelection();}
+ entries(){const entries=[];const d=this.drawing;if(d)for(const meta of d.list())entries.push({library:'drawing',libraryName:'Current drawing',meta,drawing:d});for(const lib of this.shelf.libraries){if(!lib.drawing)lib.drawing=(()=>{const d=new BlockDrawing();d.importLibrary(lib.data,{conflict:'replace'});d.undoStack=[];return d;})();for(const meta of lib.drawing.list())entries.push({library:lib.id,libraryName:lib.name,meta,drawing:lib.drawing});}return entries;}
+ render(){const select=$('block-library-select'),previous=select.value;select.replaceChildren(new Option('All libraries',''));for(const l of this.shelf.libraries)select.add(new Option(l.name,l.id));select.value=previous;this.renderList();this.renderSelection();if(this.selected){const fresh=this.entries().find(x=>keyOf(x.library,x.meta.name)===keyOf(this.selected.library,this.selected.meta.name));if(fresh){this.selected=fresh;this.renderDetails();}else this.selected=null;}}
+ renderList(){const all=this.entries(),query=this.filter.toLocaleLowerCase(),source=this.activeSource,library=$('block-library-select').value;let entries=all.filter(e=>source==='drawing'?e.library==='drawing':source==='libraries'?e.library!=='drawing'&&(!library||library===e.library):source==='favorites'?this.shelf.favorites.has(this.shelf.key(e.library,e.meta.name)):this.shelf.recent.some(r=>keyOf(r.library,r.name)===keyOf(e.library,e.meta.name)));
+  if(source==='recent')entries.sort((a,b)=>this.shelf.recent.findIndex(r=>keyOf(r.library,r.name)===keyOf(a.library,a.meta.name))-this.shelf.recent.findIndex(r=>keyOf(r.library,r.name)===keyOf(b.library,b.meta.name)));
+  else entries.sort((a,b)=>a.meta.name.localeCompare(b.meta.name));
+  entries=entries.filter(e=>(e.meta.name+' '+e.meta.description+' '+e.meta.attributes.map(a=>a.tag).join(' ')).toLocaleLowerCase().includes(query));
+  this.root.querySelectorAll('[data-block-source]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.blockSource===source)));$('block-library-select').hidden=source!=='libraries';$('block-count').textContent=entries.length+' definitions';
+  const list=$('block-list');list.replaceChildren();const limit=500;
+  for(const entry of entries.slice(0,limit)){const b=document.createElement('button');b.type='button';b.className='block-tile';b.dataset.blockKey=keyOf(entry.library,entry.meta.name);b.role='option';b.draggable=!entry.meta.external;b.setAttribute('aria-selected',String(this.selected&&keyOf(this.selected.library,this.selected.meta.name)===b.dataset.blockKey));b.title=entry.meta.description||entry.meta.name;
+   b.innerHTML=`<span class="block-symbol">${entry.meta.external?'↗':entry.meta.dependencies.length?'▱':'◇'}</span><span class="block-tile-copy"><strong>${esc(entry.meta.name)}</strong><small>${esc(entry.meta.description||entry.libraryName)}</small><em>${entry.meta.count} records · ${entry.meta.attributes.length} attributes${entry.meta.dependencies.length?' · '+entry.meta.dependencies.length+' nested':''}</em></span><span class="block-fav">${this.shelf.favorites.has(this.shelf.key(entry.library,entry.meta.name))?'★':''}</span>`;
+   b.onclick=()=>this.h.run(()=>this.select(entry));b.ondblclick=()=>this.h.run(async()=>{await this.select(entry,false);await this.insertDialog();});b.ondragstart=e=>e.dataTransfer.setData('application/x-aperture-block',JSON.stringify({library:entry.library,name:entry.meta.name}));list.append(b);
+  }
+  if(!entries.length){const p=document.createElement('p');p.className='block-empty';p.textContent=source==='drawing'&&!this.drawing?'Open a DXF or create a block drawing. The Libraries tab contains 14 original engineering definitions.':'No matching block definitions.';list.append(p);}
+  if(entries.length>limit){const p=document.createElement('p');p.className='block-empty';p.textContent='Showing the first 500 matches. Refine the search to inspect any definition.';list.append(p);}
+ }
+ async select(entry,preview=true){this.selected=entry;this.renderList();this.renderDetails();if(preview)this.queueThumbnail(entry);}
+ renderDetails(){const entry=this.selected;if(!entry)return;const m=entry.meta,root=$('block-details');root.innerHTML=`<div class="block-detail-title"><strong>${esc(m.name)}</strong><button id="block-favorite" class="icon-button" aria-label="Toggle favorite">${this.shelf.favorites.has(this.shelf.key(entry.library,m.name))?'★':'☆'}</button></div><p>${esc(m.description||entry.libraryName)}</p><div class="block-meta"><span>Base point</span><strong>${m.base.map(x=>Number(x).toLocaleString()).join(', ')}</strong><span>Units</span><strong>${esc(UNIT_NAMES[m.units]||'Unknown')}</strong><span>Dependencies</span><strong>${m.dependencies.length}</strong></div><div class="block-detail-actions">${button('block-insert','Insert…','primary')}${button('block-tree','Definition tree')}${button('block-export-one','Export block')}${entry.library==='drawing'?button('block-studio','Block Studio')+button('block-definition','Definition properties')+button('block-attributes','Attribute definitions')+button('block-refs','References'):button('block-adopt','Add to drawing')}</div>${m.dynamic?'<p class="block-warning">Potential dynamic/evaluated definition. Existing static geometry is viewable; editing requires a static export from the source CAD system.</p>':''}${m.external?'<p class="block-warning">External reference: listed for inspection, not bound or resolved by this application.</p>':''}`;
+  $('block-favorite').onclick=()=>{this.shelf.favorite(entry.library,m.name);this.renderList();this.renderDetails();};$('block-insert').disabled=m.external||m.dynamic;$('block-insert').onclick=()=>this.h.run(()=>this.insertDialog());$('block-tree').onclick=()=>this.treeDialog(entry);$('block-export-one').onclick=()=>this.exportLibrary(entry);$('block-studio')?.addEventListener('click',()=>this.h.run(()=>this.openStudio()));$('block-definition')?.addEventListener('click',()=>this.h.run(()=>this.definitionDialog()));$('block-attributes')?.addEventListener('click',()=>this.h.run(()=>this.attributesDialog()));$('block-refs')?.addEventListener('click',()=>this.referencesDialog(m.name));$('block-adopt')?.addEventListener('click',()=>this.h.run(()=>this.adopt(entry)));
+ }
+ queueThumbnail(entry){const serial=++this.previewSerial;this.previewImporter.cancel();$('block-preview-state').textContent='Preparing compute preview…';this.previewQueue=this.previewQueue.catch(()=>{}).then(async()=>{
+   if(serial!==this.previewSerial||!this.opened)return;
+   try{if(entry.meta.external)throw new Error('External reference has no bound preview.');const source=entry.drawing.previewDocument(entry.meta.name,{attributes:Object.fromEntries(entry.meta.attributes.map(a=>[a.tag,a.value]))});const model=await this.previewImporter.parse(encode(source.write()),this.font,{name:entry.meta.name,document:true});if(serial!==this.previewSerial||!this.opened)return;
+    if(!this.previewDevice){const engine=new ComputeCad($('block-preview-canvas'),{memoryBudget:128*1024*1024,maxPixels:320*200,pixelRatio:1});this.previewDevice=engine;try{await engine.initialize(this.font);}catch(error){engine.dispose();if(this.previewDevice===engine)this.previewDevice=null;throw error;}}
+    if(serial!==this.previewSerial||!this.opened)return;const preview=this.previewDevice;if(preview.font!==this.font)await preview.setFont(this.font);await preview.setModel(model);preview.flags=0;preview.fit();preview.requestFrame();$('block-preview-state').textContent=model.count+' entities · GPU preview';
+   }catch(error){if(serial!==this.previewSerial||error.name==='AbortError')return;$('block-preview-state').textContent=error.message;}
+  });}
+ async adopt(entry,conflict='rename'){const d=await this.ensureDrawing(true);let mapping;await this.change(()=>{mapping=d.importLibrary(entry.drawing.exportLibrary([entry.meta.name]),{conflict});});const name=mapping[entry.meta.name]||entry.meta.name;this.selected=this.entries().find(e=>e.library==='drawing'&&e.meta.name===name);this.activeSource='drawing';this.render();return name;}
+ async importLibraryFile(file){if(file.size>64*1024*1024)throw new RangeError('A block library is limited to 64 MiB.');let data;if(/\.dxf$/i.test(file.name)){const d=new BlockDrawing(await file.arrayBuffer(),{name:file.name});if(!d.list().length&&d.entities.length){d.create(file.name.replace(/\.dxf$/i,''),d.entities.map(r=>String(group(r,5))),[0,0,0],{mode:'delete'});}data=d.exportLibrary();}else data=JSON.parse(await file.text());data={...data,name:file.name};const id=this.shelf.add(data);this.activeSource='libraries';this.render();$('block-library-select').value=id;this.renderList();this.h.toast('Imported '+data.blocks.length+' definitions locally; dependencies retained.');}
+ exportLibrary(entry=this.selected){if(!entry)return;const data=entry.drawing.exportLibrary([entry.meta.name]);this.h.dialog('Export '+entry.meta.name,`<p class="dialog-intro">Includes the definition, all nested dependencies, and supported layer, linetype and text-style tables.</p><div class="block-detail-actions">${button('block-json-export','Block library · JSON','primary')}${button('block-dxf-export','Block library · DXF')}</div>`,'BLOCK LIBRARY / EXPORT');$('block-json-export').onclick=()=>this.h.download(data,entry.meta.name+'.blocks.json');$('block-dxf-export').onclick=()=>{const d=new BlockDrawing(null,{name:entry.meta.name});d.importLibrary(data,{conflict:'replace'});this.h.download(d.write(),entry.meta.name+'.dxf','application/dxf');};}
+ async exportDrawing(){const d=await this.ensureDrawing(false);if(!d)throw new Error('Open an editable DXF drawing first.');this.h.download(d.write(),d.name.replace(/\.dxf$/i,'')+'-edited.dxf','application/dxf');this.h.toast('Editable BLOCK, INSERT, attributes and drawing entities exported. The imported source is still unchanged.');}
+ async change(action,{history=false}={}){const id=this.doc?.id;if(!id)throw new Error('No active drawing.');return this.h.enqueue(async()=>{
+   if(this.doc?.id!==id)throw new Error('The active drawing changed before the block command started.');await this.cancel();const d=this.drawing;if(!d)throw new Error('No editable source graph.');const before=d.snapshot(),undo=d.undoStack.slice(),redo=d.redoStack.slice(),revision=d.revision;
+   try{const value=history?await action(d):d.transaction('Block command',()=>action(d));if(d.revision===revision)return value;await this.h.commit(d);this.selection.clear();this.render();return value;}
+   catch(error){d.restore(before);d.undoStack=undo;d.redoStack=redo;d.revision=revision;throw error;}
+  });}
+ async history(redo){await this.ensureDrawing(false);if(!this.drawing)return;let label;await this.change(d=>{label=redo?d.redo():d.undo();},{history:true});if(label)this.h.toast((redo?'Redid ':'Undid ')+label);}
+ async purge(){const d=await this.ensureDrawing(false);if(!d)return;const copy=BlockDrawing.fromState(d.toState()),names=copy.purge();if(!names.length){this.h.toast('No unreferenced block definitions.');return;}this.h.dialog('Purge unused definitions',`<p class="dialog-intro">${names.length} unreachable definitions will be removed. Nested blocks referenced by live INSERTs or dimension pictures are retained. This command is undoable.</p><div class="block-record-list">${names.map(n=>`<div>${esc(n)}</div>`).join('')}</div>${button('block-purge-confirm','Purge '+names.length+' blocks','primary')}`,'BLOCK LIBRARY / PURGE');$('block-purge-confirm').onclick=()=>this.h.run(async()=>{this.h.closeDialog();await this.change(d=>d.purge());this.selected=null;this.render();});}
+ selectEntity(id,{add=false}={}){const mapped=ownerOf(this.engine.model,id),raw=this.engine.describe(id),source=raw?.handle?this.drawing?.entityMap.get(String(raw.handle)):null,root=mapped||(source?{handle:String(raw.handle),type:source.type,block:null}:null);if(!add)this.selection.clear();if(root){if(!mapped){this.primitiveSelections??=new Map();this.primitiveSelections.set(root.handle,{first:id,count:1});}this.selection.has(root.handle)&&add?this.selection.delete(root.handle):this.selection.add(root.handle);this.selectionFocus=true;}this.renderSelection();return root;}
+ renderSelection(){const d=this.drawing;for(const id of this.selection)if(d&&!d.entityMap.has(id))this.selection.delete(id);$('block-selection-count').textContent=this.selection.size?this.selection.size+' source object'+(this.selection.size===1?'':'s')+' selected':'Shift-click to select source objects';$('block-undo').disabled=!d?.undoStack.length;$('block-redo').disabled=!d?.redoStack.length;if(this.engine.model&&!this.engine.preparing&&this.engine.selectEntities){this.engine.selectEntities(this.selectedRanges());}}
+ async showSelectionTree(){await this.ensureDrawing(false);const r=this.drawing?.entityMap.get([...this.selection][0]);if(r?.type==='INSERT'){const name=String(group(r,2));const entry=this.entries().find(e=>e.library==='drawing'&&canonical(e.meta.name)===canonical(name));if(entry){await this.select(entry,false);this.treeDialog(entry,String(group(r,5)));}}else if(this.selected)this.treeDialog(this.selected);else this.h.toast('Select a block reference or a library definition first.');}
+ treeDialog(entry,highlight=null){const tree=entry.drawing.tree(entry.meta.name),render=(n,level=0)=>`<details class="block-tree-node" ${level<2?'open':''}><summary><span>${esc(n.name)}</span>${n.handle?`<small>#${esc(n.handle)} · layer ${esc(n.layer)}</small>`:'<small>DEFINITION</small>'}</summary>${n.missing?'<p class="block-warning">Missing definition</p>':n.cycle?'<p class="block-warning">Cyclic reference rejected</p>':n.truncated?'<p class="block-warning">Tree expansion safety limit; inspect this definition separately.</p>':`<p>${n.entities} direct records${n.options?' · rotation '+n.options.rotation+'° · scale '+n.options.scale.join(', ')+' · '+n.options.rows+' × '+n.options.columns+' array':''}</p>${n.children.map(c=>render(c,level+1)).join('')}`}</details>`;
+  this.h.dialog(entry.meta.name+' / definition tree',`<p class="dialog-intro">${highlight?'Selected root INSERT #'+esc(highlight)+'. ':''}Nested references retain their block name, handle, layer, base point and transform. A definition can be shared by many placements.</p><div class="block-tree">${render(tree)}</div>`,'BLOCKS / SHOW IN TREE');}
+ referencesDialog(name=null){const d=this.drawing;if(!d)return;const refs=d.references(name);this.h.dialog(name?name+' / references':'All INSERT references',`<p class="dialog-intro">${refs.length} INSERT records${refs.length>5000?' (first 5,000 shown)':''}${name?' referencing this definition':''}. Nested rows describe references inside a definition, not flattened GPU copies.</p><div class="block-record-list">${refs.slice(0,5000).map(r=>`<button class="block-reference-row" data-reference="${esc(r.id)}" data-parent="${esc(r.parent||'')}"><strong>${esc(r.name)}</strong><span>#${esc(r.id)} · ${esc(r.parent?'in '+r.parent:r.options.space)} · layer ${esc(r.layer)}</span><small>XYZ ${r.options.position.join(', ')} · rotation ${r.options.rotation}° · scale ${r.options.scale.join(', ')} · ${r.options.rows} × ${r.options.columns}</small></button>`).join('')||'<p>No references.</p>'}</div>`,'BLOCKS / INSERT GRAPH');document.querySelectorAll('[data-reference]').forEach(b=>b.onclick=()=>this.h.run(async()=>{if(b.dataset.parent){this.treeDialog({drawing:d,meta:d.metadata(b.dataset.parent)});return;}this.selection=new Set([b.dataset.reference]);this.h.closeDialog();await this.referenceDialog();}));}
+ async insertDialog(reference=null,point=null){const d=await this.ensureDrawing(true);let entry=this.selected;if(reference){const r=d.entityMap.get(reference);if(r?.type!=='INSERT')throw new Error('Select a root INSERT reference.');entry={library:'drawing',libraryName:'Current drawing',drawing:d,meta:d.metadata(String(group(r,2)))};}if(!entry)throw new Error('Select a block definition.');if(entry.meta.external)throw new Error('Bind external references in their source CAD system before inserting.');
+  const m=entry.meta,existing=reference?readInsert(d.entityMap.get(reference)):null,u=reference?1:unitFactor(m.units,d.units),o=existing||{position:point||[0,0,0],scale:[u,u,u],rotation:0,rows:1,columns:1,rowSpacing:20,columnSpacing:20,layer:d.layers.find(l=>!l.locked)?.name||'0',attributes:Object.fromEntries(m.attributes.map(a=>[a.tag,a.value]))};
+  const id=this.doc.id,source=entry.library==='drawing'?'Current drawing':entry.libraryName;
+  this.h.dialog(reference?'Edit INSERT · '+m.name:'Insert · '+m.name,`<form id="block-insert-form" class="block-form"><p class="dialog-intro">${esc(source)} · ${esc(UNIT_NAMES[m.units])} → ${esc(UNIT_NAMES[d.units])}${!reference?' · unit factor '+u:''}. Geometry and nested transforms are prepared and drawn on the GPU.</p><div class="block-form-grid">${field('x','Insertion X',o.position[0])}${field('y','Insertion Y',o.position[1])}${field('z','Insertion Z',o.position[2])}${field('sx','Scale X',o.scale[0])}${field('sy','Scale Y',o.scale[1])}${field('sz','Scale Z',o.scale[2])}${field('rotation','Rotation · degrees',o.rotation)}<label>Insertion layer<select name="layer">${d.layers.map(l=>`<option value="${esc(l.name)}" ${l.name===o.layer?'selected':''} ${l.locked?'disabled':''}>${esc(l.name)}${l.locked?' · locked':''}</option>`).join('')}</select></label>${!reference&&entry.library!=='drawing'?'<label>Name conflict<select name="conflict"><option value="rename">Import with unique name</option><option value="keep">Use existing definition</option><option value="replace">Redefine existing definition</option></select></label>':''}</div><details class="block-form-section" ${o.rows*o.columns>1?'open':''}><summary>Rectangular INSERT array</summary><div class="block-form-grid">${field('rows','Rows',o.rows,'min="1" max="32767"')}${field('columns','Columns',o.columns,'min="1" max="32767"')}${field('rowSpacing','Row spacing',o.rowSpacing)}${field('columnSpacing','Column spacing',o.columnSpacing)}</div><p>Spacing is measured along the rotated array axes, independently of block scale.</p></details><details class="block-form-section" open><summary>Attributes · ${m.attributes.length}</summary><div class="block-attribute-fields">${m.attributes.map((a,i)=>`<label>${esc(a.prompt||a.tag)} <small>${esc(a.tag)}${a.invisible?' · invisible':''}${a.constant?' · constant':''}${a.verify?' · verify':''}</small><input name="attribute${i}" value="${esc(o.attributes[a.tag]??a.value)}" ${a.constant?'readonly':''} maxlength="16384"></label>`).join('')||'<p>This definition has no attribute templates.</p>'}</div></details>${!reference?`<div class="block-placement-options">${check('screen','Specify position on screen',!point)}${check('rotateScreen','Specify angle on screen')}${check('scaleScreen','Specify uniform scale on screen')}${check('repeat','Repeat insertion')}${check('objectSnap','GPU object snap',true)}<label>Grid snap interval<input type="number" name="snap" value="0" min="0" step="any"></label></div>`:''}<div class="block-form-actions">${reference?button('block-delete-reference','Delete reference')+button('block-replace-reference','Replace with selected block'):button('block-mirror-x','Mirror X')+button('block-mirror-y','Mirror Y')}<span></span><button type="submit" class="button primary">${reference?'Apply INSERT changes':'Insert block'}</button></div></form>`,'BLOCK / '+(reference?'REFERENCE PROPERTIES':'INSERT'));
+  const form=$('block-insert-form');$('block-mirror-x')?.addEventListener('click',()=>form.elements.sx.value=-numeric(form,'sx'));$('block-mirror-y')?.addEventListener('click',()=>form.elements.sy.value=-numeric(form,'sy'));
+  if(reference){$('block-delete-reference').onclick=()=>this.h.run(async()=>{this.h.closeDialog();await this.change(d=>d.deleteEntities([reference]));});$('block-replace-reference').onclick=()=>this.h.run(async()=>{const selected=this.selected;if(!selected)throw new Error('Select a replacement definition in the palette first.');let name=selected.meta.name;this.h.closeDialog();await this.change(d=>{if(selected.library!=='drawing'){const map=d.importLibrary(selected.drawing.exportLibrary([name]),{conflict:'rename'});name=map[name];}d.editInsert(reference,{name});});});}
+  form.onsubmit=e=>{e.preventDefault();this.h.run(async()=>{
+   if(this.doc?.id!==id)throw new Error('The active drawing changed.');const values={position:['x','y','z'].map(n=>numeric(form,n)),scale:['sx','sy','sz'].map(n=>numeric(form,n)),rotation:numeric(form,'rotation'),rows:numeric(form,'rows'),columns:numeric(form,'columns'),rowSpacing:numeric(form,'rowSpacing'),columnSpacing:numeric(form,'columnSpacing'),layer:text(form,'layer'),attributes:Object.fromEntries(m.attributes.map((a,i)=>[a.tag,text(form,'attribute'+i)])),space:reference?existing.space:this.doc.activeSpace};
+   const options={screen:checked(form,'screen'),rotate:checked(form,'rotateScreen'),scale:checked(form,'scaleScreen'),repeat:checked(form,'repeat'),snap:reference?0:numeric(form,'snap'),objectSnap:checked(form,'objectSnap'),conflict:text(form,'conflict')||'keep'};
+   // Validate before closing a form or importing any definition.
+   const validation=entry.drawing.previewDocument(m.name,values);if(!validation.entities.length)throw new Error('Cannot insert an empty reference.');
+   if(reference){this.h.closeDialog();await this.change(d=>d.editInsert(reference,values));return;}
+   this.h.closeDialog();if(options.screen){await this.startPlacement(entry,values,options);}else await this.commitInsert(entry,values,options);
+  });};
+ }
+ async referenceDialog(){await this.ensureDrawing(false);const id=[...this.selection][0];if(!id){this.referencesDialog();return;}const r=this.drawing?.entityMap.get(id);if(r?.type==='INSERT'){await this.insertDialog(id);return;}this.h.toast('Select a block INSERT to edit its properties. Create block accepts other selected source entities.');}
+ async commitInsert(entry,values,options){let inserted,name=entry.meta.name;await this.change(d=>{if(entry.library!=='drawing'){const map=d.importLibrary(entry.drawing.exportLibrary([name]),{conflict:options.conflict||'rename'});name=map[name]||name;}inserted=d.insert(name,values);});this.shelf.remember(entry.library,entry.meta.name);this.selection=new Set([inserted]);this.lastInsert={name,values:structuredClone(values)};this.render();this.h.toast('Inserted '+name+' · '+values.rows+' × '+values.columns+' placements.');return name;}
+ async startPlacement(entry,values,options){await this.cancel();const id=this.doc.id,serial=++this.placementSerial;this.h.setTool('select');await this.h.quiet();const preview=entry.drawing.previewDocument(entry.meta.name,{...values,position:[0,0,0],rotation:values.rotation,space:'model'});const model=await this.placementImporter.parse(encode(preview.write()),this.font,{name:'Block insertion preview',document:true,maxEntities:65534});if(this.doc?.id!==id||serial!==this.placementSerial)return;
+  const committed=this.engine.annotationPages.reduce((n,p)=>n+p.count,0);if(model.count+committed>=65535)throw new Error('On-screen block preview exceeds the 65,534-entity overlay reservation. Numeric insertion remains available.');
+  const packed=placementPreview(model,{idBase:this.engine.model.count+committed,layer:this.engine.annotationLayer});await this.engine.setPreview(packed);
+  const center=this.engine.worldAt(this.engine.cssWidth/2,this.engine.cssHeight/2);this.placement={entry,values:structuredClone(values),options,docId:id,stage:'position',position:center,deltaAngle:0,factor:1,referenceLength:Math.max(1e-9,50/this.engine.camera.zoom),busy:false};this.pointMode=true;this.h.canvas.dataset.blockPlacement='true';this.movePreview();this.renderPlacementHint();this.h.canvas.focus();
+ }
+ point(e){const r=this.h.canvas.getBoundingClientRect();return this.engine.worldAt(e.clientX-r.left,e.clientY-r.top);}
+ pointerMove(e){const p=this.placement;if(!p||p.busy||p.resolving||this.doc?.id!==p.docId)return false;const point=this.point(e),snap=p.options.snap||0;if(p.stage==='position'){p.position=snap>0?point.map(x=>Math.round(x/snap)*snap):point;p.lastPointer=[e.clientX,e.clientY];p.snapLabel=null;if(p.options.objectSnap&&!p.snapBusy&&performance.now()-(p.lastSnapAt||0)>100){p.lastSnapAt=performance.now();p.snapBusy=true;const box=this.h.canvas.getBoundingClientRect(),xy=[e.clientX,e.clientY];this.engine.snap(xy[0]-box.left,xy[1]-box.top).then(result=>{if(result&&this.placement===p&&p.stage==='position'&&!p.busy&&!p.resolving&&p.lastPointer?.every((v,i)=>Math.abs(v-xy[i])<2)){p.position=result.point;p.snapLabel=result.kind;this.movePreview();this.renderPlacementHint();}}).catch(error=>{p.options.objectSnap=false;this.h.toast('Object snap disabled: '+error.message);}).finally(()=>p.snapBusy=false);}}else if(p.stage==='rotation'){let angle=Math.atan2(point[1]-p.position[1],point[0]-p.position[0])*180/Math.PI;if(e.shiftKey)angle=Math.round(angle/15)*15;p.deltaAngle=angle-p.values.rotation;}else {p.factor=Math.max(1e-6,Math.hypot(point[0]-p.position[0],point[1]-p.position[1])/p.referenceLength);}this.movePreview();this.renderPlacementHint();return true;}
+ pointerDown(e,pan=false){if(this.pickPoint&&e.button===0&&!pan){const callback=this.pickPoint;this.pickPoint=null;callback(this.point(e));return true;}const p=this.placement;if(!p||e.button!==0||pan)return false;if(p.busy||p.resolving)return true;this.pointerMove(e);if(p.stage==='position'&&p.options.objectSnap){p.resolving=true;const box=this.h.canvas.getBoundingClientRect();this.engine.snap(e.clientX-box.left,e.clientY-box.top).then(result=>{if(this.placement!==p)return;if(result){p.position=result.point;p.snapLabel=result.kind;this.movePreview();}this.advancePlacement(p);}).catch(error=>this.h.toast(error.message)).finally(()=>p.resolving=false);return true;}return this.advancePlacement(p);}
+ advancePlacement(p){if(p.stage==='position'&&p.options.rotate)p.stage='rotation';else if(p.stage!=='scale'&&p.options.scale)p.stage='scale';else {p.busy=true;const values={...p.values,position:[...p.position,p.values.position[2]],rotation:p.values.rotation+p.deltaAngle,scale:p.values.scale.map(x=>x*p.factor)},repeat=p.options.repeat;this.h.run(async()=>{const name=await this.commitInsert(p.entry,values,p.options);if(repeat&&this.doc?.id===p.docId){const d=this.drawing,entry={drawing:d,meta:d.metadata(name),library:'drawing',libraryName:'Current drawing'};await this.startPlacement(entry,{...values,position:[0,0,0]},p.options);}}).finally(()=>{if(this.placement===p)this.cancel();});}this.renderPlacementHint();return true;}
+ movePreview(){const p=this.placement;if(p)this.engine.updateBlockPreview({x:p.position[0],y:p.position[1],angle:p.deltaAngle*Math.PI/180,scale:p.factor});}
+ renderPlacementHint(){const p=this.placement;if(!p)return;const action=p.stage==='position'?'Pick insertion point':p.stage==='rotation'?'Pick rotation · Shift = 15°':'Pick scale · 50 screen pixels = 1×';this.h.hint(action+(p.snapLabel?' · '+p.snapLabel+' SNAP':'')+' · '+p.entry.meta.name+' · Esc cancels · '+p.position.map(x=>x.toFixed(3)).join(', ')+' · '+(p.values.rotation+p.deltaAngle).toFixed(1)+'° · '+p.factor.toFixed(3)+'×');}
+ async cancel(){this.placementSerial++;this.placementImporter.cancel();const active=!!this.placement;this.placement=null;this.pickPoint=null;delete this.h.canvas.dataset.blockPlacement;if(active){await this.h.clearPreview();this.h.hint('Wheel to zoom · Shift-click source objects · B blocks · I insert');}}
+ key(e){if(e.key==='Escape'&&(this.placement||this.pickPoint)){this.h.run(()=>this.cancel());e.preventDefault();return true;}if(e.key.toLowerCase()==='b'&&!e.ctrlKey&&!e.metaKey){this.h.run(()=>e.shiftKey?this.createDialog():this.open());return true;}if(e.key.toLowerCase()==='i'&&!e.ctrlKey&&!e.metaKey){this.h.run(async()=>{if(!this.opened)await this.open();if(this.selected)await this.insertDialog();});return true;}if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='z'&&this.opened&&this.selectionFocus){e.preventDefault();this.h.run(()=>this.history(e.shiftKey));return true;}return false;}
+ async createDialog(){const d=await this.ensureDrawing(true),id=this.doc.id,selected=[...this.selection];const source=d.entities.filter(r=>r.type!=='VIEWPORT'&&recordSpace(r)===this.doc.activeSpace);this.h.dialog('Create a reusable block',`<form id="block-create-form" class="block-form"><p class="dialog-intro">Choose source objects, then define a base point. Existing nested INSERTs stay nested. Creating a block is undoable.</p><div class="block-form-grid"><label class="span-two">Block name<input name="name" value="NEW_BLOCK" maxlength="255" required></label>${units('units',d.units)}<label class="span-three">Description<input name="description" maxlength="2048"></label>${field('bx','Base X',0)}${field('by','Base Y',0)}${field('bz','Base Z',0)}</div><div class="block-choice-line">${button('block-pick-base','Pick base point in drawing')}${button('block-select-all','Select all visible-space records')}<label>Source objects<select name="mode"><option value="convert">Convert selection to INSERT</option><option value="retain">Retain original objects</option><option value="delete">Delete originals after defining</option></select></label></div><div class="block-create-selection">${source.slice(0,5000).map(r=>{const handle=String(group(r,5));return `<label class="block-check"><input type="checkbox" name="entity" value="${esc(handle)}" ${selected.includes(handle)?'checked':''}><strong>${esc(r.type+(r.type==='INSERT'?' · '+group(r,2):''))}</strong><span>#${esc(handle)} · ${esc(group(r,8,'0'))}</span></label>`;}).join('')||'<p>The active space contains no source objects.</p>'}</div>${source.length>5000?'<p>Showing 5,000 records. Use canvas selection for larger sets.</p>':''}<div class="block-form-actions"><span></span><button type="submit" class="button primary">Create definition</button></div></form>`,'BLOCK / CREATE');const form=$('block-create-form');$('block-select-all').onclick=()=>form.querySelectorAll('[name=entity]').forEach(n=>n.checked=true);$('block-pick-base').onclick=()=>{this.h.closeDialog();this.h.hint('Pick the new block base point · Esc cancels');this.pickPoint=p=>{form.elements.bx.value=p[0];form.elements.by.value=p[1];$('dialog').showModal();this.h.hint('Base point captured.');};};form.onsubmit=e=>{e.preventDefault();this.h.run(async()=>{if(this.doc?.id!==id)throw new Error('The active drawing changed.');const ids=[...form.querySelectorAll('[name=entity]:checked')].map(n=>n.value),outside=selected.filter(v=>!source.slice(0,5000).some(r=>String(group(r,5))===v));ids.push(...outside);const name=text(form,'name'),base=['bx','by','bz'].map(n=>numeric(form,n)),options={mode:text(form,'mode'),description:text(form,'description'),units:numeric(form,'units')};this.h.closeDialog();await this.change(d=>d.create(name,ids,base,options));this.activeSource='drawing';this.selected=this.entries().find(e=>e.library==='drawing'&&e.meta.name===name);this.render();});};}
+ async definitionDialog(){const entry=this.selected,d=await this.ensureDrawing(false);if(!entry||entry.library!=='drawing'||!d)return;const m=d.assertEditable(entry.meta.name),block=d.definition(m.name),docId=this.doc.id;this.h.dialog('Edit definition · '+m.name,`<form id="block-definition-form" class="block-form"><p class="dialog-intro">Changes update all references, including nested uses. The record editor preserves DXF entity parameters; no image tracing or CPU tessellation is performed. Unsupported source records remain subject to renderer diagnostics.</p><div class="block-form-grid"><label class="span-two">Block name<input name="name" value="${esc(m.name)}" required></label>${units('units',m.units)}<label class="span-three">Description<input name="description" value="${esc(m.description)}"></label>${field('bx','Base X',m.base[0])}${field('by','Base Y',m.base[1])}${field('bz','Base Z',m.base[2])}</div><div class="block-placement-options">${check('explode','Allow explode',m.allowExplode)}${check('uniform','Require uniform scale',m.uniform)}</div><details class="block-form-section"><summary>DXF definition records · ${block.records.length}</summary><p>JSON source records. INSERT dependencies must already exist in the drawing. Cycles and invalid records are rejected atomically.</p><textarea name="records" class="block-code" spellcheck="false">${esc(JSON.stringify(block.records,null,2))}</textarea></details><div class="block-form-actions"><span></span><button type="submit" class="button primary">Save definition</button></div></form>`,'BLOCK / EDIT DEFINITION');const form=$('block-definition-form');form.onsubmit=e=>{e.preventDefault();this.h.run(async()=>{if(this.doc?.id!==docId)throw new Error('The active drawing changed.');const name=text(form,'name'),values={base:['bx','by','bz'].map(n=>numeric(form,n)),description:text(form,'description'),units:numeric(form,'units'),allowExplode:checked(form,'explode'),uniform:checked(form,'uniform'),records:JSON.parse(text(form,'records'))};this.h.closeDialog();await this.change(d=>{d.setDefinition(m.name,values);if(name!==m.name)d.rename(m.name,name);});this.selected=this.entries().find(e=>e.library==='drawing'&&e.meta.name===name);this.render();});};}
+ async openStudio(){await this.ensureDrawing(false);const entry=this.selected;if(!entry||entry.library!=='drawing')throw new Error('Add the selected library definition to the drawing before editing it.');this.drawing.assertEditable(entry.meta.name);await this.cancel();this.studio=new BlockStudio(this,entry);await this.studio.open();}
+ selectedRanges(){const model=this.engine.model;if(!model)return [];if(this.editMapModel!==model){this.editMapModel=model;this.editMap=new Map((model.editRoots||[]).map(r=>[r.handle,r]));}const ranges=[];for(const id of this.selection){const range=this.editMap.get(id)||this.primitiveSelections?.get(id);if(range)ranges.push({first:range.first,count:range.count});}return ranges;}
+ commandDialog(){const commands=[['INSERT','Insert selected block','Position, scale, rotation, attributes and rectangular arrays',()=>this.insertDialog()],['BLOCK','Create from selection','Base point and convert / retain / delete originals',()=>this.createDialog()],['BEDIT','Graphical Block Studio','Draw and edit a definition without modifying its parent until Save',()=>this.openStudio()],['BPROPERTIES','Definition properties','Rename, base point, units, raw source records',()=>this.definitionDialog()],['EATTEDIT','Reference properties','Edit an existing INSERT and attribute values',()=>this.referenceDialog()],['BATTMAN','Attribute definitions','Add / edit / remove / reorder ATTDEF templates',()=>this.attributesDialog()],['BCOUNT','Count and extract','Expanded nested counts and attribute CSV',()=>this.countDialog()],['EXPLODE','Explode rendered 2D geometry','GPU affine baking; recursively removes nested references',()=>this.explodeDialog(false)],['BURST','Explode and retain attributes','GPU baking; visible attributes become ordinary text',()=>this.explodeDialog(true)],['BREPLACE','Replace selected references','Change definition while preserving placements and matching tags',()=>this.replaceDialog()],['BCOPY','Copy selected references','Keep definition sharing; apply placement offsets',()=>this.copyDialog()],['BARRAY','Polar array','Create rotated INSERT references around a chosen center',()=>this.polarDialog()],['WBLOCK','Export selected block','Dependency-complete DXF or JSON library',()=>this.exportLibrary()],['BREFS','Reference tree','Inspect root and nested INSERT identities',()=>this.referencesDialog()],['PURGE','Purge unused definitions','Dependency-aware, undoable cleanup',()=>this.purge()],['LIBRARIES','Manage local libraries','Rename or remove imported collections',()=>this.manageLibraries()]];this.h.dialog('Block commands',`<p class="dialog-intro">Static DXF block authoring and insertion commands. These operate on editable source definitions and references, independently of review annotations.</p><div class="block-command-list">${commands.map(([key,title,sub])=>`<button class="button" data-block-command="${key}"><strong>${title}</strong> <em>${key}</em><small>${sub}</small></button>`).join('')}</div>`,'BLOCKS / COMMAND CENTER');document.querySelectorAll('[data-block-command]').forEach(b=>b.onclick=()=>this.h.run(async()=>{this.h.closeDialog();const item=commands.find(x=>x[0]===b.dataset.blockCommand);await this.ensureDrawing(true);await item[3]();}));}
+ countDialog(){const d=this.drawing;if(!d)return;const counts=d.countReferences(),attributes=d.attributeRows();this.h.dialog('Block counts and attribute extraction',`<p class="dialog-intro">Counts expand nested references and rectangular arrays arithmetically, without expanding GPU geometry or reading entity buffers. Attribute rows describe root INSERT records, with their row/column multiplicity.</p><div class="block-record-list">${counts.map(r=>`<div><strong>${esc(r.name)}</strong><span>${r.placements.toLocaleString()} placements</span></div>`).join('')}</div><div class="block-detail-actions">${button('block-count-csv','Export counts · CSV')}${button('block-attribute-csv','Export attributes · CSV')}${button('block-select-inserts','Select all active-space INSERTs')}</div>`,'BLOCKS / DATA EXTRACTION');const csv=rows=>{if(!rows.length)return '';const keys=Object.keys(rows[0]),cell=v=>'"'+String(v??'').replaceAll('"','""')+'"';return [keys,...rows.map(r=>keys.map(k=>r[k]))].map(r=>r.map(cell).join(',')).join('\r\n');};$('block-count-csv').onclick=()=>this.h.download(csv(counts),'block-counts.csv','text/csv');$('block-attribute-csv').onclick=()=>this.h.download(csv(attributes),'block-attributes.csv','text/csv');$('block-select-inserts').onclick=()=>{const roots=d.entities.filter(r=>r.type==='INSERT'&&recordSpace(r)===this.doc.activeSpace);if(roots.length>4096)throw new Error('Refine the selection to at most 4,096 references.');this.selection=new Set(roots.map(r=>String(group(r,5))));this.h.closeDialog();this.renderSelection();};}
+ async explodeDialog(keepAttributes){const d=await this.ensureDrawing(false),ids=[...this.selection];if(!d||!ids.length)throw new Error('Select one or more root INSERT references first.');const roots=validateExplodable(d,ids);if(roots.some(r=>recordSpace(r)!==this.doc.activeSpace))throw new Error('Open the source Model or paper tab before exploding its references.');const ranges=this.selectedRanges(),count=ranges.reduce((n,r)=>n+r.count,0);if(!count)throw new Error('The selection has no supported resident geometry.');const revision=d.revision,id=this.doc.id;this.h.dialog(keepAttributes?'GPU BURST':'GPU recursive explode',`<p class="dialog-intro">Convert ${ids.length} INSERT records (${count.toLocaleString()} rendered primitives) into independent planar DXF entities. Nested references are recursively flattened. ${keepAttributes?'Visible attribute values become ordinary text.':'Attached attribute values are omitted.'} This is an explicit geometry readback, not a per-frame operation. Unsupported, nonplanar and nonrepresentable primitives reject the command without changing the drawing.</p><p>This operation is undoable. It does not implement AutoCAD’s one-level EXPLODE behavior or dynamic-block actions.</p>${button('block-explode-confirm','Bake on GPU and replace references','primary')}`,'BLOCK / GPU AFFINE BAKE');$('block-explode-confirm').onclick=()=>this.h.run(async()=>{this.h.closeDialog();await this.cancel();const result=await this.engine.explode(ranges),records=explodedRecords(result,{drawing:d,layers:this.engine.layers,space:this.doc.activeSpace,keepAttributes});await this.change(current=>{if(current!==d||current.revision!==revision||this.doc.id!==id)throw new Error('The drawing changed during explode. Nothing was replaced.');current.replaceEntities(ids,records,{label:keepAttributes?'GPU BURST':'GPU recursive explode'});});this.h.toast('GPU bake committed: '+records.length+' independent DXF entities.');});}
+ async replaceDialog(){const d=await this.ensureDrawing(false),ids=[...this.selection];if(!ids.length||ids.some(id=>d?.entityMap.get(id)?.type!=='INSERT'))throw new Error('Select INSERT references to replace.');this.h.dialog('Replace '+ids.length+' references',`<form id="block-replace-form" class="block-form"><p>Preserves position, XYZ scale, rotation, arrays, layers and matching attribute tag values. The replacement is one undoable command.</p><label>New definition<select name="definition">${d.list().filter(b=>!b.external&&!b.dynamic).map(b=>`<option value="${esc(b.name)}">${esc(b.name)}</option>`).join('')}</select></label><button type="submit" class="button primary">Replace references</button></form>`,'BLOCK / REPLACE');const form=$('block-replace-form');form.onsubmit=e=>{e.preventDefault();const name=text(form,'definition');this.h.run(async()=>{this.h.closeDialog();await this.change(current=>{for(const id of ids)current.editInsert(id,{name});});});};}
+ async copyDialog(){const d=await this.ensureDrawing(false),ids=[...this.selection];if(!ids.length||ids.some(id=>d?.entityMap.get(id)?.type!=='INSERT'))throw new Error('Select INSERT references to copy.');this.h.dialog('Copy '+ids.length+' references',`<form id="block-copy-form" class="block-form"><div class="block-form-grid">${field('dx','Offset X',20)}${field('dy','Offset Y',0)}${field('copies','Copies',1,'min="1" max="10000"')}</div><button type="submit" class="button primary">Create linked-definition copies</button></form>`,'BLOCK / COPY');const form=$('block-copy-form');form.onsubmit=e=>{e.preventDefault();const dx=numeric(form,'dx'),dy=numeric(form,'dy'),copies=numeric(form,'copies');this.h.run(async()=>{if(!Number.isInteger(copies)||copies<1||copies*ids.length>10000)throw new Error('Copy is limited to 10,000 INSERT records per command.');this.h.closeDialog();await this.change(current=>{for(let i=1;i<=copies;i++)for(const id of ids){const r=current.entityMap.get(id),o=readInsert(r);current.insert(String(group(r,2)),{...o,position:[o.position[0]+i*dx,o.position[1]+i*dy,o.position[2]]});}});});};}
+ async polarDialog(){const d=await this.ensureDrawing(false),ids=[...this.selection];if(!ids.length||ids.some(id=>d?.entityMap.get(id)?.type!=='INSERT'))throw new Error('Select INSERT references for a polar array.');this.h.dialog('Polar INSERT array',`<form id="block-polar-form" class="block-form"><p>Creates independent INSERT records sharing the same definitions. The existing references are the first array items.</p><div class="block-form-grid">${field('x','Center X',0)}${field('y','Center Y',0)}${field('count','Total items',6,'min="2" max="10000"')}${field('angle','Step angle °',60)}</div>${check('rotate','Rotate each placement',true)}<button type="submit" class="button primary">Create polar array</button></form>`,'BLOCK / POLAR ARRAY');const form=$('block-polar-form');form.onsubmit=e=>{e.preventDefault();const x=numeric(form,'x'),y=numeric(form,'y'),count=numeric(form,'count'),step=numeric(form,'angle'),rotate=checked(form,'rotate');this.h.run(async()=>{if(!Number.isInteger(count)||count<2||count*ids.length>10000)throw new Error('Polar arrays are limited to 10,000 INSERT records.');this.h.closeDialog();await this.change(current=>{for(let i=1;i<count;i++){const angle=i*step*Math.PI/180,c=Math.cos(angle),s=Math.sin(angle);for(const id of ids){const r=current.entityMap.get(id),o=readInsert(r),dx=o.position[0]-x,dy=o.position[1]-y;current.insert(String(group(r,2)),{...o,position:[x+c*dx-s*dy,y+s*dx+c*dy,o.position[2]],rotation:o.rotation+(rotate?i*step:0)});}}});});};}
+ manageLibraries(){this.h.dialog('Manage block libraries',`<p class="dialog-intro">Library changes affect this browser’s shelf only. Existing definitions already imported into drawings are not removed. Save libraries locally to persist changes.</p><div class="block-record-list">${this.shelf.libraries.map(l=>`<div><label>Library name<input data-library-name="${esc(l.id)}" value="${esc(l.name)}"></label><button class="button small" data-library-remove="${esc(l.id)}">Remove collection</button></div>`).join('')}</div>`,'BLOCKS / LOCAL LIBRARIES');document.querySelectorAll('[data-library-name]').forEach(input=>input.onchange=()=>{const l=this.shelf.libraries.find(l=>l.id===input.dataset.libraryName);if(l)l.name=input.value.slice(0,255)||'Library';this.render();});document.querySelectorAll('[data-library-remove]').forEach(b=>b.onclick=()=>{this.shelf.remove(b.dataset.libraryRemove);this.selected=null;this.render();this.manageLibraries();});}
+ async attributesDialog(){
+  const d=await this.ensureDrawing(false),name=this.selected?.meta.name;if(!d||!name)return;
+  const meta=d.assertEditable(name),definitions=d.definition(name).records.filter(r=>r.type==='ATTDEF');
+  this.h.dialog(name+' / attribute definitions',`<p class="dialog-intro">Edit, remove, and reorder ATTDEF templates. New references use the current templates. Synchronize updates existing root and nested references while preserving matching tag values; renamed or deleted tags do not keep their old values.</p><div class="block-record-list">${meta.attributes.map((a,i)=>`<div><strong>${esc(a.tag)}</strong><span>${esc(a.prompt)} · ${esc(a.value)}${a.constant?' · constant':''}${a.invisible?' · invisible':''}</span><div class="block-attribute-actions"><button class="button small" data-attribute-edit="${i}">Edit</button><button class="button small" data-attribute-up="${i}" ${i===0?'disabled':''} aria-label="Move ${esc(a.tag)} up">↑</button><button class="button small" data-attribute-down="${i}" ${i===meta.attributes.length-1?'disabled':''} aria-label="Move ${esc(a.tag)} down">↓</button><button class="button small" data-attribute-remove="${i}">Remove</button></div></div>`).join('')||'<p>No attribute templates.</p>'}</div><form class="block-form" id="block-attdef-form"><input type="hidden" name="originalTag"><div class="block-form-grid"><label>Tag<input name="tag" required pattern="[^\\s]+" maxlength="255"></label><label>Prompt<input name="prompt"></label><label>Default value<input name="value"></label>${field('x','Local X',0)}${field('y','Local Y',0)}${field('height','Text height',2.5,'min="0.000001"')}${field('angle','Rotation',0)}</div><div class="block-placement-options">${check('invisible','Invisible')}${check('constant','Constant')}${check('verify','Verify')}${check('preset','Preset')}</div><div class="block-form-actions">${button('block-sync-attributes','Synchronize existing references')}${button('block-new-attribute','New template')}<span></span><button class="button primary" type="submit">Add attribute template</button></div></form>`,'BLOCK / ATTRIBUTES');
+  const form=$('block-attdef-form');form.onsubmit=e=>{e.preventDefault();this.h.run(async()=>{const tag=text(form,'tag').toUpperCase(),old=text(form,'originalTag'),flags=Number(checked(form,'invisible'))+2*Number(checked(form,'constant'))+4*Number(checked(form,'verify'))+8*Number(checked(form,'preset')),values={tag,prompt:text(form,'prompt')||tag,value:text(form,'value'),x:numeric(form,'x'),y:numeric(form,'y'),height:numeric(form,'height'),rotation:numeric(form,'angle'),flags};this.h.closeDialog();await this.change(current=>old?current.setAttribute(name,old,values):current.addAttribute(name,values));});};
+  $('block-sync-attributes').onclick=()=>this.h.run(async()=>{this.h.closeDialog();await this.change(current=>current.syncAttributes(name));});
+  $('block-new-attribute').onclick=()=>{form.reset();form.querySelector('[type=submit]').textContent='Add attribute template';form.elements.tag.focus();};
+  document.querySelectorAll('[data-attribute-edit]').forEach(button=>button.onclick=()=>{const r=definitions[Number(button.dataset.attributeEdit)];for(const [key,code] of [['tag',2],['originalTag',2],['prompt',3],['value',1],['x',10],['y',20],['height',40],['angle',50]])form.elements.namedItem(key).value=String(group(r,code,code<10?'':0));for(const [key,bit] of [['invisible',1],['constant',2],['verify',4],['preset',8]])form.elements.namedItem(key).checked=!!(group(r,70)&bit);form.querySelector('[type=submit]').textContent='Save attribute template';form.elements.tag.focus();});
+  for(const [kind,delta] of [['up',-1],['down',1],['remove',0]])document.querySelectorAll('[data-attribute-'+kind+']').forEach(button=>button.onclick=()=>this.h.run(async()=>{const tag=meta.attributes[Number(button.dataset['attribute'+kind[0].toUpperCase()+kind.slice(1)])].tag;this.h.closeDialog();await this.change(current=>delta?current.moveAttribute(name,tag,delta):current.removeAttribute(name,tag));await this.attributesDialog();}));
+ }
+}
+
+Object.assign(exports,{BlockWorkbench});
+},
+"packages/app/block-studio.js":function(module,exports,require){
+/** Isolated graphical definition editing. The main drawing changes only on Save.
+ * CPU code edits DXF parameter records; the production compute engine evaluates
+ * all geometry, nested transforms, text and preview rendering. */
+const { BlockDrawing,group,setGroup,record,canonical,validateRecords,readInsert }=require("packages/blocks/document.js");
+const { ownerOf }=require("packages/blocks/preview.js");
+const { DxfWorkerClient }=require("packages/dxf/client.js");
+const { ComputeCad }=require("packages/gpu/index.js");
+const { ModelBuilder,TYPE }=require("packages/model/index.js");
+const $=id=>document.getElementById(id),esc=s=>String(s??'').replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+const TYPES={LINE:[[10,'Start X'],[20,'Start Y'],[11,'End X'],[21,'End Y']],CIRCLE:[[10,'Center X'],[20,'Center Y'],[40,'Radius']],ARC:[[10,'Center X'],[20,'Center Y'],[40,'Radius'],[50,'Start angle °'],[51,'End angle °']],ELLIPSE:[[10,'Center X'],[20,'Center Y'],[11,'Major X'],[21,'Major Y'],[40,'Axis ratio'],[41,'Start parameter'],[42,'End parameter']],TEXT:[[10,'X'],[20,'Y'],[40,'Height'],[41,'Width factor'],[50,'Angle °'],[1,'Text']],ATTDEF:[[10,'X'],[20,'Y'],[40,'Height'],[50,'Angle °'],[2,'Tag'],[3,'Prompt'],[1,'Default'],[70,'Flags']],INSERT:[[10,'X'],[20,'Y'],[41,'Scale X'],[42,'Scale Y'],[43,'Scale Z'],[50,'Angle °'],[70,'Columns'],[71,'Rows'],[44,'Column spacing'],[45,'Row spacing']],POINT:[[10,'X'],[20,'Y']]};
+class BlockStudio {
+ constructor(workbench,entry){this.w=workbench;this.entry=entry;this.parent=workbench.drawing;this.docId=workbench.doc.id;this.name=entry.meta.name;this.revision=this.parent.revision;this.work=this.parent.definitionDrawing(this.name);this.importer=new DxfWorkerClient();this.queue=Promise.resolve();this.dead=false;this.busy=false;this.tool='select';this.first=null;this.selected=null;this.ready=false;this.previewPending=null;this.previewBusy=false;}
+ async open(){const h=this.w.h;this.w.previewSerial++;this.w.previewDevice?.dispose();this.w.previewDevice=null;
+ h.dialog('Block Studio · '+this.name,`<div class="block-studio"><p class="dialog-intro">Definition coordinates · base ${this.entry.meta.base.map(v=>Number(v).toFixed(3)).join(', ')}. Click to construct geometry, select objects to edit parameters, or insert a nested definition. Attribute templates display as &lt;TAG&gt;. Save updates every reference; closing discards these isolated edits.</p><div class="studio-toolbar">${[['select','Select'],['line','Line'],['rectangle','Rectangle'],['circle','Circle'],['point','Point'],['text','Text'],['attribute','Attribute']].map(([id,text])=>`<button class="button small" data-studio-tool="${id}" aria-pressed="${id==='select'}">${text}</button>`).join('')}<button id="studio-nested" class="button small">Nested INSERT</button><button id="studio-fit" class="button small">Fit</button><button id="studio-undo" class="button small">Undo</button><button id="studio-redo" class="button small">Redo</button></div><div class="studio-body"><div class="studio-stage"><canvas id="studio-canvas" tabindex="0" aria-label="GPU compute block definition editor"></canvas><div id="studio-status" role="status">Initializing compute editor…</div><div class="studio-inputs"><label>Layer<select id="studio-layer">${this.work.layers.map(l=>`<option value="${esc(l.name)}">${esc(l.name)}</option>`).join('')}</select></label><label>Grid<input id="studio-grid" type="number" min="0" step="any" value="0"></label><label>Text / tag<input id="studio-text" value="LABEL" maxlength="1024"></label><label>Height<input id="studio-height" type="number" min="0.000001" step="any" value="2.5"></label></div></div><aside class="studio-properties"><div id="studio-records" class="studio-records" aria-label="Definition members"></div><div id="studio-property-form"></div></aside></div><div class="block-form-actions"><button id="studio-discard" class="button">Discard</button><span id="studio-summary"></span><button id="studio-save" class="button primary">Save definition</button></div></div>`,'BLOCK / GRAPHICAL DEFINITION EDITOR');
+ const dialog=$('dialog');dialog.classList.add('studio-dialog');this.closeListener=()=>this.dispose();dialog.addEventListener('close',this.closeListener,{once:true});this.canvas=$('studio-canvas');this.engine=new ComputeCad(this.canvas,{memoryBudget:192*1024*1024,maxPixels:1800000,pixelRatio:Math.min(devicePixelRatio||1,2),paperCacheBudget:0});this.engine.addEventListener('error',e=>this.status(e.detail.message));
+ dialog.querySelectorAll('[data-studio-tool]').forEach(b=>b.onclick=()=>{this.tool=b.dataset.studioTool;this.first=null;dialog.querySelectorAll('[data-studio-tool]').forEach(n=>n.setAttribute('aria-pressed',String(n===b)));this.status(this.tool==='select'?'Click an object to edit its DXF parameters.':'Click '+(this.tool==='line'||this.tool==='rectangle'?'first point':this.tool==='circle'?'center':'placement point'));this.canvas.focus();});
+ $('studio-discard').onclick=()=>h.closeDialog();$('studio-save').onclick=()=>h.run(()=>this.save());$('studio-fit').onclick=()=>{if(this.ready){this.engine.fit();this.engine.requestFrame();}};$('studio-undo').onclick=()=>this.run(async()=>{if(this.work.undo())await this.refresh();});$('studio-redo').onclick=()=>this.run(async()=>{if(this.work.redo())await this.refresh();});$('studio-nested').onclick=()=>this.nestedForm();
+ this.canvas.addEventListener('wheel',e=>{e.preventDefault();if(this.ready){const r=this.canvas.getBoundingClientRect();this.engine.zoomAt(e.clientX-r.left,e.clientY-r.top,Math.exp(-Math.max(-200,Math.min(200,e.deltaY))*.005));}},{passive:false});this.canvas.addEventListener('contextmenu',e=>e.preventDefault());
+ this.canvas.addEventListener('pointerdown',e=>{if(!this.ready||this.busy)return;if(e.button===1||e.button===2||e.altKey){this.pan={x:e.clientX,y:e.clientY};this.canvas.setPointerCapture(e.pointerId);return;}if(e.button===0)this.run(()=>this.click(e));});
+ this.canvas.addEventListener('pointerup',()=>this.pan=null);this.canvas.addEventListener('pointercancel',()=>this.pan=null);this.canvas.addEventListener('pointermove',e=>{if(this.pan){this.engine.pan(e.clientX-this.pan.x,e.clientY-this.pan.y);this.pan={x:e.clientX,y:e.clientY};return;}if(this.first&&this.ready){this.previewPending=this.point(e);this.updatePreview();}});
+ this.canvas.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();this.first=null;this.clearPreview();this.status('Construction canceled.');}if(e.key==='Delete'&&this.selected){e.preventDefault();this.run(()=>this.remove());}});
+ this.renderRecords();try{await this.engine.initialize(this.w.font);if(this.dead)return;this.ready=true;this.resize=new ResizeObserver(()=>{if(!this.dead){const r=this.canvas.getBoundingClientRect();this.engine.setSize(Math.max(1,r.width),Math.max(1,r.height));}});this.resize.observe(this.canvas);await this.refresh(true);}catch(error){this.status(error.message+' · Record editing remains available; no alternate renderer is used.');}
+ }
+ run(fn){const next=this.queue.catch(()=>{}).then(async()=>{if(this.dead)return;this.busy=true;try{return await fn();}finally{this.busy=false;}});this.queue=next;this.w.h.run(()=>next);return next;}
+ status(message){if(!this.dead&&$('studio-status'))$('studio-status').textContent=message;}
+ point(e){const r=this.canvas.getBoundingClientRect(),p=this.engine.worldAt(e.clientX-r.left,e.clientY-r.top),grid=Number($('studio-grid').value);return grid>0?p.map(v=>Math.round(v/grid)*grid):p;}
+ viewDrawing(){const out=BlockDrawing.fromState(this.work.toState());out.entities=out.entities.map(r=>{if(r.type!=='ATTDEF')return r;let next={...r,type:'TEXT',groups:r.groups.filter(g=>g.code!==100&&![2,3,70,74,280].includes(g.code))};next=setGroup(next,1,'<'+group(r,2,'TAG')+'>');next=setGroup(next,73,group(r,74,0));return next;});out.refresh();return out;}
+ async refresh(fit=false){this.renderRecords();if(!this.ready||this.dead)return;await this.clearPreview();const view=this.viewDrawing(),model=await this.importer.parse(new TextEncoder().encode(view.write()).buffer,this.w.font,{document:true,editMap:true,name:this.name});if(this.dead)return;const camera={...this.engine.camera};if(this.engine.model)await this.engine.reconcileModel(model);else await this.engine.setModel(model);if(fit)this.engine.fit();else this.engine.camera=camera;this.engine.requestFrame();this.status(model.count+' GPU primitives · middle/right drag to pan · wheel zoom · Escape cancels construction');}
+ renderRecords(){if(this.dead)return;const root=$('studio-records');root.innerHTML=this.work.entities.slice(0,5000).map(r=>{const id=String(group(r,5));return `<button class="studio-record ${id===this.selected?'selected':''}" data-studio-record="${esc(id)}"><strong>${esc(r.type)}</strong><span>${esc(r.type==='INSERT'?group(r,2):r.type==='ATTDEF'?group(r,2):'#'+id)}</span><small>${esc(group(r,8,'0'))}</small></button>`;}).join('')||'<p class="empty">Empty definition. Draw your first object.</p>';root.querySelectorAll('[data-studio-record]').forEach(b=>b.onclick=()=>this.select(b.dataset.studioRecord));$('studio-summary').textContent=this.work.entities.length+' direct members · '+this.work.undoStack.length+' isolated edits';$('studio-undo').disabled=!this.work.undoStack.length;$('studio-redo').disabled=!this.work.redoStack.length;if(this.selected&&!this.work.entityMap.has(this.selected))this.selected=null;this.properties();}
+ select(id){this.selected=id;this.tool='select';this.first=null;this.renderRecords();if(this.ready){const entry=this.engine.model.editRoots?.find(r=>r.handle===id);this.engine.selectEntities(entry?[entry]:[]);}}
+ properties(){const host=$('studio-property-form'),r=this.work.entityMap.get(this.selected);if(!r){host.innerHTML='<p>Select a member to edit. Source records not supported by a property form remain available through the DXF record editor.</p>';return;}const fields=TYPES[r.type]||[];host.innerHTML=`<form id="studio-object-form" class="block-form"><h3>${esc(r.type)} · #${esc(this.selected)}</h3><label>Layer<input name="layer" value="${esc(group(r,8,'0'))}" required></label><div class="studio-numeric">${fields.map(([code,label])=>`<label>${label}<input name="g${code}" ${typeof group(r,code,'')==='number'||code>=10?'type="number" step="any"':''} value="${esc(group(r,code,code===41||code===42||code===43?1:code===1||code===2||code===3?'':0))}"></label>`).join('')}</div><details><summary>DXF record · advanced</summary><textarea name="raw" class="block-code" spellcheck="false">${esc(JSON.stringify(r,null,2))}</textarea><label class="block-check"><input type="checkbox" name="rawMode"> Apply raw JSON instead</label></details><div class="block-detail-actions"><button type="submit" class="button primary small">Apply member</button><button type="button" id="studio-delete" class="button small">Delete</button></div></form>`;
+ const form=$('studio-object-form');form.onsubmit=e=>{e.preventDefault();this.run(async()=>{let next;if(form.elements.rawMode.checked)next=JSON.parse(form.elements.raw.value);else{next=setGroup(r,8,form.elements.layer.value);for(const [code] of fields){const value=form.elements.namedItem('g'+code).value;next=setGroup(next,code,code===1||code===2||code===3?value:Number(value));}}next=setGroup(next,5,this.selected);validateRecords([next]);if(!form.elements.rawMode.checked&&r.type==='INSERT')this.work.editInsert(this.selected,readInsert(next));else{if(['CIRCLE','ARC','ELLIPSE','TEXT','ATTDEF'].includes(next.type)&&Number(group(next,40,0))<=0)throw new Error('Radius, axis ratio, or text height must be positive.');const data=this.work.entities.map(x=>x===r?next:x);this.work.transaction('Edit member',()=>{this.work.entities=data;this.work.ensureLayer(group(next,8,'0'));});}await this.refresh();});};$('studio-delete').onclick=()=>this.run(()=>this.remove());}
+ async remove(){if(!this.selected)return;this.work.deleteEntities([this.selected]);this.selected=null;await this.refresh();}
+ async click(event){const p=this.point(event);if(this.tool==='select'){const box=this.canvas.getBoundingClientRect(),id=await this.engine.pick(event.clientX-box.left,event.clientY-box.top);const owner=ownerOf(this.engine.model,id);if(owner)this.select(owner.handle);return;}
+ const layer=$('studio-layer').value,height=Number($('studio-height').value),value=$('studio-text').value||'LABEL',common=[[8,layer],[62,0]];let r;
+ if(['line','rectangle','circle'].includes(this.tool)&&!this.first){this.first=p;this.status('Click '+(this.tool==='circle'?'radius point':'second point')+' · Esc cancels');return;}
+ if(this.tool==='line')r=record('LINE',[...common,[10,this.first[0]],[20,this.first[1]],[11,p[0]],[21,p[1]]]);
+ else if(this.tool==='rectangle'){const a=this.first;r=record('LWPOLYLINE',[...common,[90,4],[70,1],[10,a[0]],[20,a[1]],[10,p[0]],[20,a[1]],[10,p[0]],[20,p[1]],[10,a[0]],[20,p[1]]]);}
+ else if(this.tool==='circle'){const radius=Math.hypot(p[0]-this.first[0],p[1]-this.first[1]);if(radius<1e-9)throw new Error('Choose a nonzero circle radius.');r=record('CIRCLE',[...common,[10,this.first[0]],[20,this.first[1]],[40,radius]]);}
+ else if(this.tool==='point')r=record('POINT',[...common,[10,p[0]],[20,p[1]]]);
+ else if(this.tool==='text'||this.tool==='attribute'){if(!Number.isFinite(height)||height<=0)throw new Error('Text height must be positive.');const attr=this.tool==='attribute';r=record(attr?'ATTDEF':'TEXT',[...common,[10,p[0]],[20,p[1]],[40,height],[1,attr?'':value],...(attr?[[2,value.toUpperCase().replace(/\s/g,'_')],[3,value],[70,0]]:[])]);}
+ if(r){this.work.replaceEntities([],[r],{label:'Draw '+r.type});this.first=null;await this.refresh();}
+ }
+ async updatePreview(){if(this.previewBusy||this.busy||!this.ready||!this.first||!this.previewPending||this.dead)return;this.previewBusy=true;const p=this.previewPending;this.previewPending=null;try{const builder=new ModelBuilder(this.w.font,{origin:this.engine.model.origin}),a=this.first,layer=this.engine.annotationLayer,color=0xff65cbff;if(this.tool==='circle'){builder.add({type:TYPE.ELLIPSE,anchor:a,p:[Math.hypot(p[0]-a[0],p[1]-a[1]),0,1,0],q:[0,Math.PI*2,0,0],layer,color});}else if(this.tool==='rectangle'){builder.add({type:TYPE.POLYLINE,anchor:a,points:[a,[p[0],a[1]],p,[a[0],p[1]]],flags:1,layer,color});}else builder.add({type:TYPE.LINE,anchor:a,p:[p[0]-a[0],p[1]-a[1],0,0],layer,color});const model=builder.finish(),idBase=this.engine.model.count;for(const page of model.pages){const u=new Uint32Array(page.entities);for(let i=0;i<page.count;i++)u[i*32+19]+=idBase;page.idBase+=idBase;}await this.engine.setPreview(model);}catch(error){this.status(error.message);}finally{this.previewBusy=false;if(this.previewPending&&!this.busy)this.updatePreview();}}
+ async clearPreview(){this.first=null;this.previewPending=null;if(this.ready&&!this.dead){while(this.previewBusy)await new Promise(resolve=>setTimeout(resolve,0));await this.engine.setPreview({pages:[],count:0,origin:this.engine.model?.origin||[0,0]});}}
+ nestedForm(){const names=this.work.list().filter(b=>canonical(b.name)!==canonical(this.name)&&!b.external&&!b.dynamic).map(b=>b.name),host=$('studio-property-form');host.innerHTML=`<form id="studio-nest-form" class="block-form"><h3>Nested INSERT</h3><label>Definition<select name="definition">${names.map(n=>`<option value="${esc(n)}">${esc(n)}</option>`).join('')}</select></label>${[['x','X',0],['y','Y',0],['scale','Uniform scale',1],['angle','Angle °',0]].map(([n,l,v])=>`<label>${l}<input type="number" name="${n}" step="any" value="${v}" required></label>`).join('')}<button class="button primary" type="submit">Insert member</button></form>`;const form=$('studio-nest-form');form.onsubmit=e=>{e.preventDefault();this.run(async()=>{this.work.insert(form.elements.definition.value,{position:[Number(form.elements.x.value),Number(form.elements.y.value),0],scale:Array(3).fill(Number(form.elements.scale.value)),rotation:Number(form.elements.angle.value),layer:$('studio-layer').value});await this.refresh();});};}
+ async save(){await this.queue.catch(()=>{});if(this.dead)return;if(this.w.doc?.id!==this.docId||this.parent.revision!==this.revision)throw new Error('The parent drawing changed while this definition was open. Reopen the editor to avoid overwriting newer edits.');const records=structuredClone(this.work.entities);await this.w.change(d=>d.setDefinition(this.name,{records}));this.w.h.closeDialog();this.w.h.toast('Saved '+this.name+'; all references updated.');}
+ dispose(){if(this.dead)return;this.dead=true;this.importer.cancel();this.resize?.disconnect();this.engine?.dispose();$('dialog')?.classList.remove('studio-dialog');this.w.studio=null;if(this.w.opened&&this.w.selected)this.w.queueThumbnail(this.w.selected);}
+}
+
+Object.assign(exports,{BlockStudio});
+},
+"packages/blocks/document.js":function(module,exports,require){
+const { EMPTY_DXF }=require("packages/blocks/template.js");
+const { serializedRecord }=require("packages/blocks/serialize.js");
+/** Editable DXF block graph. No entity tessellation or rasterization occurs here.
+ * Raw records remain immutable between transactions; history shares unchanged records.
+ * Attributes are normalized to standard DXF WCS text parameters at the file boundary.
+ */
+const { asciiGroups, binaryGroups, records }=require("packages/dxf/index.js");
+const BLOCK_SCHEMA = 'aperture.block-library/1';
+const UNIT_NAMES = ['Unitless','Inches','Feet','Miles','Millimeters','Centimeters','Meters','Kilometers','Microinches','Mils','Yards','Angstroms','Nanometers','Microns','Decimeters','Decameters','Hectometers','Gigameters','Astronomical units','Light years','Parsecs','US survey feet','US survey inches','US survey yards','US survey miles'];
+const METERS=[1,.0254,.3048,1609.344,.001,.01,1,1000,2.54e-8,2.54e-5,.9144,1e-10,1e-9,1e-6,.1,10,100,1e9,149597870700,9.4607304725808e15,3.085677581491367e16,1200/3937,100/3937,3600/3937,6336000/3937];
+const group=(r,c,d=0)=>r?.groups?.find(g=>g.code===c)?.value??d;
+const canonical=n=>String(n).toLocaleUpperCase('en-US');
+function setGroup(r,c,value){const groups=r.groups.map(g=>({...g})),i=groups.findIndex(g=>g.code===c);if(i<0)groups.push({code:c,value});else groups[i]={code:c,value};return {...r,groups};}
+function record(type,values=[]){return {type,groups:values.map(([code,value])=>({code,value}))};}
+const clone=globalThis.structuredClone;
+const DEG=Math.PI/180;
+const finite=(n,name)=>{n=Number(n);if(!Number.isFinite(n)||!Number.isFinite(Math.fround(n)))throw new RangeError(name+' must be finite.');return n;};
+function validateName(name,{anonymous=false}={}){name=String(name).trim();if(!name||name.length>255||/[\x00-\x1f<>/\\":;?\|=]/.test(name)||(!anonymous&&name.includes('*')))throw new RangeError('Use a block name of 1–255 characters without DXF-reserved punctuation.');return name;}
+function unitFactor(from,to){if(!Number.isInteger(from)||!Number.isInteger(to)||!METERS[from]||!METERS[to])throw new RangeError('Unknown insertion units.');return !from||!to?1:METERS[from]/METERS[to];}
+function decode(input){if(typeof input==='string')return input;if(!(input instanceof ArrayBuffer))throw new TypeError('DXF input must be text or an ArrayBuffer.');const head=new TextDecoder().decode(new Uint8Array(input,0,Math.min(65536,input.byteLength)));if(head.startsWith('AutoCAD Binary DXF'))return null;const ver=/\$ACADVER\s*\r?\n\s*1\s*\r?\n\s*AC(\d+)/.exec(head),cp=/\$DWGCODEPAGE\s*\r?\n\s*3\s*\r?\n\s*ANSI_(\d+)/.exec(head);let encoding=ver&&Number(ver[1])>=1021?'utf-8':cp?'windows-'+cp[1]:'windows-1252';try{return new TextDecoder(encoding).decode(input);}catch{return new TextDecoder('windows-1252').decode(input);}}
+function fold(items){const out=[];for(let i=0;i<items.length;i++){let r=items[i];if(r.type==='INSERT'&&group(r,66,0)===1){const attributes=[];while(items[i+1]?.type==='ATTRIB')attributes.push(items[++i]);const seqend=items[i+1]?.type==='SEQEND'?items[++i]:record('SEQEND');r={...r,attributes,seqend};}else if(r.type==='POLYLINE'){const vertices=[];while(items[i+1]?.type==='VERTEX')vertices.push(items[++i]);const seqend=items[i+1]?.type==='SEQEND'?items[++i]:record('SEQEND');r={...r,vertices,seqend};}out.push(r);}return out;}
+function flatten(items){const out=[];for(const r of items){out.push(r);if(r.vertices){out.push(...r.vertices,r.seqend||record('SEQEND'));}if(r.attributes?.length||group(r,66,0)===1){out.push(...(r.attributes||[]),r.seqend||record('SEQEND'));}}return out;}
+function cleanRecord(r){const copy=clone(r);copy.groups=copy.groups.filter(g=>![5,105,330,360,67,410].includes(g.code)&&g.code!==102);delete copy.seqend;for(const key of ['attributes','vertices'])if(copy[key])copy[key]=copy[key].map(cleanRecord);return copy;}
+function bytesOf(state){return new TextEncoder().encode(JSON.stringify(state)).length;}
+function insertOptions(values={}){
+ const position=(values.position||[0,0,0]).map((v,i)=>finite(v,'Position '+i));while(position.length<3)position.push(0);if(position.length!==3)throw new RangeError('Position requires two or three coordinates.');
+ const scale=(values.scale||[1,1,1]).map((v,i)=>{v=finite(v,'Scale '+i);if(Math.abs(v)<1e-12)throw new RangeError('An INSERT scale cannot be zero.');return v;});while(scale.length<3)scale.push(1);if(scale.length!==3)throw new RangeError('Scale requires two or three coordinates.');
+ const count=(v,label)=>{v=Number(v??1);if(!Number.isSafeInteger(v)||v<1||v>32767)throw new RangeError(label+' must be an integer from 1 to 32,767.');return v;};
+ const rows=count(values.rows,'Rows'),columns=count(values.columns,'Columns');if(rows*columns>1000000)throw new RangeError('Array exceeds one million placements.');
+ return {position,scale,rotation:finite(values.rotation??0,'Rotation'),rows,columns,rowSpacing:finite(values.rowSpacing??0,'Row spacing'),columnSpacing:finite(values.columnSpacing??0,'Column spacing'),layer:String(values.layer||'0'),color:Number(values.color??256),attributes:{...(values.attributes||{})},space:String(values.space||'model')};
+}
+function recordSpace(r){const name=String(group(r,410,''));return name?(canonical(name)==='MODEL'?'model':'layout:'+name):group(r,67)?'layout:Layout1':'model';}
+function readInsert(r){return insertOptions({position:[group(r,10),group(r,20),group(r,30)],scale:[group(r,41,1),group(r,42,1),group(r,43,1)],rotation:group(r,50),columns:group(r,70,1),rows:group(r,71,1),columnSpacing:group(r,44),rowSpacing:group(r,45),layer:group(r,8,'0'),color:group(r,62,256),space:recordSpace(r),attributes:Object.fromEntries((r.attributes||[]).map(a=>[String(group(a,2,'')),String(group(a,1,''))]))});}
+/** Standard ATTRIB text parameters. Only serialization math; rendering still evaluates nodes on GPU. */
+function attributeFor(def,block,options,handle){
+ const o=insertOptions(options),a=o.rotation*DEG,c=Math.cos(a),s=Math.sin(a),sx=o.scale[0],sy=o.scale[1],base=block.base;
+ const transform=(x,y)=>[o.position[0]+c*sx*(x-base[0])-s*sy*(y-base[1]),o.position[1]+s*sx*(x-base[0])+c*sy*(y-base[1])];
+ const angle=group(def,50)*DEG,h=group(def,40,1),w=group(def,41,1),ob=group(def,51)*DEG,ca=Math.cos(angle),sa=Math.sin(angle),map=(x,y)=>[c*sx*x-s*sy*y,s*sx*x+c*sy*y];
+ const x=map(ca*h*w,sa*h*w),y=map((ca*Math.tan(ob)-sa)*h*((group(def,71,0)&4)?-1:1),(sa*Math.tan(ob)+ca)*h*((group(def,71,0)&4)?-1:1)),length=Math.hypot(...x);if(length<1e-15)throw new RangeError('Degenerate attribute text basis.');
+ const ux=x[0]/length,uy=x[1]/length,vertical=ux*y[1]-uy*y[0],height=Math.abs(vertical);if(height<1e-15)throw new RangeError('Degenerate attribute height.');
+ let r=cleanRecord(def);r.type='ATTRIB';r.groups=r.groups.filter(g=>g.code!==3&&g.code!==100);r=setGroup(r,5,handle);r=setGroup(r,100,'AcDbEntity');
+ const tag=String(group(def,2,'')),flags=group(def,70,0),value=(flags&2)?String(group(def,1,'')):String(o.attributes[tag]??group(def,1,''));
+ const p=transform(group(def,10),group(def,20));for(const [code,field] of [[1,value],[10,p[0]],[20,p[1]],[30,o.position[2]+(group(def,30)-base[2])*o.scale[2]],[40,height],[41,length/height],[50,Math.atan2(uy,ux)/DEG],[51,Math.atan2((ux*y[0]+uy*y[1])*Math.sign(vertical),height)/DEG],[71,(group(def,71,0)&2)|(vertical<0?4:0)],[74,group(def,74,group(def,73,0))],[8,group(def,8,'0')==='0'?o.layer:group(def,8)]])r=setGroup(r,code,field);
+ if(def.groups.some(g=>g.code===11)){const p=transform(group(def,11),group(def,21));r=setGroup(setGroup(r,11,p[0]),21,p[1]);}
+ r.groups=r.groups.filter(g=>g.code!==73);return r;
+}
+class BlockDrawing {
+ constructor(input=null,{name='Drawing.dxf',maxBytes=256*1024*1024,maxRecords=2000000}={}){
+  this.name=name;this.sections=[];this.blocks=[];this.entities=[];this.tables=[];this.undoStack=[];this.redoStack=[];this.revision=0;this.maxHistory=64;this.serial=0x100000n;this.warnings=[];
+  if(input===null)input=EMPTY_DXF;
+  if(input!==null){const size=typeof input==='string'?input.length*2:input.byteLength;if(size>maxBytes)throw new RangeError('Editable DXF source exceeds the 256 MiB safety budget.');const text=decode(input);let sec=null,n=0;for(const r of records(text===null?binaryGroups(input):asciiGroups(text))){if(++n>maxRecords)throw new RangeError('Editable DXF record limit exceeded.');if(r.type==='SECTION'){sec={name:String(group(r,2,'')),header:r,records:[]};this.sections.push(sec);}else if(r.type==='ENDSEC'){sec=null;}else if(r.type==='EOF')break;else if(sec)sec.records.push(r);}}
+  if(!this.sections.length)this.sections=[{name:'HEADER',header:record('SECTION',[[2,'HEADER'],[9,'$ACADVER'],[1,'AC1021'],[9,'$INSUNITS'],[70,0]]),records:[]},{name:'TABLES',header:record('SECTION',[[2,'TABLES']]),records:[]},{name:'BLOCKS',header:record('SECTION',[[2,'BLOCKS']]),records:[]},{name:'ENTITIES',header:record('SECTION',[[2,'ENTITIES']]),records:[]}];
+  this.tables=this.sections.find(s=>s.name==='TABLES')?.records||[];
+  const flat=this.sections.find(s=>s.name==='BLOCKS')?.records||[];let b=null;for(const r of flat){if(r.type==='BLOCK'){if(b)throw new Error('Unterminated BLOCK definition.');b={header:r,records:[],end:record('ENDBLK')};}else if(r.type==='ENDBLK'){if(b){b.end=r;b.records=fold(b.records);this.blocks.push(b);b=null;}}else if(b)b.records.push(r);}if(b)throw new Error('Unterminated BLOCK definition.');
+  this.entities=fold(this.sections.find(s=>s.name==='ENTITIES')?.records||[]);this.normalizeSpaces();this.scanHandles();this.ensureHandles();this.refresh();
+ }
+ layoutBindings(){const result=new Map();for(const section of this.sections)for(const r of section.records)if(r.type==='LAYOUT'){const at=r.groups.findIndex(g=>g.code===100&&g.value==='AcDbLayout'),values=at>=0?r.groups.slice(at+1):r.groups,name=String(values.find(g=>g.code===1)?.value||''),owner=values.filter(g=>g.code===330).at(-1)?.value;if(name&&owner)result.set(canonical(name),{name,owner:String(owner)});}return result;}
+ normalizeSpaces(){const layouts=this.layoutBindings(),byOwner=new Map([...layouts.values()].map(x=>[canonical(x.owner),x.name])),tableName=new Map(this.tables.filter(r=>r.type==='BLOCK_RECORD').map(r=>[canonical(group(r,2)),String(group(r,5))])),seen=new Set(this.entities.map(r=>String(group(r,5,''))).filter(Boolean));const normalize=(r,name,owner)=>{const explicit=String(group(r,410,'')),resolved=explicit||name||byOwner.get(canonical(group(r,330,'')))||(group(r,67)?'Layout1':'Model');r=setGroup(r,410,resolved);r=setGroup(r,67,canonical(resolved)==='MODEL'?0:1);const binding=layouts.get(canonical(resolved));if(binding||owner)r=setGroup(r,330,binding?.owner||owner);return r;};this.entities=this.entities.map(r=>normalize(r));this.blocks=this.blocks.map(b=>{const name=String(group(b.header,2,''));if(!/^[*$](?:model_space|paper_space)/i.test(name))return b;const owner=tableName.get(canonical(name))||String(group(b.header,330,'')),layout=byOwner.get(canonical(owner))||(/model_space/i.test(name)?'Model':'Layout1');for(const r of b.records){const h=String(group(r,5,''));if(!h||!seen.has(h)){this.entities.push(normalize(r,layout,owner));if(h)seen.add(h);}}return {...b,records:[]};});}
+ scanHandles(){for(const sec of this.sections)for(const r of [sec.header,...sec.records]){const h=String(group(r,5,group(r,105,'')));if(/^[0-9a-f]+$/i.test(h)){const x=BigInt('0x'+h);if(x>=this.serial)this.serial=x+1n;}}}
+ nextHandle(){return (this.serial++).toString(16).toUpperCase();}
+ reserveHandles(items){const visit=r=>{const h=String(group(r,5,group(r,105,'')));if(/^[0-9a-f]{1,64}$/i.test(h)){const n=BigInt('0x'+h);if(n>=this.serial)this.serial=n+1n;}for(const key of ['attributes','vertices'])r[key]?.forEach(visit);if(r.seqend)visit(r.seqend);};items.forEach(visit);}
+ ensureHandles(){const stamp=r=>{let n=r;if(!group(n,5,''))n=setGroup(n,5,this.nextHandle());if(n.attributes)n={...n,attributes:n.attributes.map(stamp)};if(n.vertices)n={...n,vertices:n.vertices.map(stamp)};if(n.attributes?.length||n.vertices||group(n,66,0)===1)n={...n,seqend:stamp(n.seqend||record('SEQEND'))};return n;};this.entities=this.entities.map(stamp);this.blocks=this.blocks.map(b=>({...b,header:stamp(b.header),end:stamp(b.end),records:b.records.map(stamp)}));}
+ refresh(){this.blockMap=new Map();for(const b of this.blocks){const name=String(group(b.header,2,'')),k=canonical(name);if(this.blockMap.has(k))throw new Error('Duplicate case-insensitive block definition: '+name);this.blockMap.set(k,b);}this.entityMap=new Map(this.entities.map(r=>[String(group(r,5)),r]));}
+ get units(){const s=this.sections.find(s=>s.name==='HEADER');const g=[...(s?.header.groups||[]),...(s?.records.flatMap(r=>r.groups)||[])];const i=g.findIndex(v=>v.code===9&&v.value==='$INSUNITS');return i>=0?Number(g[i+1]?.value||0):0;}
+ get layers(){const items=this.tables.filter(r=>r.type==='LAYER').map(r=>({name:String(group(r,2)),locked:!!(group(r,70)&4),color:group(r,62,7)}));if(!items.some(l=>l.name==='0'))items.unshift({name:'0',locked:false,color:7});return items;}
+ metadata(b){if(typeof b==='string')b=this.definition(b);const name=String(group(b.header,2)),table=this.tables.find(r=>r.type==='BLOCK_RECORD'&&canonical(group(r,2,''))===canonical(name));return {name,base:[group(b.header,10),group(b.header,20),group(b.header,30)],description:String(group(b.header,4,'')),flags:group(b.header,70),units:group(table,70,this.units),allowExplode:group(table,280,1)!==0,uniform:group(table,281,0)!==0,external:!!(group(b.header,70)&12),dynamic:/^\*U/i.test(name)||[b.header,table].some(r=>r?.groups.some(g=>String(g.value)==='ACAD_ENHANCEDBLOCK')),anonymous:name.startsWith('*'),system:/^[*$](?:model_space|paper_space)/i.test(name),path:String(group(b.header,1,'')),count:b.records.length,attributes:b.records.filter(r=>r.type==='ATTDEF').map(r=>({tag:String(group(r,2)),prompt:String(group(r,3,group(r,2))),value:String(group(r,1,'')),constant:!!(group(r,70)&2),invisible:!!(group(r,70)&1),preset:!!(group(r,70)&8),verify:!!(group(r,70)&4),locked:!!group(r,280,0)})),dependencies:[...new Set(b.records.filter(r=>r.type==='INSERT').map(r=>String(group(r,2))))]};}
+ definition(name){const b=this.blockMap.get(canonical(name));if(!b)throw new Error('Block definition not found: '+name);return b;}
+ list({includeSystem=false}={}){return this.blocks.map(b=>this.metadata(b)).filter(b=>includeSystem||!b.system);}
+ snapshot(){return {blocks:this.blocks,entities:this.entities,tables:this.tables,sections:this.sections};}
+ restore(s){Object.assign(this,s);this.refresh();}
+ transaction(label,fn){if(this.transactionDepth){const result=fn();this.ensureHandles();this.refresh();return result;}const before=this.snapshot();this.transactionDepth=1;try{const result=fn();this.ensureHandles();this.refresh();this.validateGraph();this.undoStack.push({label,before,after:this.snapshot()});if(this.undoStack.length>this.maxHistory)this.undoStack.shift();this.redoStack=[];this.revision++;return result;}catch(error){this.restore(before);throw error;}finally{this.transactionDepth=0;}}
+ undo(){const c=this.undoStack.pop();if(!c)return false;this.restore(c.before);this.redoStack.push(c);this.revision++;return c.label;}
+ redo(){const c=this.redoStack.pop();if(!c)return false;this.restore(c.after);this.undoStack.push(c);this.revision++;return c.label;}
+ validateGraph(){for(const b of this.blocks){const tags=new Set();for(const r of b.records)if(r.type==='ATTDEF'){const tag=canonical(group(r,2,''));if(!tag||tags.has(tag))throw new Error('Duplicate or empty attribute tag in '+group(b.header,2)+': '+tag);tags.add(tag);}const stack=[{name:String(group(b.header,2)),path:[]}];let visited=0;while(stack.length){const f=stack.pop(),key=canonical(f.name);if(f.path.includes(key))throw new Error('Cyclic block reference: '+[...f.path,key].join(' → '));if(f.path.length>=48)throw new RangeError('Nested blocks exceed the safe depth of 48.');if(++visited>100000)throw new RangeError('Block dependency expansion exceeds the safety budget.');const d=this.blockMap.get(key);if(!d)continue;for(const r of d.records)if(r.type==='INSERT')stack.push({name:String(group(r,2)),path:[...f.path,key]});}}}
+ dependencyNames(name){const out=[],seen=new Set(),stack=[name];while(stack.length){const n=stack.pop(),k=canonical(n);if(seen.has(k))continue;seen.add(k);const b=this.definition(n);out.push(String(group(b.header,2)));for(const r of b.records)if(r.type==='INSERT')stack.push(String(group(r,2)));}return out;}
+ references(name=null){const rows=[];const visit=(items,parent=null,path=[])=>{for(const r of items){if(r.type!=='INSERT')continue;const n=String(group(r,2)),id=String(group(r,5));if(name===null||canonical(name)===canonical(n))rows.push({id,name:n,parent,path:[...path,id],layer:String(group(r,8,'0')),options:readInsert(r)});}};visit(this.entities);for(const b of this.blocks)visit(b.records,String(group(b.header,2)));return rows;}
+ tree(name,path=[],budget={left:10000}){if(--budget.left<0)return {name,truncated:true,children:[]};const key=canonical(name);if(path.includes(key))return {name,cycle:true,children:[]};if(path.length>=48)return {name,truncated:true,children:[]};const b=this.blockMap.get(key);if(!b)return {name,missing:true,children:[]};return {name,entities:b.records.length,children:b.records.filter(r=>r.type==='INSERT').map(r=>({...this.tree(String(group(r,2)),[...path,key],budget),handle:String(group(r,5)),layer:String(group(r,8,'0')),options:readInsert(r)}))};}
+ assertEditable(name){const m=this.metadata(name);if(m.system)throw new Error('Model/paper space containers are not user blocks.');if(m.external)throw new Error('External references are listed, but must be bound by the source CAD system before authoring.');if(m.dynamic)throw new Error('Potential dynamic/evaluated block: displayed for inspection, but actions and constraints cannot be edited or regenerated. Export a static block in the originating CAD system first.');return m;}
+ ensureLayer(name){name=validateName(name);if(this.layers.some(l=>canonical(l.name)===canonical(name)))return;const r=record('LAYER',[[5,this.nextHandle()],[100,'AcDbSymbolTableRecord'],[100,'AcDbLayerTableRecord'],[2,name],[70,0],[62,7],[6,'CONTINUOUS']]);this.tables=insertTable(this.tables,'LAYER',[r]);}
+ blockRecord(name,units=0){if(!Number.isInteger(units)||units<0||units>24)throw new RangeError('Unknown insertion units.');const r=record('BLOCK_RECORD',[[5,this.nextHandle()],[100,'AcDbSymbolTableRecord'],[100,'AcDbBlockTableRecord'],[2,name],[70,units],[280,1],[281,0]]);this.tables=insertTable(this.tables,'BLOCK_RECORD',[r]);return r;}
+ makeInsert(name,values={}){const meta=this.assertEditable(name),o=insertOptions(values);if(meta.uniform&&o.scale.some(s=>Math.abs(Math.abs(s)-Math.abs(o.scale[0]))>1e-10))throw new RangeError('This block requires uniform XYZ scale.');const layer=this.layers.find(l=>canonical(l.name)===canonical(o.layer));if(layer?.locked)throw new Error('The insertion layer is locked.');this.ensureLayer(o.layer);let r=record('INSERT',[[5,this.nextHandle()],[100,'AcDbEntity'],[8,o.layer],[62,o.color],[67,o.space==='model'?0:1],[410,o.space==='model'?'Model':o.space.replace(/^layout:/,'')],[100,'AcDbBlockReference'],[2,meta.name],[10,o.position[0]],[20,o.position[1]],[30,o.position[2]],[41,o.scale[0]],[42,o.scale[1]],[43,o.scale[2]],[50,o.rotation],[70,o.columns],[71,o.rows],[44,o.columnSpacing],[45,o.rowSpacing]]);
+  const attributes=this.definition(name).records.filter(r=>r.type==='ATTDEF'&&!(group(r,70)&2)).map(a=>attributeFor(a,meta,o,this.nextHandle()));if(attributes.length)r={...setGroup(r,66,1),attributes,seqend:record('SEQEND',[[5,this.nextHandle()],[8,o.layer]])};return r;}
+ insert(name,values={}){let id;this.transaction('Insert '+name,()=>{const r=this.makeInsert(name,values);this.entities=[...this.entities,r];id=String(group(r,5));});return id;}
+ editInsert(id,patch={}){this.transaction('Edit block reference',()=>{const old=this.entityMap.get(id);if(old?.type!=='INSERT')throw new Error('Select a root INSERT reference.');if(this.layers.find(l=>canonical(l.name)===canonical(group(old,8,'0')))?.locked)throw new Error('The reference layer is locked.');const name=patch.name||String(group(old,2)),values={...readInsert(old),...patch};delete values.name;let r=this.makeInsert(name,values);r=setGroup(r,5,id);this.entities=this.entities.map(e=>e===old?r:e);});}
+ deleteEntities(ids){const wanted=new Set(ids);this.transaction('Delete selection',()=>{for(const r of this.entities)if(wanted.has(String(group(r,5)))&&this.layers.find(l=>l.name===group(r,8,'0'))?.locked)throw new Error('Selection contains entities on locked layers.');this.entities=this.entities.filter(r=>!wanted.has(String(group(r,5))));});}
+ rename(oldName,newName){newName=validateName(newName);this.transaction('Rename '+oldName,()=>{this.assertEditable(oldName);if(this.blockMap.has(canonical(newName))&&canonical(oldName)!==canonical(newName))throw new Error('A block with that name already exists.');const replace=r=>(r.type==='INSERT'||r.type==='DIMENSION')&&canonical(group(r,2,''))===canonical(oldName)?setGroup(r,2,newName):r;this.entities=this.entities.map(replace);this.blocks=this.blocks.map(b=>({...b,header:canonical(group(b.header,2))===canonical(oldName)?setGroup(setGroup(b.header,2,newName),3,newName):b.header,records:b.records.map(replace)}));this.tables=this.tables.map(r=>r.type==='BLOCK_RECORD'&&canonical(group(r,2))===canonical(oldName)?setGroup(r,2,newName):r);});}
+ create(name,ids,base=[0,0,0],{mode='convert',description='',units=this.units}={}){name=validateName(name);let inserted=null;this.transaction('Create '+name,()=>{if(this.blockMap.has(canonical(name)))throw new Error('Block name already exists.');const wanted=new Set(ids),selected=this.entities.filter(r=>wanted.has(String(group(r,5))));if(!selected.length)throw new Error('Select at least one source entity or INSERT.');if(selected.some(r=>r.type==='VIEWPORT'))throw new Error('Paper viewports cannot be block members.');if(new Set(selected.map(r=>recordSpace(r))).size!==1)throw new Error('Create block requires objects from a single model or paper space.');if(selected.some(r=>this.layers.find(l=>canonical(l.name)===canonical(group(r,8,'0')))?.locked))throw new Error('Selection contains entities on locked layers.');if(!['convert','retain','delete'].includes(mode))throw new Error('Unknown block creation mode.');base=[finite(base[0],'Base X'),finite(base[1],'Base Y'),finite(base[2]||0,'Base Z')];const table=this.blockRecord(name,units);const header=record('BLOCK',[[5,this.nextHandle()],[330,group(table,5)],[100,'AcDbEntity'],[8,'0'],[100,'AcDbBlockBegin'],[2,name],[3,name],[70,0],[10,base[0]],[20,base[1]],[30,base[2]],[4,String(description)]]);this.blocks=[...this.blocks,{header,end:record('ENDBLK',[[5,this.nextHandle()],[330,group(table,5)],[100,'AcDbEntity'],[8,'0'],[100,'AcDbBlockEnd']]),records:selected.map(cleanRecord).map(r=>setGroup(r,5,this.nextHandle()))}];this.refresh();if(mode!=='retain')this.entities=this.entities.filter(r=>!wanted.has(String(group(r,5))));if(mode==='convert'){const space=recordSpace(selected[0]),r=this.makeInsert(name,{position:base,space,layer:String(group(selected[0],8,'0'))});this.entities=[...this.entities,r];inserted=String(group(r,5));}});return inserted;}
+ setDefinition(name,{base,description,units,records:newRecords,uniform,allowExplode}={}){this.transaction('Edit definition '+name,()=>{const old=this.definition(name);this.assertEditable(name);let header=old.header;if(base){for(let i=0;i<3;i++)header=setGroup(header,10+i*10,finite(base[i]||0,'Base point'));}if(description!==undefined)header=setGroup(header,4,String(description));if(newRecords){validateRecords(newRecords);this.reserveHandles(newRecords);newRecords=clone(newRecords).map(r=>{const handle=group(r,5,'')||this.nextHandle();return setGroup(cleanRecord(r),5,handle);});}this.blocks=this.blocks.map(b=>b===old?{...b,header,records:newRecords||b.records}:b);if(!this.tables.some(r=>r.type==='BLOCK_RECORD'&&canonical(group(r,2))===canonical(name)))this.blockRecord(name,this.units);if(units!==undefined&&(!Number.isInteger(units)||units<0||units>24))throw new RangeError('Unknown insertion units.');this.tables=this.tables.map(r=>{if(r.type!=='BLOCK_RECORD'||canonical(group(r,2))!==canonical(name))return r;for(const [c,v] of [[70,units],[280,allowExplode===undefined?undefined:Number(allowExplode)],[281,uniform===undefined?undefined:Number(uniform)]])if(v!==undefined)r=setGroup(r,c,v);return r;});});}
+ addAttribute(name,{tag,prompt='',value='',x=0,y=0,height=2.5,rotation=0,flags=0}={}){tag=validateName(tag).replace(/\s/g,'_').toUpperCase();const b=this.definition(name);if(b.records.some(r=>r.type==='ATTDEF'&&canonical(group(r,2))===canonical(tag)))throw new Error('Attribute tag already exists.');const r=record('ATTDEF',[[5,this.nextHandle()],[8,'0'],[10,finite(x,'X')],[20,finite(y,'Y')],[40,finite(height,'Height')],[50,finite(rotation,'Rotation')],[1,String(value)],[2,tag],[3,String(prompt||tag)],[70,flags|0],[72,0],[74,0]]);if(height<=0)throw new RangeError('Attribute height must be positive.');this.setDefinition(name,{records:[...b.records,r]});}
+ setAttribute(name,tag,{tag:newTag,prompt,value,x,y,height,rotation,flags}={}){const b=this.definition(name),old=b.records.find(r=>r.type==='ATTDEF'&&canonical(group(r,2))===canonical(tag));if(!old)throw new Error('Attribute definition not found: '+tag);let next=old;for(const [code,v,label] of [[10,x,'X'],[20,y,'Y'],[40,height,'Height'],[50,rotation,'Rotation']])if(v!==undefined)next=setGroup(next,code,finite(v,label));if(group(next,40,0)<=0)throw new RangeError('Attribute height must be positive.');if(newTag!==undefined)next=setGroup(next,2,validateName(newTag).replace(/\s/g,'_').toUpperCase());if(prompt!==undefined)next=setGroup(next,3,String(prompt));if(value!==undefined)next=setGroup(next,1,String(value));if(flags!==undefined){if(!Number.isInteger(flags)||flags<0||flags>15)throw new RangeError('Attribute flags must be an integer from 0 to 15.');next=setGroup(next,70,flags);}this.setDefinition(name,{records:b.records.map(r=>r===old?next:r)});}
+ removeAttribute(name,tag){const b=this.definition(name);this.setDefinition(name,{records:b.records.filter(r=>r.type!=='ATTDEF'||canonical(group(r,2))!==canonical(tag))});}
+ moveAttribute(name,tag,delta){if(delta!==1&&delta!==-1)throw new RangeError('Attribute reorder step must be -1 or +1.');const b=this.definition(name),indices=b.records.map((r,i)=>r.type==='ATTDEF'?i:-1).filter(i=>i>=0),index=indices.findIndex(i=>canonical(group(b.records[i],2))===canonical(tag));if(index<0)throw new Error('Attribute definition not found: '+tag);const target=index+delta;if(target<0||target>=indices.length)return false;const records=b.records.slice();[records[indices[index]],records[indices[target]]]=[records[indices[target]],records[indices[index]]];this.setDefinition(name,{records});return true;}
+ syncAttributes(name){this.transaction('Synchronize attributes',()=>{this.assertEditable(name);const sync=r=>r.type==='INSERT'&&canonical(group(r,2))===canonical(name)?setGroup(this.makeInsert(name,readInsert(r)),5,String(group(r,5))):r;this.entities=this.entities.map(sync);this.blocks=this.blocks.map(b=>({...b,records:b.records.map(sync)}));});}
+ purge(){const used=new Set(),stack=this.entities.filter(r=>['INSERT','DIMENSION'].includes(r.type)).map(r=>String(group(r,2,'')));for(const b of this.blocks)if(this.metadata(b).system)stack.push(String(group(b.header,2)));while(stack.length){const k=canonical(stack.pop());if(used.has(k))continue;used.add(k);for(const r of this.blockMap.get(k)?.records||[])if(['INSERT','DIMENSION'].includes(r.type))stack.push(String(group(r,2,'')));}const removed=this.list().filter(b=>!used.has(canonical(b.name))).map(b=>b.name);this.transaction('Purge unused blocks',()=>{const names=new Set(removed.map(canonical));this.blocks=this.blocks.filter(b=>!names.has(canonical(group(b.header,2))));this.tables=this.tables.filter(r=>r.type!=='BLOCK_RECORD'||!names.has(canonical(group(r,2))));});return removed;}
+ exportLibrary(names=this.list().filter(b=>!b.system&&!b.external&&!b.dynamic).map(b=>b.name)){const keys=new Set(names.flatMap(n=>this.dependencyNames(n)).map(canonical));for(const key of keys)this.assertEditable(key);const data={schema:BLOCK_SCHEMA,name:this.name,units:this.units,blocks:this.blocks.filter(b=>keys.has(canonical(group(b.header,2)))).map(x=>clone(x)),tables:this.tables.filter(r=>['LAYER','LTYPE','STYLE','BLOCK_RECORD'].includes(r.type)&& (r.type!=='BLOCK_RECORD'||keys.has(canonical(group(r,2))))).map(x=>clone(x))};if(bytesOf(data)>64*1024*1024)throw new RangeError('A block library export is limited to 64 MiB.');return data;}
+ importLibrary(data,{conflict='rename',names=null}={}){validateLibrary(data);if(!['rename','replace','keep'].includes(conflict))throw new RangeError('Choose keep, rename or replace for duplicate definitions.');const imported=clone(data),mapping=new Map(),occupied=new Set(this.blockMap.keys()),source=new Map(imported.blocks.map(b=>[canonical(group(b.header,2)),b])),required=new Set();const stack=names?[...names]:imported.blocks.map(b=>String(group(b.header,2)));while(stack.length){const k=canonical(stack.pop());if(required.has(k))continue;const b=source.get(k);if(!b)throw new Error('Library dependency not found: '+k);required.add(k);for(const r of b.records)if(r.type==='INSERT')stack.push(String(group(r,2)));}
+  this.transaction('Import block library',()=>{for(const b of imported.blocks){const original=String(group(b.header,2)),k=canonical(original);if(!required.has(k))continue;let name=original;if(occupied.has(k)&&conflict==='rename'){let i=2;while(occupied.has(canonical(name=original+'_'+i)))i++;}mapping.set(k,name);occupied.add(canonical(name));}
+   for(const b of imported.blocks){const original=String(group(b.header,2)),k=canonical(original);if(!required.has(k)||(this.blockMap.has(k)&&conflict==='keep'))continue;const name=mapping.get(k);const rewrite=r=>{r=cleanRecord(r);r=setGroup(r,5,this.nextHandle());if(r.type==='INSERT')r=setGroup(r,2,mapping.get(canonical(group(r,2)))||String(group(r,2)));if(r.attributes)r={...r,attributes:r.attributes.map(a=>setGroup(a,5,this.nextHandle()))};return r;};const oldTable=imported.tables?.find(r=>r.type==='BLOCK_RECORD'&&canonical(group(r,2))===k),existing=this.tables.find(r=>r.type==='BLOCK_RECORD'&&canonical(group(r,2))===canonical(name));let table=existing||this.blockRecord(name,group(oldTable,70,data.units||0));for(const c of [70,280,281])if(oldTable?.groups.some(g=>g.code===c))table=setGroup(table,c,group(oldTable,c));this.tables=this.tables.map(r=>r.type==='BLOCK_RECORD'&&canonical(group(r,2))===canonical(name)?table:r);const header=setGroup(setGroup(setGroup(rewrite(b.header),2,name),3,name),330,group(table,5));const next={header,records:b.records.map(rewrite),end:setGroup(rewrite(b.end||record('ENDBLK')),330,group(table,5))};this.blocks=[...this.blocks.filter(x=>canonical(group(x.header,2))!==canonical(name)),next];}
+   for(const type of ['LTYPE','STYLE','LAYER']){const existing=new Set(this.tables.filter(r=>r.type===type).map(r=>canonical(group(r,2,''))));const list=(imported.tables||[]).filter(r=>r.type===type&&!existing.has(canonical(group(r,2,'')))).map(r=>setGroup(cleanRecord(r),5,this.nextHandle()));this.tables=insertTable(this.tables,type,list);}
+  });return Object.fromEntries(mapping);}
+ /** Replace source records atomically; used by graphical editing and GPU explode. */
+ replaceEntities(ids,next,{label='Edit source objects'}={}){validateRecords(next);const wanted=new Set(ids);this.transaction(label,()=>{for(const r of this.entities)if(wanted.has(String(group(r,5)))&&this.layers.find(l=>canonical(l.name)===canonical(group(r,8,'0')))?.locked)throw new Error('Selection contains entities on locked layers.');const stamp=r=>{r=cleanRecord(r);r=setGroup(r,5,this.nextHandle());if(r.attributes)r={...r,attributes:r.attributes.map(stamp)};if(r.vertices)r={...r,vertices:r.vertices.map(stamp)};return r;};this.entities=[...this.entities.filter(r=>!wanted.has(String(group(r,5)))),...next.map(r=>{const n=stamp(r);for(const c of [67,410])if(r.groups.some(g=>g.code===c))n.groups.push({code:c,value:group(r,c)});return n;})];});}
+ definitionDrawing(name){const src=this.definition(name),out=BlockDrawing.fromState(this.toState());out.name=name+' · definition';const stamp=r=>{r=setGroup(cleanRecord(r),5,out.nextHandle());if(r.attributes)r={...r,attributes:r.attributes.map(stamp)};if(r.vertices)r={...r,vertices:r.vertices.map(stamp)};return r;};out.entities=src.records.map(r=>{r=stamp(r);r=setGroup(r,67,0);return setGroup(r,410,'Model');});out.ensureHandles();out.refresh();out.undoStack=[];out.redoStack=[];return out;}
+ countReferences(){const counts=new Map();const visit=(items,multiplier,path)=>{for(const r of items){if(r.type!=='INSERT')continue;const name=String(group(r,2)),key=canonical(name),options=readInsert(r),number=multiplier*options.rows*options.columns;if(!Number.isSafeInteger(number))throw new RangeError('Expanded block count exceeds safe integer precision.');const placements=(counts.get(key)?.placements||0)+number;if(!Number.isSafeInteger(placements))throw new RangeError('Total expanded block count exceeds safe integer precision.');counts.set(key,{name,placements});if(path.includes(key))throw new Error('Cyclic block graph.');if(path.length>=48)throw new RangeError('Block count nesting exceeds 48.');const b=this.blockMap.get(key);if(b)visit(b.records,number,[...path,key]);}};visit(this.entities,1,[]);return [...counts.values()].sort((a,b)=>a.name.localeCompare(b.name));}
+ attributeRows(){const rows=[];for(const r of this.entities){if(r.type!=='INSERT')continue;const o=readInsert(r);for(const a of r.attributes||[])rows.push({handle:String(group(r,5)),block:String(group(r,2)),space:o.space,layer:o.layer,tag:String(group(a,2)),value:String(group(a,1,'')),rows:o.rows,columns:o.columns});}return rows;}
+ selectionDocument(ids){const out=BlockDrawing.fromState(this.toState());const wanted=new Set(ids);out.entities=out.entities.filter(r=>wanted.has(String(group(r,5))));out.refresh();return out;}
+ previewDocument(name,options={}){const out=new BlockDrawing(null,{name:'Preview · '+name});out.importLibrary(this.exportLibrary([name]),{conflict:'replace'});out.insert(name,options);out.undoStack=[];out.redoStack=[];return out;}
+ write(){
+  const output=[],emit=(r,owner)=>{r=serializedRecord(r,owner);output.push('0',r.type);for(const g of r.groups){if(typeof g.value==='number'&&!Number.isFinite(g.value))throw new RangeError('Cannot serialize non-finite DXF values.');output.push(String(g.code),String(g.value).replace(/[\r\n]/g,' '));}};
+  const existing=new Map(this.sections.map(s=>[s.name,s]));
+  const layoutOwners=new Map([...this.layoutBindings()].map(([name,x])=>[name,x.owner]));
+  const ownerFor=name=>String(group(this.tables.find(r=>r.type==='BLOCK_RECORD'&&canonical(group(r,2))===canonical(name)),5,''));
+  // DXF stores inactive paper spaces in their special BLOCK containers. Merely
+  // setting entity group 410/330 inside ENTITIES does not preserve those layouts.
+  const rootOwner=r=>{const space=recordSpace(r);return space==='model'?ownerFor('*Model_Space'):layoutOwners.get(canonical(space.replace(/^layout:/,'')))||String(group(r,330,''))||ownerFor('*Paper_Space');};
+  const inactive=new Map();for(const b of this.blocks)if(/^[*$]paper_space.+/i.test(String(group(b.header,2,''))))inactive.set(ownerFor(group(b.header,2)),[]);
+  const rootEntities=[];for(const r of this.entities){const owner=rootOwner(r),destination=inactive.get(owner);if(destination)destination.push(r);else rootEntities.push(r);}
+  const emitEntity=(r,owner)=>{emit(r,owner);if(r.vertices){for(const child of r.vertices)emit(child,String(group(r,5)));emit(r.seqend||record('SEQEND'),String(group(r,5)));}if(r.attributes?.length||group(r,66,0)===1){for(const child of r.attributes||[])emit(child,String(group(r,5)));emit(r.seqend||record('SEQEND'),String(group(r,5)));}};
+  const order=['HEADER','CLASSES','TABLES','BLOCKS','ENTITIES','OBJECTS',...this.sections.map(s=>s.name).filter(n=>!['HEADER','CLASSES','TABLES','BLOCKS','ENTITIES','OBJECTS'].includes(n))];
+  for(const name of order){const s=existing.get(name);if(!s&&['CLASSES','OBJECTS'].includes(name))continue;
+   let header=s?.header||record('SECTION',[[2,name]]);if(name==='HEADER'){
+    const groups=header.groups.map(g=>({...g}));let found=false;
+    for(let i=0;i<groups.length;i++)if(groups[i].code===9&&groups[i].value==='$ACADVER'&&groups[i+1]){if(!/^AC\d+$/.test(String(groups[i+1].value))||Number(String(groups[i+1].value).slice(2))<1021)groups[i+1].value='AC1021';found=true;}
+    if(!found)groups.push({code:9,value:'$ACADVER'},{code:1,value:'AC1021'});
+    for(let i=0;i<groups.length;i++)if(groups[i].code===9&&groups[i].value==='$HANDSEED'&&groups[i+1])groups[i+1].value=this.serial.toString(16).toUpperCase();header={...header,groups};
+   }
+   emit(header);
+   if(name==='BLOCKS'){for(const b of this.blocks){const owner=ownerFor(group(b.header,2));emit(b.header,owner);for(const r of b.records)emitEntity(r,owner);for(const r of inactive.get(owner)||[])emitEntity(r,owner);emit(b.end,owner);}}
+   else if(name==='ENTITIES')for(const r of rootEntities)emitEntity(r,rootOwner(r));
+   else if(name==='TABLES'){let owner='';for(const r of normalizeTables(this.tables)){if(r.type==='TABLE')owner=String(group(r,5,''));emit(r,TABLE_ENTRY_TYPES.has(r.type)?owner:undefined);}}
+   else for(const r of s?.records||[])emit(r);
+   emit(record('ENDSEC'));
+  }emit(record('EOF'));return output.join('\n')+'\n';
+ }
+ toState(){return {schema:'aperture.block-drawing/1',name:this.name,sections:this.sections,blocks:this.blocks,entities:this.entities,tables:this.tables,serial:this.serial.toString(),revision:this.revision};}
+ static fromState(s){if(s?.schema!=='aperture.block-drawing/1'||!Array.isArray(s.entities)||!Array.isArray(s.blocks))throw new Error('Invalid block drawing state.');if(!Array.isArray(s.sections)||!Array.isArray(s.tables)||s.blocks.length>10000||s.entities.length>2000000||!/^\d{1,40}$/.test(String(s.serial)))throw new Error('Invalid persisted block graph.');validateRecords(s.entities);validateRecords(s.tables,{structural:true});for(const b of s.blocks){validateRecords(b.records);validateRecords([b.header,b.end],{structural:true});}const d=new BlockDrawing();for(const key of ['name','sections','blocks','entities','tables'])d[key]=clone(s[key]);d.serial=BigInt(s.serial);d.reserveHandles([...d.entities,...d.blocks.flatMap(b=>[b.header,...b.records,b.end]),...d.tables]);d.revision=Number.isSafeInteger(s.revision)?s.revision:0;d.undoStack=[];d.redoStack=[];d.refresh();d.validateGraph();return d;}
+}
+function insertTable(records,name,items){if(!items.length)return records;const out=records.slice();const start=out.findIndex(r=>r.type==='TABLE'&&group(r,2)===name);if(start>=0){const end=out.findIndex((r,i)=>i>start&&r.type==='ENDTAB');out.splice(end<0?out.length:end,0,...items);}else out.push(record('TABLE',[[2,name],[70,items.length]]),...items,record('ENDTAB'));return out;}
+function normalizeTables(items){const out=items.slice();for(let i=0;i<out.length;i++)if(out[i].type==='TABLE'){let end=i+1;while(end<out.length&&out[end].type!=='ENDTAB')end++;out[i]=setGroup(out[i],70,end-i-1);}return out;}
+function validateRecords(items,{structural=false}={}){if(!Array.isArray(items)||items.length>1000000)throw new RangeError('Invalid block entity list.');let words=0;const visit=(r,depth)=>{if(depth>8||!r||typeof r.type!=='string'||!/^[A-Z][A-Z0-9_]*$/.test(r.type)||(!structural&&['SECTION','ENDSEC','BLOCK','ENDBLK','EOF','TABLE','ENDTAB'].includes(r.type))||!Array.isArray(r.groups))throw new Error('Invalid block entity record.');for(const g of r.groups){if(++words>2000000||!Number.isInteger(g.code)||g.code<1||g.code>1071||!['number','string'].includes(typeof g.value)||(typeof g.value==='number'&&!Number.isFinite(g.value)))throw new Error('Invalid DXF group in block record.');}for(const key of ['attributes','vertices'])if(r[key]){if(!Array.isArray(r[key]))throw new Error('Invalid child entity array.');for(const child of r[key])visit(child,depth+1);}};for(const r of items)visit(r,0);}
+function validateLibrary(data){if(!data||data.schema!==BLOCK_SCHEMA||!Array.isArray(data.blocks)||data.blocks.length>10000||!Array.isArray(data.tables)||data.tables.length>100000)throw new Error('Invalid or excessive Aperture block library.');if(bytesOf(data)>64*1024*1024)throw new RangeError('Library exceeds the 64 MiB limit.');validateRecords(data.tables);const names=new Set();for(const b of data.blocks){if(b.header?.type!=='BLOCK'||!Array.isArray(b.header.groups))throw new Error('Invalid BLOCK header.');const name=validateName(group(b.header,2,''),{anonymous:true}),key=canonical(name);if(names.has(key))throw new Error('Duplicate library definition: '+name);names.add(key);validateRecords(b.records);validateRecords([b.header,...(b.end?[b.end]:[])],{structural:true});if(/^[*$](model_space|paper_space)/i.test(name))throw new Error('Library cannot redefine a model/paper space container.');}}
+
+const TABLE_ENTRY_TYPES=new Set(['LAYER','LTYPE','STYLE','BLOCK_RECORD','APPID','VIEW','VPORT','UCS','DIMSTYLE']);
+
+Object.assign(exports,{BLOCK_SCHEMA,UNIT_NAMES,group,canonical,setGroup,record,validateName,unitFactor,insertOptions,recordSpace,readInsert,attributeFor,BlockDrawing,validateRecords,validateLibrary});
+},
+"packages/blocks/template.js":function(module,exports,require){
+/** Original empty R2007 document skeleton, generated for this application. No external assets. */
+const EMPTY_DXF = "  0\nSECTION\n  2\nHEADER\n  9\n$ACADVER\n  1\nAC1021\n  9\n$ACADMAINTVER\n 70\n25\n  9\n$DWGCODEPAGE\n  3\nANSI_1252\n  9\n$LASTSAVEDBY\n  1\nezdxf\n  9\n$INSBASE\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$EXTMIN\n 10\n1e+20\n 20\n1e+20\n 30\n1e+20\n  9\n$EXTMAX\n 10\n-1e+20\n 20\n-1e+20\n 30\n-1e+20\n  9\n$LIMMIN\n 10\n0.0\n 20\n0.0\n  9\n$LIMMAX\n 10\n420.0\n 20\n297.0\n  9\n$ORTHOMODE\n 70\n0\n  9\n$REGENMODE\n 70\n1\n  9\n$FILLMODE\n 70\n1\n  9\n$QTEXTMODE\n 70\n0\n  9\n$MIRRTEXT\n 70\n1\n  9\n$LTSCALE\n 40\n1.0\n  9\n$ATTMODE\n 70\n1\n  9\n$TEXTSIZE\n 40\n2.5\n  9\n$TRACEWID\n 40\n1.0\n  9\n$TEXTSTYLE\n  7\nStandard\n  9\n$CLAYER\n  8\n0\n  9\n$CELTYPE\n  6\nByLayer\n  9\n$CECOLOR\n 62\n256\n  9\n$CELTSCALE\n 40\n1.0\n  9\n$DISPSILH\n 70\n0\n  9\n$DIMSCALE\n 40\n1.0\n  9\n$DIMASZ\n 40\n2.5\n  9\n$DIMEXO\n 40\n0.625\n  9\n$DIMDLI\n 40\n3.75\n  9\n$DIMRND\n 40\n0.0\n  9\n$DIMDLE\n 40\n0.0\n  9\n$DIMEXE\n 40\n1.25\n  9\n$DIMTP\n 40\n0.0\n  9\n$DIMTM\n 40\n0.0\n  9\n$DIMTXT\n 40\n2.5\n  9\n$DIMCEN\n 40\n2.5\n  9\n$DIMTSZ\n 40\n0.0\n  9\n$DIMTOL\n 70\n0\n  9\n$DIMLIM\n 70\n0\n  9\n$DIMTIH\n 70\n0\n  9\n$DIMTOH\n 70\n0\n  9\n$DIMSE1\n 70\n0\n  9\n$DIMSE2\n 70\n0\n  9\n$DIMTAD\n 70\n1\n  9\n$DIMZIN\n 70\n8\n  9\n$DIMBLK\n  1\n\n  9\n$DIMASO\n 70\n1\n  9\n$DIMSHO\n 70\n1\n  9\n$DIMPOST\n  1\n\n  9\n$DIMAPOST\n  1\n\n  9\n$DIMALT\n 70\n0\n  9\n$DIMALTD\n 70\n3\n  9\n$DIMALTF\n 40\n0.03937007874\n  9\n$DIMLFAC\n 40\n1.0\n  9\n$DIMTOFL\n 70\n1\n  9\n$DIMTVP\n 40\n0.0\n  9\n$DIMTIX\n 70\n0\n  9\n$DIMSOXD\n 70\n0\n  9\n$DIMSAH\n 70\n0\n  9\n$DIMBLK1\n  1\n\n  9\n$DIMBLK2\n  1\n\n  9\n$DIMSTYLE\n  2\nISO-25\n  9\n$DIMCLRD\n 70\n0\n  9\n$DIMCLRE\n 70\n0\n  9\n$DIMCLRT\n 70\n0\n  9\n$DIMTFAC\n 40\n1.0\n  9\n$DIMGAP\n 40\n0.625\n  9\n$DIMJUST\n 70\n0\n  9\n$DIMSD1\n 70\n0\n  9\n$DIMSD2\n 70\n0\n  9\n$DIMTOLJ\n 70\n0\n  9\n$DIMTZIN\n 70\n8\n  9\n$DIMALTZ\n 70\n0\n  9\n$DIMALTTZ\n 70\n0\n  9\n$DIMUPT\n 70\n0\n  9\n$DIMDEC\n 70\n2\n  9\n$DIMTDEC\n 70\n2\n  9\n$DIMALTU\n 70\n2\n  9\n$DIMALTTD\n 70\n3\n  9\n$DIMTXSTY\n  7\nStandard\n  9\n$DIMAUNIT\n 70\n0\n  9\n$DIMADEC\n 70\n0\n  9\n$DIMALTRND\n 40\n0.0\n  9\n$DIMAZIN\n 70\n0\n  9\n$DIMDSEP\n 70\n44\n  9\n$DIMATFIT\n 70\n3\n  9\n$DIMFRAC\n 70\n0\n  9\n$DIMLDRBLK\n  1\n\n  9\n$DIMLUNIT\n 70\n2\n  9\n$DIMLWD\n 70\n-2\n  9\n$DIMLWE\n 70\n-2\n  9\n$DIMTMOVE\n 70\n0\n  9\n$DIMFXL\n 40\n1.0\n  9\n$DIMFXLON\n 70\n0\n  9\n$DIMJOGANG\n 40\n0.785398163397\n  9\n$DIMTFILL\n 70\n0\n  9\n$DIMTFILLCLR\n 70\n0\n  9\n$DIMARCSYM\n 70\n0\n  9\n$DIMLTYPE\n  6\n\n  9\n$DIMLTEX1\n  6\n\n  9\n$DIMLTEX2\n  6\n\n  9\n$LUNITS\n 70\n2\n  9\n$LUPREC\n 70\n4\n  9\n$SKETCHINC\n 40\n1.0\n  9\n$FILLETRAD\n 40\n10.0\n  9\n$AUNITS\n 70\n0\n  9\n$AUPREC\n 70\n2\n  9\n$MENU\n  1\n.\n  9\n$ELEVATION\n 40\n0.0\n  9\n$PELEVATION\n 40\n0.0\n  9\n$THICKNESS\n 40\n0.0\n  9\n$LIMCHECK\n 70\n0\n  9\n$CHAMFERA\n 40\n0.0\n  9\n$CHAMFERB\n 40\n0.0\n  9\n$CHAMFERC\n 40\n0.0\n  9\n$CHAMFERD\n 40\n0.0\n  9\n$SKPOLY\n 70\n0\n  9\n$TDCREATE\n 40\n2461302.812164352\n  9\n$TDUCREATE\n 40\n2458532.153996898\n  9\n$TDUPDATE\n 40\n2461302.812164352\n  9\n$TDUUPDATE\n 40\n2458532.1544311\n  9\n$TDINDWG\n 40\n0.0\n  9\n$TDUSRTIMER\n 40\n0.0\n  9\n$USRTIMER\n 70\n1\n  9\n$ANGBASE\n 50\n0.0\n  9\n$ANGDIR\n 70\n0\n  9\n$PDMODE\n 70\n0\n  9\n$PDSIZE\n 40\n0.0\n  9\n$PLINEWID\n 40\n0.0\n  9\n$SPLFRAME\n 70\n0\n  9\n$SPLINETYPE\n 70\n6\n  9\n$SPLINESEGS\n 70\n8\n  9\n$HANDSEED\n  5\n32\n  9\n$SURFTAB1\n 70\n6\n  9\n$SURFTAB2\n 70\n6\n  9\n$SURFTYPE\n 70\n6\n  9\n$SURFU\n 70\n6\n  9\n$SURFV\n 70\n6\n  9\n$UCSBASE\n  2\n\n  9\n$UCSNAME\n  2\n\n  9\n$UCSORG\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$UCSXDIR\n 10\n1.0\n 20\n0.0\n 30\n0.0\n  9\n$UCSYDIR\n 10\n0.0\n 20\n1.0\n 30\n0.0\n  9\n$UCSORTHOREF\n  2\n\n  9\n$UCSORTHOVIEW\n 70\n0\n  9\n$UCSORGTOP\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$UCSORGBOTTOM\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$UCSORGLEFT\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$UCSORGRIGHT\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$UCSORGFRONT\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$UCSORGBACK\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$PUCSBASE\n  2\n\n  9\n$PUCSNAME\n  2\n\n  9\n$PUCSORG\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$PUCSXDIR\n 10\n1.0\n 20\n0.0\n 30\n0.0\n  9\n$PUCSYDIR\n 10\n0.0\n 20\n1.0\n 30\n0.0\n  9\n$PUCSORTHOREF\n  2\n\n  9\n$PUCSORTHOVIEW\n 70\n0\n  9\n$PUCSORGTOP\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$PUCSORGBOTTOM\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$PUCSORGLEFT\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$PUCSORGRIGHT\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$PUCSORGFRONT\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$PUCSORGBACK\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$USERI1\n 70\n0\n  9\n$USERI2\n 70\n0\n  9\n$USERI3\n 70\n0\n  9\n$USERI4\n 70\n0\n  9\n$USERI5\n 70\n0\n  9\n$USERR1\n 40\n0.0\n  9\n$USERR2\n 40\n0.0\n  9\n$USERR3\n 40\n0.0\n  9\n$USERR4\n 40\n0.0\n  9\n$USERR5\n 40\n0.0\n  9\n$WORLDVIEW\n 70\n1\n  9\n$SHADEDGE\n 70\n3\n  9\n$SHADEDIF\n 70\n70\n  9\n$TILEMODE\n 70\n1\n  9\n$MAXACTVP\n 70\n64\n  9\n$PINSBASE\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  9\n$PLIMCHECK\n 70\n0\n  9\n$PEXTMIN\n 10\n1e+20\n 20\n1e+20\n 30\n1e+20\n  9\n$PEXTMAX\n 10\n-1e+20\n 20\n-1e+20\n 30\n-1e+20\n  9\n$PLIMMIN\n 10\n0.0\n 20\n0.0\n  9\n$PLIMMAX\n 10\n420.0\n 20\n297.0\n  9\n$UNITMODE\n 70\n0\n  9\n$VISRETAIN\n 70\n1\n  9\n$PLINEGEN\n 70\n0\n  9\n$PSLTSCALE\n 70\n1\n  9\n$TREEDEPTH\n 70\n3020\n  9\n$CMLSTYLE\n  2\nStandard\n  9\n$CMLJUST\n 70\n0\n  9\n$CMLSCALE\n 40\n20.0\n  9\n$PROXYGRAPHICS\n 70\n1\n  9\n$MEASUREMENT\n 70\n1\n  9\n$CELWEIGHT\n370\n-1\n  9\n$ENDCAPS\n280\n0\n  9\n$JOINSTYLE\n280\n0\n  9\n$LWDISPLAY\n290\n0\n  9\n$INSUNITS\n 70\n0\n  9\n$HYPERLINKBASE\n  1\n\n  9\n$STYLESHEET\n  1\n\n  9\n$XEDIT\n290\n1\n  9\n$CEPSNTYPE\n380\n0\n  9\n$PSTYLEMODE\n290\n1\n  9\n$FINGERPRINTGUID\n  2\n{BE930E59-C7DF-4E52-9115-1F5AD6EFE746}\n  9\n$VERSIONGUID\n  2\n{90B123E7-D16A-4D59-8707-385B3FD1E771}\n  9\n$EXTNAMES\n290\n1\n  9\n$PSVPSCALE\n 40\n0.0\n  9\n$OLESTARTUP\n290\n0\n  9\n$SORTENTS\n280\n127\n  9\n$INDEXCTL\n280\n0\n  9\n$HIDETEXT\n280\n1\n  9\n$XCLIPFRAME\n290\n1\n  9\n$HALOGAP\n280\n0\n  9\n$OBSCOLOR\n 70\n257\n  9\n$OBSLTYPE\n280\n0\n  9\n$INTERSECTIONDISPLAY\n280\n0\n  9\n$INTERSECTIONCOLOR\n 70\n257\n  9\n$DIMASSOC\n280\n2\n  9\n$PROJECTNAME\n  1\n\n  9\n$CAMERADISPLAY\n290\n0\n  9\n$LENSLENGTH\n 40\n50.0\n  9\n$CAMERAHEIGHT\n 40\n0.0\n  9\n$STEPSPERSEC\n 40\n24.0\n  9\n$STEPSIZE\n 40\n100.0\n  9\n$3DDWFPREC\n 40\n2.0\n  9\n$PSOLWIDTH\n 40\n0.005\n  9\n$PSOLHEIGHT\n 40\n0.08\n  9\n$LOFTANG1\n 40\n1.570796326795\n  9\n$LOFTANG2\n 40\n1.570796326795\n  9\n$LOFTMAG1\n 40\n0.0\n  9\n$LOFTMAG2\n 40\n0.0\n  9\n$LOFTPARAM\n 70\n7\n  9\n$LOFTNORMALS\n280\n1\n  9\n$LATITUDE\n 40\n37.795\n  9\n$LONGITUDE\n 40\n-122.394\n  9\n$NORTHDIRECTION\n 40\n0.0\n  9\n$TIMEZONE\n 70\n-8000\n  9\n$LIGHTGLYPHDISPLAY\n280\n1\n  9\n$TILEMODELIGHTSYNCH\n280\n1\n  9\n$CMATERIAL\n347\n20\n  9\n$SOLIDHIST\n280\n0\n  9\n$SHOWHIST\n280\n1\n  9\n$DWFFRAME\n280\n2\n  9\n$DGNFRAME\n280\n2\n  9\n$REALWORLDSCALE\n290\n1\n  9\n$INTERFERECOLOR\n 62\n256\n  9\n$CSHADOW\n280\n0\n  9\n$SHADOWPLANELOCATION\n 40\n0.0\n  0\nENDSEC\n  0\nSECTION\n  2\nCLASSES\n  0\nCLASS\n  1\nACDBDICTIONARYWDFLT\n  2\nAcDbDictionaryWithDefault\n  3\nObjectDBX Classes\n 90\n0\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nSUN\n  2\nAcDbSun\n  3\nSCENEOE\n 90\n1153\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nVISUALSTYLE\n  2\nAcDbVisualStyle\n  3\nObjectDBX Classes\n 90\n4095\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nMATERIAL\n  2\nAcDbMaterial\n  3\nObjectDBX Classes\n 90\n1153\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nSCALE\n  2\nAcDbScale\n  3\nObjectDBX Classes\n 90\n1153\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nTABLESTYLE\n  2\nAcDbTableStyle\n  3\nObjectDBX Classes\n 90\n4095\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nMLEADERSTYLE\n  2\nAcDbMLeaderStyle\n  3\nACDB_MLEADERSTYLE_CLASS\n 90\n4095\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nDICTIONARYVAR\n  2\nAcDbDictionaryVar\n  3\nObjectDBX Classes\n 90\n0\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nCELLSTYLEMAP\n  2\nAcDbCellStyleMap\n  3\nObjectDBX Classes\n 90\n1152\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nMENTALRAYRENDERSETTINGS\n  2\nAcDbMentalRayRenderSettings\n  3\nSCENEOE\n 90\n1024\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nACDBDETAILVIEWSTYLE\n  2\nAcDbDetailViewStyle\n  3\nObjectDBX Classes\n 90\n1025\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nACDBSECTIONVIEWSTYLE\n  2\nAcDbSectionViewStyle\n  3\nObjectDBX Classes\n 90\n1025\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nRASTERVARIABLES\n  2\nAcDbRasterVariables\n  3\nISM\n 90\n0\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nACDBPLACEHOLDER\n  2\nAcDbPlaceHolder\n  3\nObjectDBX Classes\n 90\n0\n 91\n0\n280\n0\n281\n0\n  0\nCLASS\n  1\nLAYOUT\n  2\nAcDbLayout\n  3\nObjectDBX Classes\n 90\n0\n 91\n0\n280\n0\n281\n0\n  0\nENDSEC\n  0\nSECTION\n  2\nTABLES\n  0\nTABLE\n  2\nVPORT\n  5\n8\n330\n0\n100\nAcDbSymbolTable\n 70\n1\n  0\nVPORT\n  5\n23\n330\n8\n100\nAcDbSymbolTableRecord\n100\nAcDbViewportTableRecord\n  2\n*Active\n 70\n0\n 10\n0.0\n 20\n0.0\n 11\n1.0\n 21\n1.0\n 12\n0.0\n 22\n0.0\n 13\n0.0\n 23\n0.0\n 14\n0.5\n 24\n0.5\n 15\n0.5\n 25\n0.5\n 16\n0.0\n 26\n0.0\n 36\n1.0\n 17\n0.0\n 27\n0.0\n 37\n0.0\n 40\n1000.0\n 41\n1.34\n 42\n50.0\n 43\n0.0\n 44\n0.0\n 50\n0.0\n 51\n0.0\n 71\n0\n 72\n1000\n 73\n1\n 74\n3\n 75\n0\n 76\n0\n 77\n0\n 78\n0\n281\n0\n 65\n0\n146\n0.0\n  0\nENDTAB\n  0\nTABLE\n  2\nLTYPE\n  5\n2\n330\n0\n100\nAcDbSymbolTable\n 70\n3\n  0\nLTYPE\n  5\n24\n330\n2\n100\nAcDbSymbolTableRecord\n100\nAcDbLinetypeTableRecord\n  2\nByBlock\n 70\n0\n  3\n\n 72\n65\n 73\n0\n 40\n0.0\n  0\nLTYPE\n  5\n25\n330\n2\n100\nAcDbSymbolTableRecord\n100\nAcDbLinetypeTableRecord\n  2\nByLayer\n 70\n0\n  3\n\n 72\n65\n 73\n0\n 40\n0.0\n  0\nLTYPE\n  5\n26\n330\n2\n100\nAcDbSymbolTableRecord\n100\nAcDbLinetypeTableRecord\n  2\nContinuous\n 70\n0\n  3\n\n 72\n65\n 73\n0\n 40\n0.0\n  0\nENDTAB\n  0\nTABLE\n  2\nLAYER\n  5\n1\n330\n0\n100\nAcDbSymbolTable\n 70\n2\n  0\nLAYER\n  5\n27\n330\n1\n100\nAcDbSymbolTableRecord\n100\nAcDbLayerTableRecord\n  2\n0\n 70\n0\n 62\n7\n  6\nContinuous\n370\n-3\n390\n13\n347\n21\n  0\nLAYER\n  5\n28\n330\n1\n100\nAcDbSymbolTableRecord\n100\nAcDbLayerTableRecord\n  2\nDefpoints\n 70\n0\n 62\n7\n  6\nContinuous\n290\n0\n370\n-3\n390\n13\n347\n21\n  0\nENDTAB\n  0\nTABLE\n  2\nSTYLE\n  5\n5\n330\n0\n100\nAcDbSymbolTable\n 70\n1\n  0\nSTYLE\n  5\n29\n330\n5\n100\nAcDbSymbolTableRecord\n100\nAcDbTextStyleTableRecord\n  2\nStandard\n 70\n0\n 40\n0.0\n 41\n1.0\n 50\n0.0\n 71\n0\n 42\n2.5\n  3\ntxt\n  4\n\n  0\nENDTAB\n  0\nTABLE\n  2\nVIEW\n  5\n7\n330\n0\n100\nAcDbSymbolTable\n 70\n0\n  0\nENDTAB\n  0\nTABLE\n  2\nUCS\n  5\n6\n330\n0\n100\nAcDbSymbolTable\n 70\n0\n  0\nENDTAB\n  0\nTABLE\n  2\nAPPID\n  5\n3\n330\n0\n100\nAcDbSymbolTable\n 70\n3\n  0\nAPPID\n  5\n2A\n330\n3\n100\nAcDbSymbolTableRecord\n100\nAcDbRegAppTableRecord\n  2\nACAD\n 70\n0\n  0\nAPPID\n  5\n2F\n330\n3\n100\nAcDbSymbolTableRecord\n100\nAcDbRegAppTableRecord\n  2\nHATCHBACKGROUNDCOLOR\n 70\n0\n  0\nAPPID\n  5\n30\n330\n3\n100\nAcDbSymbolTableRecord\n100\nAcDbRegAppTableRecord\n  2\nEZDXF\n 70\n0\n  0\nENDTAB\n  0\nTABLE\n  2\nDIMSTYLE\n  5\n4\n330\n0\n100\nAcDbSymbolTable\n 70\n1\n100\nAcDbDimStyleTable\n  0\nDIMSTYLE\n105\n2B\n330\n4\n100\nAcDbSymbolTableRecord\n100\nAcDbDimStyleTableRecord\n  2\nStandard\n 70\n0\n 40\n1.0\n 41\n2.5\n 42\n0.625\n 43\n3.75\n 44\n1.25\n 45\n0.0\n 46\n0.0\n 47\n0.0\n 48\n0.0\n 49\n2.5\n140\n2.5\n141\n2.5\n142\n0.0\n143\n0.03937007874\n144\n1.0\n145\n0.0\n146\n1.0\n147\n0.625\n148\n0.0\n 69\n0\n 70\n0\n 71\n0\n 72\n0\n 73\n0\n 74\n0\n 75\n0\n 76\n0\n 77\n1\n 78\n8\n 79\n3\n170\n0\n171\n3\n172\n1\n173\n0\n174\n0\n175\n0\n176\n0\n177\n0\n178\n0\n179\n2\n271\n2\n272\n2\n273\n2\n274\n3\n275\n0\n276\n0\n277\n2\n278\n44\n279\n0\n280\n0\n281\n0\n282\n0\n283\n0\n284\n8\n285\n0\n286\n0\n288\n0\n289\n3\n290\n0\n371\n-2\n372\n-2\n  0\nENDTAB\n  0\nTABLE\n  2\nBLOCK_RECORD\n  5\n9\n330\n0\n100\nAcDbSymbolTable\n 70\n2\n  0\nBLOCK_RECORD\n  5\n17\n330\n9\n100\nAcDbSymbolTableRecord\n100\nAcDbBlockTableRecord\n  2\n*Model_Space\n340\n1A\n 70\n0\n280\n1\n281\n0\n  0\nBLOCK_RECORD\n  5\n1B\n330\n9\n100\nAcDbSymbolTableRecord\n100\nAcDbBlockTableRecord\n  2\n*Paper_Space\n340\n1E\n 70\n0\n280\n1\n281\n0\n  0\nENDTAB\n  0\nENDSEC\n  0\nSECTION\n  2\nBLOCKS\n  0\nBLOCK\n  5\n18\n330\n17\n100\nAcDbEntity\n  8\n0\n100\nAcDbBlockBegin\n  2\n*Model_Space\n 70\n0\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  3\n*Model_Space\n  1\n\n  0\nENDBLK\n  5\n19\n330\n17\n100\nAcDbEntity\n  8\n0\n100\nAcDbBlockEnd\n  0\nBLOCK\n  5\n1C\n330\n1B\n100\nAcDbEntity\n  8\n0\n100\nAcDbBlockBegin\n  2\n*Paper_Space\n 70\n0\n 10\n0.0\n 20\n0.0\n 30\n0.0\n  3\n*Paper_Space\n  1\n\n  0\nENDBLK\n  5\n1D\n330\n1B\n100\nAcDbEntity\n  8\n0\n100\nAcDbBlockEnd\n  0\nENDSEC\n  0\nSECTION\n  2\nENTITIES\n  0\nENDSEC\n  0\nSECTION\n  2\nOBJECTS\n  0\nDICTIONARY\n  5\nA\n330\n0\n100\nAcDbDictionary\n281\n1\n  3\nACAD_COLOR\n350\nB\n  3\nACAD_GROUP\n350\nC\n  3\nACAD_LAYOUT\n350\nD\n  3\nACAD_MATERIAL\n350\nE\n  3\nACAD_MLEADERSTYLE\n350\nF\n  3\nACAD_MLINESTYLE\n350\n10\n  3\nACAD_PLOTSETTINGS\n350\n11\n  3\nACAD_PLOTSTYLENAME\n350\n12\n  3\nACAD_SCALELIST\n350\n14\n  3\nACAD_TABLESTYLE\n350\n15\n  3\nACAD_VISUALSTYLE\n350\n16\n  3\nEZDXF_META\n350\n2D\n  0\nDICTIONARY\n  5\nB\n330\nA\n100\nAcDbDictionary\n281\n1\n  0\nDICTIONARY\n  5\nC\n330\nA\n100\nAcDbDictionary\n281\n1\n  0\nDICTIONARY\n  5\nD\n330\nA\n100\nAcDbDictionary\n281\n1\n  3\nModel\n350\n1A\n  3\nLayout1\n350\n1E\n  0\nDICTIONARY\n  5\nE\n330\nA\n100\nAcDbDictionary\n281\n1\n  3\nByBlock\n350\n1F\n  3\nByLayer\n350\n20\n  3\nGlobal\n350\n21\n  0\nDICTIONARY\n  5\nF\n330\nA\n100\nAcDbDictionary\n281\n1\n  3\nStandard\n350\n2C\n  0\nDICTIONARY\n  5\n10\n330\nA\n100\nAcDbDictionary\n281\n1\n  3\nStandard\n350\n22\n  0\nDICTIONARY\n  5\n11\n330\nA\n100\nAcDbDictionary\n281\n1\n  0\nACDBDICTIONARYWDFLT\n  5\n12\n330\nA\n100\nAcDbDictionary\n281\n1\n  3\nNormal\n350\n13\n100\nAcDbDictionaryWithDefault\n340\n13\n  0\nACDBPLACEHOLDER\n  5\n13\n330\n12\n  0\nDICTIONARY\n  5\n14\n330\nA\n100\nAcDbDictionary\n281\n1\n  0\nDICTIONARY\n  5\n15\n330\nA\n100\nAcDbDictionary\n281\n1\n  0\nDICTIONARY\n  5\n16\n330\nA\n100\nAcDbDictionary\n281\n1\n  0\nLAYOUT\n  5\n1A\n330\nD\n100\nAcDbPlotSettings\n  1\n\n  4\nA3\n  6\n\n 40\n7.5\n 41\n20.0\n 42\n7.5\n 43\n20.0\n 44\n420.0\n 45\n297.0\n 46\n0.0\n 47\n0.0\n 48\n0.0\n 49\n0.0\n140\n0.0\n141\n0.0\n142\n1.0\n143\n1.0\n 70\n1024\n 72\n1\n 73\n0\n 74\n5\n  7\n\n 75\n16\n 76\n0\n 77\n2\n 78\n300\n147\n1.0\n148\n0.0\n149\n0.0\n100\nAcDbLayout\n  1\nModel\n 70\n1\n 71\n0\n 10\n0.0\n 20\n0.0\n 11\n420.0\n 21\n297.0\n 12\n0.0\n 22\n0.0\n 32\n0.0\n 14\n1e+20\n 24\n1e+20\n 34\n1e+20\n 15\n-1e+20\n 25\n-1e+20\n 35\n-1e+20\n146\n0.0\n 13\n0.0\n 23\n0.0\n 33\n0.0\n 16\n1.0\n 26\n0.0\n 36\n0.0\n 17\n0.0\n 27\n1.0\n 37\n0.0\n 76\n1\n330\n17\n  0\nLAYOUT\n  5\n1E\n330\nD\n100\nAcDbPlotSettings\n  1\n\n  4\nA3\n  6\n\n 40\n7.5\n 41\n20.0\n 42\n7.5\n 43\n20.0\n 44\n420.0\n 45\n297.0\n 46\n0.0\n 47\n0.0\n 48\n0.0\n 49\n0.0\n140\n0.0\n141\n0.0\n142\n1.0\n143\n1.0\n 70\n0\n 72\n1\n 73\n0\n 74\n5\n  7\n\n 75\n16\n 76\n0\n 77\n2\n 78\n300\n147\n1.0\n148\n0.0\n149\n0.0\n100\nAcDbLayout\n  1\nLayout1\n 70\n1\n 71\n1\n 10\n0.0\n 20\n0.0\n 11\n420.0\n 21\n297.0\n 12\n0.0\n 22\n0.0\n 32\n0.0\n 14\n1e+20\n 24\n1e+20\n 34\n1e+20\n 15\n-1e+20\n 25\n-1e+20\n 35\n-1e+20\n146\n0.0\n 13\n0.0\n 23\n0.0\n 33\n0.0\n 16\n1.0\n 26\n0.0\n 36\n0.0\n 17\n0.0\n 27\n1.0\n 37\n0.0\n 76\n1\n330\n1B\n  0\nMATERIAL\n  5\n1F\n102\n{ACAD_REACTORS\n330\nE\n102\n}\n330\nE\n100\nAcDbMaterial\n  1\nByBlock\n  2\n\n 70\n0\n 40\n1.0\n 71\n1\n 41\n1.0\n 91\n-1023410177\n 42\n1.0\n 72\n1\n  3\n\n 73\n1\n 74\n1\n 75\n1\n 44\n0.5\n 73\n0\n 45\n1.0\n 46\n1.0\n 77\n1\n  4\n\n 78\n1\n 79\n1\n170\n1\n 48\n1.0\n171\n1\n  6\n\n172\n1\n173\n1\n174\n1\n140\n1.0\n141\n1.0\n175\n1\n  7\n\n176\n1\n177\n1\n178\n1\n143\n1.0\n179\n1\n  8\n\n270\n1\n271\n1\n272\n1\n145\n1.0\n146\n1.0\n273\n1\n  9\n\n274\n1\n275\n1\n276\n1\n 42\n1.0\n 72\n1\n  3\n\n 73\n1\n 74\n1\n 75\n1\n 94\n63\n  0\nMATERIAL\n  5\n20\n102\n{ACAD_REACTORS\n330\nE\n102\n}\n330\nE\n100\nAcDbMaterial\n  1\nByLayer\n  2\n\n 70\n0\n 40\n1.0\n 71\n1\n 41\n1.0\n 91\n-1023410177\n 42\n1.0\n 72\n1\n  3\n\n 73\n1\n 74\n1\n 75\n1\n 44\n0.5\n 73\n0\n 45\n1.0\n 46\n1.0\n 77\n1\n  4\n\n 78\n1\n 79\n1\n170\n1\n 48\n1.0\n171\n1\n  6\n\n172\n1\n173\n1\n174\n1\n140\n1.0\n141\n1.0\n175\n1\n  7\n\n176\n1\n177\n1\n178\n1\n143\n1.0\n179\n1\n  8\n\n270\n1\n271\n1\n272\n1\n145\n1.0\n146\n1.0\n273\n1\n  9\n\n274\n1\n275\n1\n276\n1\n 42\n1.0\n 72\n1\n  3\n\n 73\n1\n 74\n1\n 75\n1\n 94\n63\n  0\nMATERIAL\n  5\n21\n102\n{ACAD_REACTORS\n330\nE\n102\n}\n330\nE\n100\nAcDbMaterial\n  1\nGlobal\n  2\n\n 70\n0\n 40\n1.0\n 71\n1\n 41\n1.0\n 91\n-1023410177\n 42\n1.0\n 72\n1\n  3\n\n 73\n1\n 74\n1\n 75\n1\n 44\n0.5\n 73\n0\n 45\n1.0\n 46\n1.0\n 77\n1\n  4\n\n 78\n1\n 79\n1\n170\n1\n 48\n1.0\n171\n1\n  6\n\n172\n1\n173\n1\n174\n1\n140\n1.0\n141\n1.0\n175\n1\n  7\n\n176\n1\n177\n1\n178\n1\n143\n1.0\n179\n1\n  8\n\n270\n1\n271\n1\n272\n1\n145\n1.0\n146\n1.0\n273\n1\n  9\n\n274\n1\n275\n1\n276\n1\n 42\n1.0\n 72\n1\n  3\n\n 73\n1\n 74\n1\n 75\n1\n 94\n63\n  0\nMLINESTYLE\n  5\n22\n102\n{ACAD_REACTORS\n330\n10\n102\n}\n330\n10\n100\nAcDbMlineStyle\n  2\nStandard\n 70\n0\n  3\n\n 62\n256\n 51\n90.0\n 52\n90.0\n 71\n2\n 49\n0.5\n 62\n256\n  6\nBYLAYER\n 49\n-0.5\n 62\n256\n  6\nBYLAYER\n  0\nMLEADERSTYLE\n  5\n2C\n102\n{ACAD_REACTORS\n330\nF\n102\n}\n330\nF\n100\nAcDbMLeaderStyle\n179\n2\n170\n2\n171\n1\n172\n0\n 90\n2\n 40\n0.0\n 41\n0.0\n173\n1\n 91\n-1056964608\n 92\n-2\n290\n1\n 42\n2.0\n291\n1\n 43\n8.0\n  3\nStandard\n 44\n4.0\n300\n\n342\n29\n174\n1\n175\n1\n176\n0\n178\n1\n 93\n-1056964608\n 45\n4.0\n292\n0\n297\n0\n 46\n4.0\n 94\n-1056964608\n 47\n1.0\n 49\n1.0\n140\n1.0\n294\n1\n141\n0.0\n177\n0\n142\n1.0\n295\n0\n296\n0\n143\n3.75\n271\n0\n272\n9\n273\n9\n  0\nDICTIONARY\n  5\n2D\n330\nA\n100\nAcDbDictionary\n280\n1\n281\n1\n  3\nCREATED_BY_EZDXF\n350\n2E\n  3\nWRITTEN_BY_EZDXF\n350\n31\n  0\nDICTIONARYVAR\n  5\n2E\n330\n2D\n100\nDictionaryVariables\n280\n0\n  1\n1.4.4 @ 2026-09-18T19:29:31.547521+00:00\n  0\nDICTIONARYVAR\n  5\n31\n330\n2D\n100\nDictionaryVariables\n280\n0\n  1\n1.4.4 @ 2026-09-18T19:29:31.548011+00:00\n  0\nENDSEC\n  0\nEOF\n";
+
+Object.assign(exports,{EMPTY_DXF});
+},
+"packages/blocks/serialize.js":function(module,exports,require){
+/** Standards-oriented group ordering for authored records. Imported subclasses are
+ * preserved when already present; handles/owners are bound to the destination. */
+const g=(r,c,d='')=>r.groups.find(x=>x.code===c)?.value??d;
+const COMMON=new Set([8,6,48,60,62,67,410,420,430,440,370,390,347,284]);
+const TYPES={LINE:'AcDbLine',POINT:'AcDbPoint',LWPOLYLINE:'AcDbPolyline',POLYLINE:'AcDb2dPolyline',CIRCLE:'AcDbCircle',ARC:'AcDbCircle',ELLIPSE:'AcDbEllipse',SPLINE:'AcDbSpline',SOLID:'AcDbTrace',TRACE:'AcDbTrace','3DFACE':'AcDbFace',XLINE:'AcDbXline',RAY:'AcDbRay',INSERT:'AcDbBlockReference',MTEXT:'AcDbMText',HATCH:'AcDbHatch',BLOCK:'AcDbBlockBegin',ENDBLK:'AcDbBlockEnd',SEQEND:'AcDbSequenceEnd'};
+const TABLES={LAYER:'AcDbLayerTableRecord',LTYPE:'AcDbLinetypeTableRecord',STYLE:'AcDbTextStyleTableRecord',BLOCK_RECORD:'AcDbBlockTableRecord',APPID:'AcDbRegAppTableRecord',VIEW:'AcDbViewTableRecord',VPORT:'AcDbViewportTableRecord',UCS:'AcDbUCSTableRecord',DIMSTYLE:'AcDbDimStyleTableRecord'};
+function ownedRecord(r,owner){if(owner===undefined)return r;const groups=r.groups.map(x=>({...x}));let index=-1,depth=0;for(let i=0;i<groups.length;i++){const x=groups[i];if(x.code===102){if(String(x.value).startsWith('{'))depth++;else if(x.value==='}')depth--;}if(x.code===330&&depth===0){index=i;break;}}if(index>=0)groups[index].value=owner;else {const at=groups.findIndex(x=>x.code===100);groups.splice(at<0?Math.min(groups.length,1):at,0,{code:330,value:owner});}return {...r,groups};}
+function serializedRecord(record,owner){const r=ownedRecord(record,owner),type=r.type;
+ // Existing records with standard subclasses retain their extended data and order.
+ const textType=['TEXT','ATTRIB','ATTDEF'].includes(type),sub=TYPES[type]||TABLES[type];
+ if(!textType&&(!sub||r.groups.some(x=>x.code===100&&x.value===sub)))return r;
+ const source=r.groups.filter(x=>x.code!==100),out=[],emit=(code,value)=>out.push({code,value});
+ const identifiers=source.filter(x=>x.code===5||x.code===105||x.code===330);out.push(...identifiers);
+ const rest=source.filter(x=>![5,105,330,100].includes(x.code));
+ if(TABLES[type]){emit(100,'AcDbSymbolTableRecord');emit(100,TABLES[type]);out.push(...rest);return {...r,groups:out};}
+ emit(100,'AcDbEntity');out.push(...rest.filter(x=>COMMON.has(x.code)));if(!rest.some(x=>x.code===8))emit(8,'0');const data=rest.filter(x=>!COMMON.has(x.code));
+ if(textType){emit(100,'AcDbText');const keys=new Set([10,20,30,40,1,50,41,51,7,71,72,11,21,31,210,220,230]);out.push(...data.filter(x=>keys.has(x.code)));if(type==='TEXT'){emit(100,'AcDbText');emit(73,Number(g(r,73,0)));out.push(...data.filter(x=>!keys.has(x.code)&&x.code!==73));}else {emit(100,type==='ATTRIB'?'AcDbAttribute':'AcDbAttributeDefinition');emit(280,0);if(type==='ATTDEF')emit(3,g(r,3,g(r,2,'')));emit(2,g(r,2,''));emit(70,Number(g(r,70,0)));emit(73,Number(g(r,73,0)));emit(74,Number(g(r,74,0)));emit(280,Number(g(r,280,0)));out.push(...data.filter(x=>!keys.has(x.code)&&![2,3,70,73,74,280].includes(x.code)));}}
+ else if(type==='ARC'){emit(100,'AcDbCircle');out.push(...data.filter(x=>![50,51].includes(x.code)));emit(100,'AcDbArc');out.push(...data.filter(x=>[50,51].includes(x.code)));}
+ else {emit(100,sub);out.push(...data);}
+ return {...r,groups:out};
+}
+
+Object.assign(exports,{ownedRecord,serializedRecord});
+},
+"packages/dxf/index.js":function(module,exports,require){
+const { SpaceCatalog }=require("packages/dxf/spaces.js");
+const { decodeHatch }=require("packages/dxf/hatch.js");
+const { ModelBuilder, TYPE, FLAGS, rgba }=require("packages/model/index.js");
+class DxfError extends Error {
+    constructor(message, line = 0) { super(line ? `${message} (line ${line})` : message); this.name = 'DxfError'; this.line = line; }
+}
+const DEG = Math.PI / 180;
+const BASE = ['#000000', '#ff0000', '#ffff00', '#00ff00', '#00ffff', '#0000ff', '#ff00ff', '#ffffff', '#808080', '#c0c0c0'];
+function aciColor(index) {
+    index = Math.abs(index);
+    if (index < 10)
+        return rgba(BASE[index]);
+    if (index >= 250)
+        return rgba('#' + [51, 80, 105, 130, 190, 255][Math.min(index - 250, 5)].toString(16).padStart(2, '0').repeat(3));
+    const h = Math.floor((index - 10) / 10) * 15 / 60, slot = (index - 10) % 10, v = [255, 255, 165, 165, 127, 127, 76, 76, 38, 38][slot] / 255, s = slot % 2 ? .5 : 1, c = v * s, x = c * (1 - Math.abs(h % 2 - 1)), m = v - c;
+    const rgb = h < 1 ? [c, x, 0] : h < 2 ? [x, c, 0] : h < 3 ? [0, c, x] : h < 4 ? [0, x, c] : h < 5 ? [x, 0, c] : [c, 0, x];
+    return (0xff000000 | Math.round((rgb[0] + m) * 255) | (Math.round((rgb[1] + m) * 255) << 8) | (Math.round((rgb[2] + m) * 255) << 16)) >>> 0;
+}
+function decodeDxfText(s, mtext = false) {
+    s = s.replace(/\\U\+([0-9a-fA-F]{4})/g, (_, h) => { const cp = parseInt(h, 16); return cp <= 0x10ffff ? String.fromCodePoint(cp) : '□'; }).replace(/%%[dD]/g, '°').replace(/%%[pP]/g, '±').replace(/%%[cC]/g, 'Ø').replace(/%%[uUoOkK]/g, '');
+    if (mtext)
+        s = s.replace(/\\P/g, '\n').replace(/\\~/g, ' ').replace(/\\S([^;]*);/g, (_, v) => v.replace(/[\^#]/g, '/')).replace(/\\[ACFHQTWacfhtw][^;]*;/g, '').replace(/\\[LlOoKk]/g, '').replace(/[{}]/g, '').replace(/\\\\/g, '\\');
+    return s;
+}
+function groupType(c) {
+    if ((c >= 10 && c <= 59) || (c >= 110 && c <= 149) || (c >= 210 && c <= 239) || (c >= 460 && c <= 469) || (c >= 1010 && c <= 1059))
+        return 'double';
+    if ((c >= 60 && c <= 79) || (c >= 170 && c <= 179) || (c >= 270 && c <= 289) || (c >= 370 && c <= 389) || (c >= 400 && c <= 409) || (c >= 1060 && c <= 1070))
+        return 'short';
+    if ((c >= 90 && c <= 99) || (c >= 420 && c <= 429) || (c >= 440 && c <= 459) || c === 1071)
+        return 'int';
+    if (c >= 160 && c <= 169)
+        return 'long';
+    if (c >= 290 && c <= 299)
+        return 'bool';
+    if ((c >= 310 && c <= 319) || c === 1004)
+        return 'binary';
+    return 'string';
+}
+function* asciiGroups(text) {
+    let p = 0, line = 0;
+    const next = () => { if (p >= text.length)
+        return null; const start = p, k = text.indexOf('\n', p); p = k < 0 ? text.length : k + 1; line++; return text.slice(start, k < 0 ? text.length : k).replace(/\r$/, ''); };
+    while (p < text.length) {
+        let cs = next();
+        if (cs !== null && !cs.trim() && p >= text.length)
+            break;
+        const n = line;
+        if (cs === null)
+            break;
+        cs = cs.replace(/^\uFEFF/, '');
+        if (!/^\s*\d+\s*$/.test(cs))
+            throw new DxfError('Invalid DXF group code', n);
+        const code = Number(cs), vs = next();
+        if (vs === null)
+            throw new DxfError('Missing DXF group value', n);
+        if (code > 1071)
+            throw new DxfError('DXF group code out of range', n);
+        const type = groupType(code);
+        let value = type === 'string' || type === 'binary' ? vs.trimEnd() : Number(vs.trim());
+        if (typeof value === 'number' && !Number.isFinite(value))
+            throw new DxfError('Non-finite DXF numeric value', n + 1);
+        yield { code, value, line: n };
+    }
+}
+function* binaryGroups(buffer) {
+    const d = new DataView(buffer);
+    let p = 22;
+    let decoder = new TextDecoder('windows-1252'), headerKey = '', unicode = false;
+    const need = n => { if (p + n > d.byteLength)
+        throw new DxfError('Truncated binary DXF', p); };
+    need(2);
+    const wide = d.getUint8(p + 1) === 0;
+    while (p < d.byteLength) {
+        let code;
+        need(wide ? 2 : 1);
+        if (wide) {
+            code = d.getUint16(p, true);
+            p += 2;
+        }
+        else {
+            code = d.getUint8(p++);
+            if (code === 255) {
+                need(2);
+                code = d.getUint16(p, true);
+                p += 2;
+            }
+        }
+        const type = groupType(code);
+        let value;
+        if (type === 'double') {
+            need(8);
+            value = d.getFloat64(p, true);
+            p += 8;
+        }
+        else if (type === 'short') {
+            need(2);
+            value = d.getInt16(p, true);
+            p += 2;
+        }
+        else if (type === 'int') {
+            need(4);
+            value = d.getInt32(p, true);
+            p += 4;
+        }
+        else if (type === 'long') {
+            need(8);
+            value = Number(d.getBigInt64(p, true));
+            p += 8;
+        }
+        else if (type === 'bool') {
+            need(1);
+            value = d.getUint8(p++);
+        }
+        else if (type === 'binary') {
+            need(1);
+            let n = d.getUint8(p++);
+            need(n);
+            value = Array.from(new Uint8Array(buffer, p, n), v => v.toString(16).padStart(2, '0')).join('');
+            p += n;
+        }
+        else {
+            const start = p;
+            while (p < d.byteLength && d.getUint8(p) !== 0)
+                p++;
+            if (p >= d.byteLength)
+                throw new DxfError('Unterminated binary DXF string', start);
+            value = decoder.decode(new Uint8Array(buffer, start, p - start));
+            p++;
+        }
+        if (code === 9)
+            headerKey = value;
+        if (headerKey === '$ACADVER' && code === 1 && /^AC/.test(value) && Number(value.slice(2)) >= 1021) {
+            unicode = true;
+            decoder = new TextDecoder('utf-8');
+        }
+        if (!unicode && headerKey === '$DWGCODEPAGE' && code === 3 && /^ANSI_\d+$/.test(value)) {
+            try {
+                decoder = new TextDecoder('windows-' + value.slice(5));
+            }
+            catch {
+                decoder = new TextDecoder('windows-1252');
+            }
+        }
+        if (typeof value === 'number' && !Number.isFinite(value))
+            throw new DxfError('Non-finite binary DXF numeric value', p);
+        yield { code, value, line: p };
+    }
+}
+function* records(groups) { let rec = null; for (const g of groups) {
+    if (g.code === 0) {
+        if (rec)
+            yield rec;
+        rec = { type: String(g.value).trim().toUpperCase(), groups: [], line: g.line };
+    }
+    else if (rec)
+        rec.groups.push(g);
+    else {
+        if (!rec)
+            rec = { type: 'PREAMBLE', groups: [], line: g.line };
+        rec.groups.push(g);
+    }
+} if (rec)
+    yield rec; }
+const get = (r, c, def = 0) => { for (const g of r.groups)
+    if (g.code === c)
+        return g.value; return def; };
+const all = (r, c) => r.groups.filter(g => g.code === c).map(g => g.value);
+const pt = (r, c = 10) => [Number(get(r, c)), Number(get(r, c + 10))];
+const has = (r, c) => r.groups.some(g => g.code === c);
+const trueColor = v => ((0xff000000 | ((v >>> 16) & 255) | (v & 0xff00) | ((v & 255) << 16)) >>> 0);
+/** Streaming records: raw BLOCK records are retained; ordinary ENTITIES are immediately serialized. */
+function parseDxf(input, font, { name = 'Drawing.dxf', onProgress = () => { }, maxEntities = 16000000, regenerateDimensions = true, preserveSource = false, space = 'model', document = false, editMap = false, pageSize = 65536 } = {}) {
+    if (!['model', 'paper', 'all'].includes(space)) throw new DxfError('Space must be model, paper or all.');
+    if (!Number.isInteger(maxEntities) || maxEntities < 1 || maxEntities > 16000000) throw new DxfError('Invalid entity import limit.');
+    let text = null, binary = false;
+    if (typeof input === 'string')
+        text = input;
+    else {
+        const prefix = new TextDecoder().decode(new Uint8Array(input, 0, Math.min(128, input.byteLength)));
+        binary = prefix.startsWith('AutoCAD Binary DXF');
+        if (!binary) {
+            const head = new TextDecoder().decode(new Uint8Array(input, 0, Math.min(65536, input.byteLength)));
+            const v = /\$ACADVER\s*\r?\n\s*1\s*\r?\n\s*AC(\d+)/.exec(head);
+            const utf8 = v && Number(v[1]) >= 1021;
+            const cp = /\$DWGCODEPAGE\s*\r?\n\s*3\s*\r?\n\s*ANSI_(\d+)/.exec(head);
+            let encoding = utf8 ? 'utf-8' : cp ? 'windows-' + cp[1] : 'windows-1252';
+            try {
+                text = new TextDecoder(encoding).decode(input);
+            }
+            catch {
+                text = new TextDecoder('windows-1252').decode(input);
+            }
+        }
+    }
+    const blocks = new Map(), layers = [{ name: '0', color: aciColor(7), visible: true, locked: false }], layerMap = new Map([['0', 0]]), ltypes = new Map(), dimStyles = new Map(), header = {}, diagnostics = new Map();
+    const warn = (code, message, n = 1) => { const old = diagnostics.get(code); if (old)
+        old.count += n;
+    else
+        diagnostics.set(code, { code, message, count: n, severity: 'warning' }); };
+    const editRoots = [];
+    const catalog = new SpaceCatalog(), builders = new Map(), rootHandles = new Set(), originBuilders = new WeakSet();
+    let model = new ModelBuilder(font, { name, layers, pageSize }), totalCount = 0;
+    builders.set('model', model);
+    function documentBuilder(key) { if (!builders.has(key)) builders.set(key, new ModelBuilder(font, { name, layers, pageSize: Math.min(8192,pageSize) })); return builders.get(key); }
+    let section = '', block = null, poly = null, seenEOF = false, originSet = document, sourceCount = 0;
+    function layerFor(n) { if (!layerMap.has(n)) {
+        layerMap.set(n, layers.length);
+        layers.push({ name: n, color: aciColor(7), visible: true, locked: false });
+    } return layerMap.get(n); }
+    function style(r, context) { const ln = String(get(r, 8, '0')), layer = ln === '0' && context ? context.layer : layerFor(ln); let c = Number(get(r, 62, 256)); let color = has(r, 420) ? trueColor(get(r, 420)) : c === 256 ? 0 : c === 0 ? (context?.color || 0) : aciColor(c); if (has(r, 440) && (get(r, 440) & 0x02000000)) { const alpha = get(r, 440) & 255; color = (((color || layers[layer].color) & 0xffffff) | (alpha << 24)) >>> 0; } const lt = String(get(r, 6, 'BYLAYER')), pattern = ltypes.get(lt === 'BYLAYER' ? layers[layer].linetype : lt), scale = Number(get(r, 48, 1)); const dash = pattern?.find(x => x > 0) || 0, gap = Math.abs(pattern?.find(x => x < 0) || 0); return { layer, color, r: [dash * scale, gap * scale, Number(get(r, 370, 0)), 0] }; }
+    function append(e, r) { if (totalCount >= maxEntities)
+        throw new DxfError('Entity safety limit reached; split this drawing or increase maxEntities explicitly.'); e.handle = String(get(r, 5, '')); model.add(e); totalCount++; if ((totalCount & 8191) === 0)
+        onProgress({ phase: 'Packing GPU records', entities: totalCount }); }
+    function process(r, node = null, context = null, chain = []) {
+        if (!editMap || node || (editMap==='inserts' && r.type!=='INSERT')) return processEntity(r,node,context,chain);
+        const key=catalog.key(r), builder=document?documentBuilder(key):model, first=builder.count;
+        processEntity(r,node,context,chain);
+        if(builder.count>first) editRoots.push({handle:String(get(r,5,'')),type:r.type,block:r.type==='INSERT'?String(get(r,2,'')):null,key,first,count:builder.count-first});
+    }
+    function processEntity(r, node = null, context = null, chain = []) {
+        sourceCount++;
+        const rootKey = !node ? catalog.key(r) : null;
+        if (document && !node) { model = documentBuilder(rootKey); const h = String(get(r, 5, '')).toUpperCase(); if(h) rootHandles.add(h); }
+        if (document && r.type === 'VIEWPORT' && !node) { catalog.addViewport(r, rootKey); return; }
+        if (!document && !node && ((space === 'model' && rootKey !== 'model') || (space === 'paper' && rootKey === 'model'))) {
+            warn('PAPER_SPACE', 'Entities outside the selected drawing space were excluded.');
+            return;
+        }
+        if (get(r, 60, 0) === 1)
+            return;
+        const type = r.type, s = style(r, context);
+        let localNode = node;
+        if (['CIRCLE', 'ARC', 'ELLIPSE', 'LWPOLYLINE', 'POLYLINE', 'TEXT', 'ATTRIB', 'ATTDEF', 'HATCH', 'SOLID', 'TRACE', 'INSERT'].includes(type)) {
+            const normal = [get(r, 210, 0), get(r, 220, 0), get(r, 230, 1)];
+            if (normal.every(v => v === 0)) {
+                warn('INVALID_OCS', 'Entities with a zero extrusion normal were rejected.');
+                return;
+            }
+            if (normal[0] !== 0 || normal[1] !== 0 || normal[2] !== 1) {
+                localNode = { ocs: normal, elevation: get(r, 30, get(r, 38, 0)), parent: node };
+                warn('OCS_PROJECTED', 'Non-XY object coordinate systems are projected to a top-down XY view on the GPU.');
+            }
+        }
+        const common = { ...s, node: localNode };
+        const a = pt(r);
+        if (!node && type !== 'ATTDEF' && (document ? !originBuilders.has(model) : !originSet)) {
+            model.origin = a; originBuilders.add(model);
+            originSet = true;
+        }
+        if (type === 'LINE') {
+            const b = pt(r, 11);
+            append({ ...common, type: TYPE.LINE, anchor: a, p: [b[0] - a[0], b[1] - a[1], 0, 0] }, r);
+        }
+        else if (type === 'XLINE' || type === 'RAY') {
+            append({ ...common, type: TYPE[type], anchor: a, p: [get(r, 11), get(r, 21), 0, 0] }, r);
+        }
+        else if (type === 'CIRCLE' || type === 'ARC') {
+            const radius = get(r, 40);
+            if (!(radius > 0)) {
+                warn('BAD_RADIUS', 'Entities with nonpositive radii were rejected.');
+                return;
+            }
+            let start = type === 'ARC' ? get(r, 50) * DEG : 0, end = type === 'ARC' ? get(r, 51) * DEG : Math.PI * 2, sweep = end - start;
+            sweep = ((sweep % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) || Math.PI * 2;
+            append({ ...common, type: TYPE.ELLIPSE, anchor: a, p: [radius, 0, 1, 0], q: [start, sweep, 0, 0] }, r);
+        }
+        else if (type === 'ELLIPSE') {
+            const start = get(r, 41, 0), end = get(r, 42, Math.PI * 2);
+            let sweep = end - start;
+            sweep = ((sweep % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) || Math.PI * 2;
+            append({ ...common, type: TYPE.ELLIPSE, anchor: a, p: [get(r, 11), get(r, 21), get(r, 40, 1), 0], q: [start, sweep, 0, 0] }, r);
+        }
+        else if (type === 'LWPOLYLINE' || type === 'POLYLINE' || type === 'LEADER') {
+            let points = [];
+            if (r.vertices)
+                points = r.vertices.map(v => [get(v, 10), get(v, 20), get(v, 42), get(v, 40, 0)]);
+            else {
+                let p = null;
+                for (const g of r.groups) {
+                    if (g.code === 10) {
+                        p = [g.value, 0, 0, 0];
+                        points.push(p);
+                    }
+                    else if (p && g.code === 20)
+                        p[1] = g.value;
+                    else if (p && g.code === 42)
+                        p[2] = g.value;
+                    else if (p && g.code === 40)
+                        p[3] = g.value;
+                }
+            }
+            if (points.length < 2) {
+                warn('EMPTY_POLY', 'Empty/one-vertex polylines were rejected.');
+                return;
+            }
+            if (type === 'POLYLINE' && (get(r, 70) & (16 | 64))) {
+                warn('POLY_MESH', 'Polyface and polygon meshes are not imported by the 2D path kernel.');
+                return;
+            }
+            if (points.some(p => p[3] > 0) || get(r, 43) > 0)
+                warn('POLY_WIDTH', 'Variable/constant polyline widths are represented as centerline strokes, not swept ribbons.');
+            append({ ...common, type: TYPE.POLYLINE, anchor: points[0].slice(0, 2), points, flags: (get(r, 70) & 1) ? FLAGS.CLOSED : 0 }, r);
+        }
+        else if (['TEXT', 'MTEXT', 'ATTRIB', 'ATTDEF'].includes(type)) {
+            if (type === 'ATTDEF' && !(get(r, 70) & 2))
+                return;
+            if ((type === 'ATTRIB' || type === 'ATTDEF') && (get(r, 70) & 1))
+                return;
+            let value = type === 'MTEXT' ? r.groups.filter(g => g.code === 3 || g.code === 1).map(g => g.value).join('') : String(get(r, 1, ''));
+            value = decodeDxfText(value, type === 'MTEXT');
+            let anchor = a, angle = get(r, 50) * DEG, hAlign = get(r, 72, 0), vAlign = get(r, type === 'ATTRIB' || type === 'ATTDEF' ? 74 : 73, 0), flags = 0, q = [0, 0, 0, 0], wrap = 0;
+            if (type === 'MTEXT') {
+                const attach = Math.max(1, Math.min(9, get(r, 71, 1)));
+                hAlign = (attach - 1) % 3;
+                vAlign = 3 - Math.floor((attach - 1) / 3);
+                if (has(r, 11)) {
+                    flags |= 16;
+                    q[0] = get(r, 11);
+                    q[1] = get(r, 21);
+                }
+                wrap = get(r, 41) / Math.max(get(r, 40, 1), 1e-20);
+            }
+            else if (hAlign === 3 || hAlign === 5) {
+                flags |= hAlign === 3 ? 8 : 4;
+                q[0] = get(r, 11) - a[0];
+                q[1] = get(r, 21) - a[1];
+                hAlign = 0;
+            }
+            else if ((hAlign || vAlign) && has(r, 11))
+                anchor = pt(r, 11);
+            q[2] = hAlign === 4 ? 1 : hAlign;
+            q[3] = hAlign === 4 ? 2 : vAlign;
+            if (/\\[ACFHQTW]/.test(String(get(r, 1, ''))) && type === 'MTEXT')
+                warn('MTEXT_FORMAT', 'MTEXT text, paragraph breaks, attachment and wrapping are supported; inline font/color/height overrides and stacked typography are simplified.');
+            if(type!=='MTEXT') {if(get(r,71)&2)flags|=32;if(get(r,71)&4)flags|=64;}
+            append({ ...common, type: TYPE.TEXT, anchor, text: value, p: [Math.max(get(r, 40, 1), 1e-6), type === 'MTEXT' ? 1 : (get(r, 41, 1) || 1), angle, get(r, 51, 0) * DEG], q, flags, wrap }, r);
+        }
+        else if (type === 'DIMENSION' && regenerateDimensions) {
+            const kind = get(r, 70) & 7;
+            if (kind > 6) { warn('DIMENSION_KIND', 'Unsupported dimension kind; preserveSource retains original bytes, not an edited round-trip.'); return; }
+            const ds = dimStyles.get(String(get(r, 3, 'STANDARD')));
+            const dim = (code, headerName, fallback) => ds ? get(ds, code, header[headerName]?.[0]?.value ?? fallback) : header[headerName]?.[0]?.value ?? fallback;
+            const scale = Number(dim(40, '$DIMSCALE', 1)) || 1;
+            append({ ...common, type: TYPE.DIMENSION, anchor: a, dimension: { kind, flags: get(r, 70), points: Array.from({ length: 7 }, (_, i) => pt(r, 10 + i)),
+                angle: get(r, 50) * DEG, text: decodeDxfText(String(get(r, 1, '<>')), true), precision: dim(271, '$DIMDEC', 2),
+                textHeight: dim(140, '$DIMTXT', 2.5) * scale, arrowSize: dim(41, '$DIMASZ', 2.5) * scale,
+                extensionOffset: dim(42, '$DIMEXO', .625) * scale, extensionLength: dim(44, '$DIMEXE', 1.25) * scale,
+                gap: dim(147, '$DIMGAP', .625) * scale, measureScale: dim(144, '$DIMLFAC', 1), rounding: dim(45, '$DIMRND', 0) } }, r);
+        }
+        else if (type === 'INSERT' || type === 'DIMENSION') {
+            const name = String(get(r, 2, '')), b = blocks.get(name.toUpperCase());
+            if (!b) {
+                warn('MISSING_BLOCK', `Missing block definitions (including dimensions without cached block graphics) were not rendered.`);
+                return;
+            }
+            if (chain.includes(name.toUpperCase()) || chain.length >= 48) {
+                warn('CYCLIC_BLOCK', 'Cyclic/excessively nested INSERT references were rejected.');
+                return;
+            }
+            const rows = Math.max(1, Math.trunc(get(r, 71, 1))), cols = Math.max(1, Math.trunc(get(r, 70, 1)));
+            if (rows * cols > 1e6)
+                throw new DxfError('Excessive MINSERT grid.');
+            for (let row = 0; row < rows; row++)
+                for (let col = 0; col < cols; col++) {
+                    const n = type === 'DIMENSION' ? node : { parent: localNode, translation: a, angle: get(r, 50) * DEG };
+                    const childNode = type === 'DIMENSION' ? n : { parent: n, translation: [col * get(r, 44), row * get(r, 45)], base: b.base, sx: get(r, 41, 1), sy: get(r, 42, 1) };
+                    for (const child of b.records)
+                        process(child, childNode, s, chain.concat(name.toUpperCase()));
+                    // ATTRIB coordinates belong to the enclosing coordinate system, not
+                    // the INSERT's scaled block-local basis. MINSERT offsets rotate but
+                    // do not scale. This also handles ATTRIB sequences inside BLOCKs.
+                    const angle=get(r,50)*DEG;
+                    const attrNode=(row||col)?{parent:{parent:{parent:localNode,angle},translation:[col*get(r,44),row*get(r,45)]},angle:-angle}:node;
+                    for(const attr of r.attributes||[]) {
+                        const normalized=!attrNode?{...attr,groups:[...attr.groups.filter(g=>g.code!==67&&g.code!==410&&g.code!==330),...r.groups.filter(g=>g.code===67||g.code===410||g.code===330)]}:attr;
+                        processEntity(normalized,attrNode,s,chain.concat(name.toUpperCase()));
+                    }
+                }
+            if (type === 'DIMENSION')
+                warn('DIMENSION_BLOCK', 'Dimensions use their supplied anonymous block graphics; dimension constraints are not regenerated.');
+        }
+        else if (type === 'SOLID' || type === 'TRACE' || type === '3DFACE') {
+            const b = pt(r, 11), c = pt(r, 12), d = pt(r, 13);
+            const ordered = type === '3DFACE' ? [a, b, c, d] : [a, b, d, c];
+            for (const t of [[ordered[0], ordered[1], ordered[2]], [ordered[0], ordered[2], ordered[3]]])
+                append({ ...common, type: TYPE.TRIANGLE, anchor: t[0], p: [t[1][0] - t[0][0], t[1][1] - t[0][1], t[2][0] - t[0][0], t[2][1] - t[0][1]] }, r);
+        }
+        else if (type === 'SPLINE') {
+            const xs = all(r, 10), ys = all(r, 20), points = xs.map((x, i) => [x, ys[i] || 0]), knots = all(r, 40), weights = all(r, 41), degree = get(r, 71, 3);
+            if (!Number.isInteger(degree) || degree < 1 || degree > 31 || weights.some(w => w <= 0) || ((weights.length !== 0) && (weights.length !== points.length)) || !(knots[points.length] > knots[degree]) || points.length <= degree || knots.length !== points.length + degree + 1 || knots.some((v, i) => i && v < knots[i - 1])) {
+                warn('BAD_SPLINE', 'Invalid, nonpositive-weight, degenerate-knot or degree > 31 splines are rejected (no fit-point reconstruction).');
+                return;
+            }
+            append({ ...common, type: TYPE.SPLINE, anchor: points[0].slice(0, 2), spline: { degree, knots, points, weights: weights.length === points.length ? weights : null } }, r);
+        }
+        else if (type === 'POINT')
+            append({ ...common, type: TYPE.POINT, anchor: a }, r);
+        else if (type === 'HATCH') {
+            try { const hatch = decodeHatch(r.groups); append({ ...common, type: TYPE.HATCH, anchor: a, hatch }, r); }
+            catch (error) { warn('HATCH_INVALID', error.message); }
+        }
+        else if (!['SEQEND', 'VERTEX', 'ENDBLK', 'VIEWPORT'].includes(type))
+            warn('UNSUPPORTED_' + type, `${type} entities are not supported by the 2D kernel.`);
+    }
+    function flushPoly() { if (!poly)
+        return; const r = poly; poly = null; if (block)
+        block.records.push(r);
+    else if (section === 'ENTITIES')
+        process(r); }
+    let pendingInsert=null;
+    function accept(r){if(block)block.records.push(r);else if(section==='ENTITIES')process(r);}
+    function flushInsert(){if(pendingInsert){const r=pendingInsert;pendingInsert=null;accept(r);}}
+    for (const r of records(binary ? binaryGroups(input) : asciiGroups(text))) {
+        if(pendingInsert) {
+            if(r.type==='ATTRIB'){pendingInsert.attributes.push(r);continue;}
+            if(r.type==='SEQEND'){flushInsert();continue;}
+            flushInsert();
+        }
+        if (r.type === 'SECTION') {
+            flushPoly();
+            section = String(get(r, 2, ''));
+            if (section === 'HEADER') {
+                let key = null;
+                for (const g of r.groups) {
+                    if (g.code === 9)
+                        key = g.value;
+                    else if (key)
+                        (header[key] ??= []).push(g);
+                }
+            }
+            continue;
+        }
+        if (r.type === 'ENDSEC') {
+            flushPoly();
+            section = '';
+            block = null;
+            continue;
+        }
+        if (r.type === 'EOF') {
+            flushPoly();
+            seenEOF = true;
+            break;
+        }
+        if (section === 'HEADER') {
+            let key = null;
+            for (const g of r.groups) {
+                if (g.code === 9)
+                    key = g.value;
+                else if (key) {
+                    (header[key] ??= []).push(g);
+                }
+            }
+            continue;
+        }
+        catalog.record(r, section);
+        if (section === 'TABLES') {
+            if (r.type === 'DIMSTYLE') dimStyles.set(String(get(r, 2, 'STANDARD')), r);
+            if (r.type === 'LAYER') {
+                const name = String(get(r, 2, '0')), i = layerFor(name), flags = get(r, 70);
+                layers[i] = { name, color: has(r, 420) ? trueColor(get(r, 420)) : aciColor(get(r, 62, 7)), visible: get(r, 62, 7) >= 0 && !(flags & 1), locked: !!(flags & 4), linetype: String(get(r, 6, 'CONTINUOUS')) };
+            }
+            if (r.type === 'LTYPE') {
+                const name = String(get(r, 2, '')), pattern = all(r, 49);
+                ltypes.set(name, pattern);
+                if (pattern.length > 2)
+                    warn('COMPLEX_LINETYPE', 'Complex linetypes are simplified to their first dash/gap pair.');
+            }
+            if (r.type === 'STYLE' && get(r, 3, ''))
+                warn('FONT_SUBSTITUTION', 'DXF font styles use the single selected engineering/TrueType/SHX font; original per-style fonts are not automatically resolved.');
+            continue;
+        }
+        if (section !== 'BLOCKS' && section !== 'ENTITIES')
+            continue;
+        if (r.type === 'BLOCK') {
+            flushPoly();
+            block = { name: String(get(r, 2, '')), base: pt(r), header: r, records: [] };
+            blocks.set(block.name.toUpperCase(), block);
+            continue;
+        }
+        if (r.type === 'ENDBLK') {
+            flushPoly();
+            block = null;
+            continue;
+        }
+        if (r.type === 'POLYLINE') {
+            flushPoly();
+            poly = { ...r, vertices: [] };
+            continue;
+        }
+        if (r.type === 'VERTEX' && poly) {
+            poly.vertices.push(r);
+            continue;
+        }
+        if (r.type === 'SEQEND') {
+            flushPoly();
+            continue;
+        }
+        flushPoly();
+        if(r.type==='INSERT'&&get(r,66,0)===1){pendingInsert={...r,attributes:[]};continue;}
+        accept(r);
+    }
+    flushInsert();
+    if (document) {
+        // Some writers store layout entities in the special space BLOCKs rather than ENTITIES.
+        for (const b of blocks.values()) if (/^[*$](?:model_space|paper_space)/i.test(b.name)) {
+            const h=b.header, paper=/^[*$]paper_space/i.test(b.name), owner=String(get(h,330,''));
+            for(const r of b.records) { const handle=String(get(r,5,'')).toUpperCase(); if(handle && rootHandles.has(handle))continue;
+                const groups=r.groups.filter(g=>g.code!==67 && g.code!==330);
+                groups.push({code:67,value:paper?1:0}); if(owner)groups.push({code:330,value:owner});
+                process({...r,groups});
+            }
+        }
+    }
+    if (!seenEOF)
+        warn('MISSING_EOF', 'The DXF has no EOF marker; complete records before the end were imported.');
+    if (!document && !model.count)
+        throw new DxfError('No supported drawable entities were found in the selected space.');
+    const result = document ? catalog.finish(builders, layers, name, [...diagnostics.values()], { header, sourceCount, binary, space: 'document' }) : model.finish();
+    if (!document) result.diagnostics = [...diagnostics.values()];
+    if(editMap) {
+        const offsets=new Map(),sums=new Map();if(document)for(const [key,builder] of builders){const id=catalog.resolve(key),offset=sums.get(id)||0;offsets.set(key,offset);sums.set(id,offset+builder.count);}result.editRoots=editRoots.map(r=>{const id=document?catalog.resolve(r.key):'model',space=result.spaces?.find(s=>s.id===id);return {...r,spaceId:id,first:r.first+(offsets.get(r.key)||0)+(space?.idBase||0)+1};}).sort((a,b)=>a.first-b.first);
+    }
+    result.blockCatalog=[...blocks.values()].filter(b=>!(/^[*$](model_space|paper_space)/i.test(b.name))).map(b=>({name:b.name,base:b.base,flags:get(b.header,70,0),count:b.records.length,
+        dependencies:[...new Set(b.records.filter(r=>r.type==='INSERT').map(r=>String(get(r,2,''))))],attributes:b.records.filter(r=>r.type==='ATTDEF').map(r=>({tag:String(get(r,2,'')),value:String(get(r,1,'')),flags:get(r,70,0)}))}));
+    result.header = header;
+    result.sourceCount = sourceCount;
+    result.binary = binary;
+    result.space = document ? 'document' : space;
+    if (preserveSource) result.source = typeof input === 'string' ? { kind: 'text', data: input } : { kind: 'bytes', data: input.slice(0) };
+    if (result.missing.length)
+        result.diagnostics.push({ code: 'MISSING_GLYPHS', severity: 'warning', count: result.missing.length, message: 'Missing glyphs use an explicit □ placeholder: ' + result.missing.join(' ') });
+    return result;
+}
+/** Parse every layout once into partitioned GPU pages with globally stable IDs. */
+function parseDxfDocument(input, font, options = {}) { return parseDxf(input, font, { ...options, document: true, space: 'all' }); }
+/** Export overlays, not a lossless rewrite of the original DXF. */
+function annotationsToDxf(annotations) {
+    const lines = ['0', 'SECTION', '2', 'HEADER', '9', '$ACADVER', '1', 'AC1021', '0', 'ENDSEC', '0', 'SECTION', '2', 'ENTITIES'];
+    const add = (...v) => lines.push(...v.map(String));
+    const safe = s => String(s).replace(/[\r\n]/g, ' ');
+    for (const a of annotations) {
+        const layer = safe(a.layerName || 'APERTURE_ANNOTATIONS'), color = a.color ?? rgba('#ffb15c'), tc = ((color & 255) << 16) | (color & 0xff00) | ((color >>> 16) & 255), p = a.p || [0, 0, 0, 0], q = a.q || [0, 0, 0, 0];
+        const base = t => add(0, t, 8, layer, 420, tc);
+        if (a.type === TYPE.TEXT) {
+            const text = String(a.text || '');
+            if (text.includes('\n')) {
+                base('MTEXT');
+                add(10, a.anchor[0], 20, a.anchor[1], 40, p[0], 71, 7, 50, (p[2] || 0) / DEG, 1, text.replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\P'));
+            }
+            else {
+                base('TEXT');
+                add(10, a.anchor[0], 20, a.anchor[1], 40, p[0], 41, p[1] || 1, 1, safe(text), 50, (p[2] || 0) / DEG);
+            }
+        }
+        else if (a.type === TYPE.LINE) {
+            base('LINE');
+            add(10, a.anchor[0], 20, a.anchor[1], 11, a.anchor[0] + p[0], 21, a.anchor[1] + p[1]);
+        }
+        else if (a.type === TYPE.POLYLINE) {
+            base('LWPOLYLINE');
+            add(90, a.points.length, 70, (a.flags || 0) & 1);
+            for (const point of a.points)
+                add(10, point[0], 20, point[1], 42, point[2] || 0);
+        }
+        else if (a.type === TYPE.ELLIPSE) {
+            base('ELLIPSE');
+            add(10, a.anchor[0], 20, a.anchor[1], 11, p[0], 21, p[1], 40, p[2], 41, q[0], 42, q[0] + q[1]);
+        }
+        else if (a.type === TYPE.POINT) {
+            base('POINT');
+            add(10, a.anchor[0], 20, a.anchor[1]);
+        }
+        else if (a.type === TYPE.TRIANGLE) {
+            base('SOLID');
+            add(10, a.anchor[0], 20, a.anchor[1], 11, a.anchor[0] + p[0], 21, a.anchor[1] + p[1], 12, a.anchor[0] + p[2], 22, a.anchor[1] + p[3], 13, a.anchor[0] + p[2], 23, a.anchor[1] + p[3]);
+        }
+        else if (a.type === TYPE.CLOUD) {
+            // Serialize the exact raw scallop endpoints and bulges, never CPU-render them.
+            const nx = Math.min(256, Math.max(1, Math.ceil(Math.abs(p[0]) / Math.max(q[0], .01)))), ny = Math.min(256, Math.max(1, Math.ceil(Math.abs(p[1]) / Math.max(q[0], .01))));
+            const points = [];
+            for (let i = 0; i < nx; i++)
+                points.push([p[0] * i / nx, 0]);
+            for (let i = 0; i < ny; i++)
+                points.push([p[0], p[1] * i / ny]);
+            for (let i = 0; i < nx; i++)
+                points.push([p[0] * (1 - i / nx), p[1]]);
+            for (let i = 0; i < ny; i++)
+                points.push([0, p[1] * (1 - i / ny)]);
+            base('LWPOLYLINE');
+            add(90, points.length, 70, 1);
+            for (const point of points)
+                add(10, a.anchor[0] + point[0], 20, a.anchor[1] + point[1], 42, .45);
+        }
+        else
+            throw new DxfError('Unsupported annotation export type: ' + a.type);
+    }
+    add(0, 'ENDSEC', 0, 'EOF');
+    return lines.join('\n') + '\n';
+}
+
+/** Byte/text preserving round-trip. This does not apply model edits to the DXF document. */
+function originalDxf(model) {
+    if (!model.source) throw new DxfError('Load with preserveSource:true to retain the original DXF.');
+    return model.source.kind === 'bytes' ? model.source.data.slice(0) : model.source.data;
+}
+
+Object.assign(exports,{DxfError,aciColor,decodeDxfText,asciiGroups,binaryGroups,records,parseDxf,parseDxfDocument,annotationsToDxf,originalDxf});
+},
+"packages/dxf/spaces.js":function(module,exports,require){
+/** DXF space/layout catalogue. Handles are resolved after OBJECTS (usually after ENTITIES).
+ * No per-entity strings or duplicated tessellation are sent to the GPU.
+ */
+const value = (r, code, fallback = 0) => r.groups.find(g => g.code === code)?.value ?? fallback;
+const point = (r, code, z = false) => z ? [value(r,code),value(r,code+10),value(r,code+20)] : [value(r,code),value(r,code+10)];
+const handle = x => String(x || '').toUpperCase();
+function subclass(r, name) {
+    const start = r.groups.findIndex(g => g.code === 100 && g.value === name);
+    if (start < 0) return r;
+    let end = r.groups.findIndex((g,i) => i > start && g.code === 100);
+    return { groups: r.groups.slice(start + 1, end < 0 ? undefined : end) };
+}
+function owner(r) { let depth = 0; for (const g of r.groups) { if (g.code === 102) { if (String(g.value).startsWith('{')) depth++; else if (g.value === '}') depth--; } if (!depth && g.code === 330) return handle(g.value); } return ''; }
+function canonicalName(name) { return String(name).toLowerCase() === 'model' ? 'model' : 'layout:' + String(name); }
+function viewCamera(view) {
+    const a = -(view.twist || 0), c = Math.cos(a), s = Math.sin(a), target = view.target || [0,0,0], p = view.viewCenter || [0,0];
+    return { x: target[0] + c*p[0] - s*p[1], y: target[1] + s*p[0] + c*p[1], angle: a };
+}
+function supportedPlanView(view) {
+    const d = view.direction || [0,0,1];
+    return view.viewHeight > 0 && Number.isFinite(view.viewHeight) && Math.abs(d[0]) < 1e-10 && Math.abs(d[1]) < 1e-10 && d[2] > 0 && !(view.flags & 1) && !(view.flags & 65536) && !view.clipHandle;
+}
+class SpaceCatalog {
+    constructor() { this.layouts = new Map(); this.blockNames = new Map(); this.blockLayouts = new Map(); this.layoutHandles = new Map(); this.viewportRecords = []; this.namedViews = []; this.layerHandles = new Map(); }
+    key(r) {
+        const name = value(r,410,''); if (name) return canonicalName(name);
+        const o = owner(r), b = this.blockNames.get(o);
+        if (b && /^[*$]model_space$/i.test(b)) return 'model';
+        if (o && (value(r,67,0) === 1 || /^[*$]paper_space/i.test(b || ''))) return 'owner:' + o;
+        return value(r,67,0) === 1 ? 'paper:unnamed' : 'model';
+    }
+    record(r, section) {
+        if (section === 'TABLES' && r.type === 'BLOCK_RECORD') { const h=handle(value(r,5,'')); this.blockNames.set(h,String(value(r,2,''))); const layout=handle(value(r,340,'')); if(layout) this.blockLayouts.set(h,layout); }
+        if (section === 'TABLES' && r.type === 'LAYER') this.layerHandles.set(handle(value(r,5,'')),String(value(r,2,'0')));
+        if (r.type === 'LAYOUT' && section === 'OBJECTS') {
+            const l=subclass(r,'AcDbLayout'), p=subclass(r,'AcDbPlotSettings'), name=String(value(l,1,'Layout')), id=canonicalName(name);
+            const refs=l.groups.filter(g=>g.code===330); const block=handle(refs.at(-1)?.value);
+            const width=value(p,44,0),height=value(p,45,0);
+            const item={ id,name,kind:id==='model'?'model':'paper',order:value(l,71,id==='model'?0:1),block,
+                paperSize:width>0&&height>0?[width,height]:null, limits:[...point(l,10),...point(l,11)], extents:[...point(l,14),...point(l,15)], viewports:[] };
+            this.layouts.set(id,item); this.layoutHandles.set(handle(value(r,5,'')),id); if(block) this.blockLayouts.set(block,id);
+        }
+        if (section === 'TABLES' && r.type === 'VIEW') {
+            const v=subclass(r,'AcDbViewTableRecord');
+            this.namedViews.push({ id:'view:'+String(value(r,2,'')),name:String(value(r,2,'')),kind:'named',spaceId:(value(r,70,0)&1)?'paper:unnamed':'model',
+                viewHeight:value(v,40,0),viewWidth:value(v,41,0),viewCenter:point(v,10),direction:hasCode(v,11)?point(v,11,true):[0,0,1],target:point(v,12,true),twist:value(v,50,0)*Math.PI/180,flags:value(v,71,0) });
+        }
+    }
+    addViewport(r, key) {
+        const v=subclass(r,'AcDbViewport');
+        this.viewportRecords.push({ key,id:'viewport:'+String(value(r,5,this.viewportRecords.length+1)),handle:handle(value(r,5,'')),
+            number:value(v,69,0),name:'Viewport '+value(v,69,this.viewportRecords.length+1),kind:'viewport',center:point(v,10),width:value(v,40,0),height:value(v,41,0),
+            status:value(v,68,1),viewCenter:point(v,12),direction:hasCode(v,16)?point(v,16,true):[0,0,1],target:point(v,17,true),viewHeight:value(v,45,0),twist:value(v,51,0)*Math.PI/180,
+            flags:value(v,90,0),clipHandle:handle(value(v,340,'')),frozenLayers:v.groups.filter(g=>g.code===331).map(g=>handle(g.value)) });
+    }
+    resolve(key) {
+        if(key==='model') return key;
+        if(key.startsWith('owner:')) { const block=key.slice(6), mapped=this.blockLayouts.get(block), id=this.layoutHandles.get(mapped)||mapped; if(id?.startsWith('layout:')||id==='model')return id;
+            const b=this.blockNames.get(block); if(/^[*$]model_space$/i.test(b||''))return 'model'; return canonicalName(b?.replace(/^\*/,'')||'Paper '+block); }
+        if(key==='paper:unnamed') return [...this.layouts.values()].filter(l=>l.kind==='paper').sort((a,b)=>a.order-b.order)[0]?.id || 'layout:Layout1';
+        return key;
+    }
+    finish(builders, layers, name, diagnostics, metadata) {
+        const spaces=new Map([['model',{id:'model',name:'Model',kind:'model',order:0,viewports:[]}],...this.layouts]);
+        const ensure=id=>{ if(!spaces.has(id))spaces.set(id,{id,name:id.replace(/^layout:/,''),kind:id==='model'?'model':'paper',order:spaces.size,viewports:[]}); return spaces.get(id); };
+        const groups=new Map(), origins=new Map();
+        for(const [key,builder] of builders){const id=this.resolve(key);ensure(id);const m=builder.finish();if(m.pages.length&&!origins.has(id))origins.set(id,m.origin);if(!groups.has(id))groups.set(id,[]);groups.get(id).push(...m.pages);}
+        for(const raw of this.viewportRecords){const id=this.resolve(raw.key),v={...raw,spaceId:id};delete v.key;v.frozenLayers=v.frozenLayers.map(h=>this.layerHandles.get(h)).filter(Boolean);v.supported=supportedPlanView(v);ensure(id).viewports.push(v);}
+        const ordered=[...spaces.values()].sort((a,b)=>a.kind==='model'?-1:b.kind==='model'?1:a.order-b.order||a.name.localeCompare(b.name));
+        const pages=[];let count=0;
+        for(const space of ordered){space.origin=origins.get(space.id)||[0,0];space.pageIndices=[];space.count=0;space.idBase=count;
+            for(const page of groups.get(space.id)||[]){page.idBase=count;page.spaceId=space.id;page.origin=space.origin;const u=new Uint32Array(page.entities);for(let i=0;i<page.count;i++)u[i*32+19]=count+i+1;
+                space.pageIndices.push(pages.length);pages.push(page);count+=page.count;space.count+=page.count;}
+            space.viewports.sort((a,b)=>b.status-a.status||a.number-b.number);
+            for(const v of space.viewports)if(v.number!==1&&!v.supported)diagnostics.push({code:'VIEWPORT_PROJECTION',severity:'warning',count:1,message:`${space.name} / ${v.name}: only rectangular top-XY orthographic viewports are composed; perspective, oblique 3D, and nonrectangular clipping are explicitly unsupported.`});
+        }
+        const views=this.namedViews.map(v=>{const spaceId=this.resolve(v.spaceId);return {...v,spaceId,supported:supportedPlanView(v)&&!(spaceId.startsWith('layout:')&&Math.abs(v.twist)>1e-10)};});
+        for(const v of views)if(!v.supported)diagnostics.push({code:'NAMED_VIEW_PROJECTION',severity:'warning',count:1,message:`Named view ${v.name} is listed, but its projection is not supported by the top-XY renderer.`});
+        const missing=[...new Set(pages.flatMap(p=>p.missing))];
+        const model={version:1,name,origin:[0,0],layers,pages,count,idBase:0,diagnostics,missing,spaces:ordered,namedViews:views,...metadata};
+        const active=metadata.header?.$CTAB?.[0]?.value;model.initialSpace=metadata.header?.$TILEMODE?.[0]?.value===0?(ordered.find(s=>s.name===active)?.id||ordered.find(s=>s.kind==='paper')?.id||'model'):'model';
+        model.origin=ordered.find(s=>s.id===model.initialSpace)?.origin || [0,0];return model;
+    }
+}
+function hasCode(r,c){return r.groups.some(g=>g.code===c);}
+
+Object.assign(exports,{viewCamera,supportedPlanView,SpaceCatalog});
+},
+"packages/dxf/hatch.js":function(module,exports,require){
+/** DXF boundary/pattern decoding only: no sampled paths, clipping, or hatch-line expansion. */
+function decodeHatch(groups) {
+    let p = groups.findIndex(g => g.code === 91);
+    if (p < 0) throw new Error('HATCH is missing boundary count.');
+    const get = (code, fallback = 0) => groups.find(g => g.code === code)?.value ?? fallback;
+    const take = code => { const g = groups[p++]; if (!g || g.code !== code) throw new Error(`HATCH expected group ${code}, received ${g?.code ?? 'EOF'}.`); return Number(g.value); };
+    const optional = (code, fallback = 0) => groups[p]?.code === code ? take(code) : fallback;
+    const point = (x = 10, y = x + 10) => [take(x), take(y)];
+    const count = (code, limit = 1000000) => { const n = take(code); if (!Number.isInteger(n) || n < 0 || n > limit) throw new Error(`Invalid HATCH count ${code}.`); return n; };
+    const loops = count(91), edges = [];
+    for (let loop = 0; loop < loops; loop++) {
+        const flags = take(92);
+        if (flags & 2) {
+            const bulges = take(72), closed = take(73), n = count(93), vertices = [];
+            for (let i = 0; i < n; i++) { const a = point(); vertices.push({ point: a, bulge: bulges ? optional(42) : 0 }); }
+            for (let i = 0; i < n - (closed ? 0 : 1); i++) {
+                const a = vertices[i], b = vertices[(i + 1) % n];
+                edges.push({ kind: 2, loop, flags, a: a.point, b: b.point, bulge: a.bulge });
+            }
+        } else {
+            const n = count(93);
+            for (let i = 0; i < n; i++) {
+                const kind = take(72);
+                if (kind === 1) edges.push({ kind: 1, loop, flags, a: point(), b: point(11) });
+                else if (kind === 2 || kind === 3) {
+                    const center = point(); let major, ratio;
+                    if (kind === 2) { major = [take(40), 0]; ratio = 1; }
+                    else { major = point(11); ratio = take(40); }
+                    const start = take(50) * Math.PI / 180, end = take(51) * Math.PI / 180, ccw = take(73);
+                    let sweep = ((end - start) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+                    if (!ccw) sweep = sweep === 0 ? -2 * Math.PI : sweep - 2 * Math.PI;
+                    else if (sweep === 0) sweep = 2 * Math.PI;
+                    edges.push({ kind: 3, loop, flags, center, major, ratio, start, sweep });
+                } else if (kind === 4) {
+                    const degree = take(94), rational = take(73), periodic = take(74), nk = count(95), np = count(96);
+                    const knots = Array.from({ length: nk }, () => take(40)), points = [], weights = [];
+                    for (let j = 0; j < np; j++) { points.push(point()); weights.push(rational ? optional(42, 1) : 1); }
+                    if (groups[p]?.code === 97) { const fit = count(97); for (let j = 0; j < fit; j++) point(11); if (groups[p]?.code === 12) point(12); if (groups[p]?.code === 13) point(13); }
+                    if (degree < 1 || degree > 31 || np <= degree || nk !== np + degree + 1 || weights.some(w => !(w > 0)) || knots.some((v, j) => j > 0 && v < knots[j - 1])) throw new Error('Invalid HATCH spline edge.');
+                    edges.push({ kind: 4, loop, flags, spline: { degree, knots, points, weights, periodic } });
+                } else throw new Error(`Unsupported HATCH boundary edge type ${kind}.`);
+            }
+        }
+        if (groups[p]?.code === 97) { const handles = count(97); for (let i = 0; i < handles; i++) take(330); }
+    }
+    const families = []; p = groups.findIndex(g => g.code === 78);
+    if (p >= 0) {
+        const n = count(78, 4096);
+        for (let i = 0; i < n; i++) {
+            const angle = take(53) * Math.PI / 180, base = point(43, 44), offset = point(45, 46), nd = count(79, 4096);
+            const dashes = Array.from({ length: nd }, () => take(49));
+            families.push({ angle, base, offset, dashes });
+        }
+    }
+    if (!edges.length) throw new Error('HATCH has no boundary edges.');
+    if (!get(70) && !families.length) throw new Error('Pattern HATCH has no pattern line definitions.');
+    if (get(450)) throw new Error('Gradient HATCH requires a per-pixel material backend; not treated as a solid fill.');
+    return { edges, families: get(70) ? [] : families, style: get(75), solid: !!get(70), name: String(get(2, 'SOLID')) };
+}
+
+Object.assign(exports,{decodeHatch});
+},
+"packages/model/index.js":function(module,exports,require){
+/** Host-shareable CAD ABI. Host work is parsing/serialization, not tessellation. */
+const ENTITY_BYTES = 128;
+const PAGE_ENTITIES = 65536;
+const TYPE = Object.freeze({ LINE: 1, ELLIPSE: 2, POLYLINE: 3, TEXT: 4, TRIANGLE: 5, SPLINE: 6, POINT: 7, FILL: 8, XLINE: 9, RAY: 10, CLOUD: 11, HATCH: 12, DIMENSION: 13 });
+const ENTITY_TYPES = new Set(Object.values(TYPE));
+const FLAGS = Object.freeze({ CLOSED: 1, NUMERIC: 256, ANNOTATION: 512 });
+const UINT_MAX = 0xffffffff;
+function split64(x) { if (!Number.isFinite(x) || !Number.isFinite(Math.fround(x)))
+    throw new RangeError('Coordinate is not finite in the GPU representation.'); const hi = Math.fround(x); return [hi, Math.fround(x - hi)]; }
+function rgba(hex) { if (typeof hex === 'number')
+    return hex >>> 0; let h = String(hex).replace('#', ''); if (h.length === 3)
+    h = h.split('').map(c => c + c).join(''); return ((parseInt(h.slice(0, 2), 16) || 0) | ((parseInt(h.slice(2, 4), 16) || 0) << 8) | ((parseInt(h.slice(4, 6), 16) || 0) << 16) | 0xff000000) >>> 0; }
+function colorHex(v) { return '#' + [v & 255, (v >>> 8) & 255, (v >>> 16) & 255].map(x => x.toString(16).padStart(2, '0')).join(''); }
+class WordArena {
+    constructor(cap = 4096) { this.buffer = new ArrayBuffer(cap * 4); this.u = new Uint32Array(this.buffer); this.f = new Float32Array(this.buffer); this.length = 0; }
+    alloc(n) { const o = this.length; this.length += n; if (this.length > this.u.length) {
+        const b = new ArrayBuffer(Math.max(this.length, 2 * this.u.length) * 4);
+        new Uint32Array(b).set(this.u);
+        this.buffer = b;
+        this.u = new Uint32Array(b);
+        this.f = new Float32Array(b);
+    } return o; }
+    finish() { return this.buffer.slice(0, Math.max(this.length, 4) * 4); }
+}
+class PageBuilder {
+    constructor(font, { origin = [0, 0], idBase = 0, pageSize = PAGE_ENTITIES } = {}) { this.font = font; this.origin = origin; this.idBase = idBase; this.capacity = pageSize; this.buffer = new ArrayBuffer(pageSize * ENTITY_BYTES); this.u = new Uint32Array(this.buffer); this.f = new Float32Array(this.buffer); this.count = 0; this.aux = new WordArena(); this.runs = []; this.runMap = new Map(); this.nodeMap = new Map(); this.missing = new Set(); this.handles = []; }
+    node(n, ancestors = null) {
+        if (!n)
+            return UINT_MAX;
+        if (ancestors?.has(n) || (ancestors?.size || 0) >= 192)
+            throw new RangeError('Cyclic or excessively deep GPU transform chain.');
+        if (this.nodeMap.has(n))
+            return this.nodeMap.get(n);
+        const next = new Set(ancestors || []);
+        next.add(n);
+        const parent = this.node(n.parent, next);
+        const o = this.aux.alloc(16);
+        this.nodeMap.set(n, o);
+        const t = n.translation || [0, 0], b = n.base || [0, 0], [tx, tlx] = split64(t[0]), [ty, tly] = split64(t[1]), [bx, blx] = split64(b[0]), [by, bly] = split64(b[1]);
+        this.aux.f.set([n.sx ?? 1, n.sy ?? 1, n.angle || 0, 0, tx, ty, tlx, tly, bx, by, blx, bly], o);
+        this.aux.u[o + 12] = parent;
+        if (n.ocs) {
+            this.aux.f.set([...n.ocs, n.elevation || 0], o);
+            this.aux.u[o + 13] = 2;
+        }
+        return o;
+    }
+    run(text, wrap = 0) {
+        const key = wrap + '\0' + text;
+        if (this.runMap.has(key))
+            return this.runMap.get(key);
+        const cps = Array.from(text);
+        if (cps.length > 16384)
+            throw new RangeError('A GPU glyph run is limited to 16,384 codepoints. Split the text into multiple entities.');
+        const o = this.aux.alloc(4 + cps.length * 5);
+        this.aux.u[o] = cps.length;
+        this.aux.f[o + 3] = wrap;
+        cps.forEach((c, i) => { let gid = c === '\n' ? UINT_MAX : this.font.map.get(c.codePointAt(0)); if (gid === undefined) {
+            this.missing.add(c);
+            gid = 0;
+        } this.aux.u[o + 4 + i * 4] = gid; this.aux.u[o + 4 + cps.length * 4 + i] = gid; });
+        this.runs.push(o);
+        this.runMap.set(key, o);
+        return o;
+    }
+    add(e) {
+        const state = [this.count, this.aux.length, this.runs.length, this.handles.length];
+        try { return this.appendEntity(e); }
+        catch (error) {
+            [this.count, this.aux.length, this.runs.length, this.handles.length] = state;
+            // Failure-only rollback: no per-entity map cloning on the successful import path.
+            for (const [key, offset] of this.runMap) if (offset >= state[1]) this.runMap.delete(key);
+            for (const [key, offset] of this.nodeMap) if (offset >= state[1]) this.nodeMap.delete(key);
+            throw error;
+        }
+    }
+    appendEntity(e) {
+        if (!e || !ENTITY_TYPES.has(e.type))
+            throw new TypeError('Unknown CAD entity type.');
+        const finite = a => Array.isArray(a) && a.every(x => Number.isFinite(x) && Number.isFinite(Math.fround(x)));
+        for (const key of ['anchor', 'p', 'q', 'r'])
+            if (e[key] && (!finite(e[key]) || e[key].length !== (key === 'anchor' ? 2 : 4)))
+                throw new RangeError('Invalid GPU entity ' + key + '.');
+        if (e.points && (!Array.isArray(e.points) || e.points.length > 1000000 || e.points.some(p => !finite(p) || p.length < 2 || p.length > 4)))
+            throw new RangeError('Invalid or excessive GPU path points.');
+        if (e.type === TYPE.POLYLINE && (!e.points || e.points.length < 2))
+            throw new RangeError('A polyline requires at least two points.');
+        if (e.type === TYPE.SPLINE) {
+            const v = e.spline;
+            if (!v || !Number.isInteger(v.degree) || v.degree < 1 || v.degree > 31 || !Array.isArray(v.points) || !Array.isArray(v.knots) || v.points.length <= v.degree || v.knots.length !== v.points.length + v.degree + 1 || !finite(v.knots) || v.points.some(p => !finite(p)) || v.knots.some((x, i) => i > 0 && x < v.knots[i - 1]) || v.points.some(p => p.length !== 2) || (v.weights && (v.weights.length !== v.points.length || v.weights.some(w => !Number.isFinite(w) || w <= 0))))
+                throw new RangeError('Invalid rational spline.');
+        }
+        if (this.count >= this.capacity)
+            throw new Error('Page capacity exceeded.');
+        const i = this.count++, j = i * 32, id = this.idBase + i + 1, anchor = e.anchor || [0, 0], [xh, xl] = split64(anchor[0]), [yh, yl] = split64(anchor[1]);
+        this.f.set([xh, yh, xl, yl], j);
+        this.f.set(e.p || [0, 0, 0, 0], j + 4);
+        this.f.set(e.q || [0, 0, 0, 0], j + 8);
+        this.f.set(e.r || [0, 0, 0, 0], j + 12);
+        this.u.set([e.type, e.color ?? 0, e.layer || 0, id], j + 16);
+        let offset = 0, count = 0, flags = e.flags || 0;
+        if (e.type === TYPE.TEXT) {
+            offset = this.run(e.text || '', e.wrap || 0);
+            count = e.numeric || 0;
+        }
+        else if (e.type === TYPE.HATCH) {
+            const h = e.hatch;
+            if (!h || !Array.isArray(h.edges) || !h.edges.length || h.edges.length > 1000000 || !Array.isArray(h.families) || h.families.length > 4096 || ![0, 1, 2].includes(h.style || 0)) throw new RangeError('Invalid hatch data.');
+            const point = p => finite(p) && p.length === 2;
+            for (const edge of h.edges) {
+                if (!Number.isInteger(edge.loop || 0) || (edge.loop || 0) < 0) throw new RangeError('Invalid hatch loop ID.');
+                if ([1, 2].includes(edge.kind) && (!point(edge.a) || !point(edge.b) || !Number.isFinite(edge.bulge || 0))) throw new RangeError('Invalid hatch line/bulge.');
+                if (edge.kind === 3 && (!point(edge.center) || !point(edge.major) || !finite([edge.ratio, edge.start, edge.sweep]) || edge.ratio <= 0 || Math.abs(edge.sweep) > Math.PI * 2 + 1e-6)) throw new RangeError('Invalid hatch conic.');
+                if (edge.kind === 4) { const v = edge.spline;
+                    if (!v || !Number.isInteger(v.degree) || v.degree < 1 || v.degree > 31 || !Array.isArray(v.points) || v.points.length <= v.degree || v.points.some(p => !point(p)) || !finite(v.knots) || v.knots.length !== v.points.length + v.degree + 1 || v.knots.some((x, i) => i > 0 && x < v.knots[i - 1]) || (v.weights && (v.weights.length !== v.points.length || v.weights.some(w => !Number.isFinite(w) || w <= 0)))) throw new RangeError('Invalid hatch spline.'); }
+                if (![1, 2, 3, 4].includes(edge.kind)) throw new RangeError('Unknown hatch edge kind.');
+            }
+            for (const line of h.families) if (!Number.isFinite(line.angle) || !point(line.base) || !point(line.offset) || !finite(line.dashes) || line.dashes.length > 4096) throw new RangeError('Invalid hatch pattern family.');
+            offset = this.aux.alloc(8); count = h.edges.length;
+            const edgeTable = this.aux.alloc(h.edges.length * 16), families = this.aux.alloc(h.families.length * 8);
+            this.aux.u.set([h.edges.length, h.families.length, h.style || 0, h.solid ? 1 : 0, edgeTable, families, 0, 0], offset);
+            h.edges.forEach((edge, i) => {
+                const o = edgeTable + i * 16;
+                this.aux.u.set([edge.kind, edge.loop || 0, edge.flags || 0, 0], o);
+                if (edge.kind === 1 || edge.kind === 2) this.aux.f.set([edge.a[0] - anchor[0], edge.a[1] - anchor[1], edge.b[0] - anchor[0], edge.b[1] - anchor[1], edge.bulge || 0], o + 4);
+                else if (edge.kind === 3) this.aux.f.set([edge.center[0] - anchor[0], edge.center[1] - anchor[1], ...edge.major, edge.ratio, edge.start, edge.sweep], o + 4);
+                else if (edge.kind === 4) {
+                    const v = edge.spline, so = this.aux.alloc(4 + v.knots.length + v.points.length * 4);
+                    this.aux.u[o + 3] = so; this.aux.u.set([v.degree, v.knots.length, v.points.length, 0], so); this.aux.f.set(v.knots, so + 4);
+                    v.points.forEach((pt, j) => this.aux.f.set([pt[0] - anchor[0], pt[1] - anchor[1], v.weights?.[j] ?? 1, 0], so + 4 + v.knots.length + j * 4));
+                } else throw new RangeError('Unknown hatch edge kind.');
+            });
+            h.families.forEach((line, i) => {
+                const o = families + i * 8, dash = this.aux.alloc(line.dashes.length);
+                this.aux.f.set([line.angle, line.base[0] - anchor[0], line.base[1] - anchor[1], ...line.offset], o);
+                this.aux.u.set([line.dashes.length, dash, 0], o + 5); this.aux.f.set(line.dashes, dash);
+            });
+        }
+        else if (e.type === TYPE.DIMENSION) {
+            const d = e.dimension;
+            if (!d || !Number.isInteger(d.kind) || d.kind < 0 || d.kind > 6 || !Array.isArray(d.points) || d.points.length !== 7 || d.points.some(p => !finite(p) || p.length !== 2)) throw new RangeError('Invalid dimension definition.');
+            for (const key of ['angle', 'textHeight', 'arrowSize', 'extensionOffset', 'extensionLength', 'gap', 'measureScale', 'rounding']) if (key in d && (!Number.isFinite(d[key]) || !Number.isFinite(Math.fround(d[key])))) throw new RangeError('Invalid dimension ' + key);
+            if ((d.textHeight ?? 2.5) < 0 || (d.arrowSize ?? 2.5) < 0 || (d.rounding ?? 0) < 0 || !Number.isInteger(d.precision ?? 2) || (d.precision ?? 2) < 0 || (d.precision ?? 2) > 8) throw new RangeError('Invalid dimension formatting.');
+            offset = this.aux.alloc(32); count = 7;
+            this.aux.u.set([d.kind, d.flags || 0, this.run(d.text && d.text !== '<>' ? d.text : ''), Math.max(0, Math.min(8, d.precision ?? 2))], offset);
+            d.points.forEach((pt, i) => this.aux.f.set([pt[0] - anchor[0], pt[1] - anchor[1]], offset + 4 + i * 2));
+            this.aux.f.set([d.angle || 0, d.textHeight ?? 2.5, d.arrowSize ?? 2.5, d.extensionOffset ?? .625, d.extensionLength ?? 1.25, d.gap ?? .625, d.measureScale ?? 1, d.rounding ?? 0], offset + 18);
+            this.aux.u[offset + 26] = d.text && d.text !== '<>' ? 1 : 0;
+            this.aux.u[offset + 27] = this.font.map.get(46) ?? 0;
+            this.aux.u[offset + 28] = this.font.map.get(45) ?? 0;
+            this.aux.u[offset + 29] = this.font.map.get(82) ?? 0;
+            this.aux.u[offset + 30] = this.font.map.get(216) ?? 0;
+            this.aux.u[offset + 31] = this.font.map.get(176) ?? 0;
+        }
+        else if (e.points) {
+            count = e.points.length;
+            offset = this.aux.alloc(count * 4);
+            e.points.forEach((p, k) => this.aux.f.set([p[0] - anchor[0], p[1] - anchor[1], p[2] || 0, p[3] ?? 1], offset + k * 4));
+        }
+        else if (e.spline) {
+            const { degree, knots, points, weights } = e.spline;
+            count = points.length;
+            offset = this.aux.alloc(4 + knots.length + points.length * 4);
+            this.aux.u.set([degree, knots.length, points.length, 0], offset);
+            this.aux.f.set(knots, offset + 4);
+            points.forEach((p, k) => this.aux.f.set([p[0] - anchor[0], p[1] - anchor[1], weights?.[k] ?? 1, 0], offset + 4 + knots.length + k * 4));
+        }
+        this.u.set([offset, count, this.node(e.node), flags], j + 20);
+        this.f.set([1, 0, 0, 1], j + 24);
+        this.handles.push(e.handle || null);
+        return id;
+    }
+    finish() { const table = this.aux.alloc(this.runs.length); this.aux.u.set(this.runs, table); return { count: this.count, idBase: this.idBase, entities: this.buffer.slice(0, Math.max(this.count, 1) * ENTITY_BYTES), aux: this.aux.finish(), runTable: table, runCount: this.runs.length, handles: this.handles, missing: [...this.missing] }; }
+}
+class ModelBuilder {
+    constructor(font, { name = 'Untitled', origin = [0, 0], layers, pageSize = PAGE_ENTITIES, idBase = 0 } = {}) { this.font = font; this.name = name; this.origin = origin; this.layers = layers || [{ name: '0', color: rgba('#c3cfda'), visible: true }]; this.pageSize = pageSize; this.count = 0; this.idBase = idBase; this.pages = []; this.current = null; this.diagnostics = []; }
+    add(e) { if (!this.current || this.current.count === this.pageSize || this.current.aux.length > 16 * 1024 * 1024) {
+        if (this.current)
+            this.pages.push(this.current.finish());
+        this.current = new PageBuilder(this.font, { origin: this.origin, idBase: this.idBase + this.count, pageSize: this.pageSize });
+    } const id = this.current.add(e); this.count++; return id; }
+    line(a, b, layer = 0, color = 0, width = 0, node = null) { return this.add({ type: TYPE.LINE, anchor: a, p: [b[0] - a[0], b[1] - a[1], width, 0], layer, color, node }); }
+    rect(x, y, w, h, layer = 0, color = 0) { return this.add({ type: TYPE.POLYLINE, anchor: [x, y], points: [[x, y], [x + w, y], [x + w, y + h], [x, y + h]], flags: FLAGS.CLOSED, layer, color }); }
+    circle(x, y, r, layer = 0, color = 0) { return this.add({ type: TYPE.ELLIPSE, anchor: [x, y], p: [r, 0, 1, 0], q: [0, Math.PI * 2, 0, 0], layer, color }); }
+    text(text, x, y, height = 10, layer = 0, color = 0, rotation = 0) { return this.add({ type: TYPE.TEXT, anchor: [x, y], p: [height, 1, rotation, 0], text, layer, color }); }
+    finish() { if (this.current) {
+        if (this.current.count) this.pages.push(this.current.finish());
+        this.current = null;
+    } return { version: 1, name: this.name, origin: this.origin, layers: this.layers, pages: this.pages, count: this.count, idBase: this.idBase, diagnostics: this.diagnostics, missing: [...new Set(this.pages.flatMap(p => p.missing))] }; }
+}
+function transferList(model) { const list = model.pages.flatMap(p => [p.entities, p.aux]).filter(Boolean); if (model.source?.kind === 'bytes') list.push(model.source.data); return [...new Set(list)]; }
+function modelBytes(model) { return model.pages.reduce((n, p) => n + (p.entities?.byteLength || 0) + p.aux.byteLength, 0); }
+
+Object.assign(exports,{ENTITY_BYTES,PAGE_ENTITIES,TYPE,FLAGS,UINT_MAX,split64,rgba,colorHex,WordArena,PageBuilder,ModelBuilder,transferList,modelBytes});
+},
+"packages/blocks/preview.js":function(module,exports,require){
+const { UINT_MAX }=require("packages/model/index.js");
+/** Add ONE shared top-level transform node to each preview page. Per-pointer movement
+ * changes only this node, never geometry/glyph buffers or file-source coordinates. */
+function placementPreview(model,{idBase=0,layer=0,color=0xffb4d875}={}){
+ let next=idBase;const pages=model.pages.map(p=>{
+  const entities=p.entities.slice(0),u=new Uint32Array(entities),aux=new ArrayBuffer(p.aux.byteLength+64),a=new Uint32Array(aux),f=new Float32Array(aux),root=p.aux.byteLength/4;a.set(new Uint32Array(p.aux));f.set([1,1,0,0,0,0,0,0,0,0,0,0],root);a[root+12]=UINT_MAX;
+  const parents=new Set();for(let i=0;i<p.count;i++){const j=i*32,n=u[j+22];u[j+17]=color;u[j+18]=layer;u[j+19]=next+i+1;
+   if(n===UINT_MAX)u[j+22]=root;else {let at=n,depth=0;while(a[at+12]!==UINT_MAX&&a[at+12]!==root){at=a[at+12];if(++depth>192)throw new Error('Malformed preview transform chain.');}if(!parents.has(at)){a[at+12]=root;parents.add(at);}}}
+  const page={...p,entities,aux,idBase:next,placementNode:root};next+=p.count;return page;
+ });return {...model,idBase,pages};
+}
+function ownerOf(model,id){if(!Number.isInteger(id)||id<=0)return null;const roots=model.editRoots||[];let lo=0,hi=roots.length;while(lo<hi){const m=(lo+hi)>>>1;if(roots[m].first<=id)lo=m+1;else hi=m;}const r=roots[lo-1];return r&&id<r.first+r.count?r:null;}
+
+Object.assign(exports,{placementPreview,ownerOf});
+},
+"packages/dxf/client.js":function(module,exports,require){
+const { WORKER_SOURCE }=require("packages/dxf/worker-source.js");
+/** Each request owns its worker. Packed ArrayBuffers transfer once; cancellation terminates work. */
+class DxfWorkerClient {
+    constructor() { this.id = 0; this.worker = null; this.pending = null; }
+    cancel() {
+        const pending = this.pending;
+        if (pending) pending.finish(new DOMException('DXF import cancelled', 'AbortError'));
+        else if (this.worker) { this.worker.terminate(); this.worker = null; }
+    }
+    parse(buffer, font, { name = 'Drawing.dxf', onProgress = () => {}, preserveSource = false,
+        regenerateDimensions = true, space = 'model', document = false, editMap = false, pageSize = 65536, maxEntities = 16000000 } = {}) {
+        this.cancel();
+        if (!(buffer instanceof ArrayBuffer)) return Promise.reject(new TypeError('DXF input must be an ArrayBuffer.'));
+        const id = ++this.id;
+        return new Promise((resolve, reject) => {
+            let worker, settled = false;
+            const finish = (error, model) => {
+                if (settled) return; settled = true;
+                if (worker) { worker.onmessage = null; worker.onerror = null; worker.terminate(); }
+                if (this.worker === worker) { this.worker = null; this.pending = null; }
+                if (error) reject(error); else resolve(model);
+            };
+            try {
+                const url = URL.createObjectURL(new Blob([WORKER_SOURCE], { type: 'text/javascript' }));
+                try { worker = new Worker(url); } finally { URL.revokeObjectURL(url); }
+                this.worker = worker; this.pending = { finish };
+                worker.onmessage = event => {
+                    if (settled || this.worker !== worker || event.data.id !== id) return;
+                    try {
+                        if (event.data.progress) { onProgress(event.data.progress); return; }
+                        if (event.data.error) finish(Object.assign(new Error(event.data.error.message), event.data.error));
+                        else finish(null, event.data.model);
+                    } catch (error) { finish(error); }
+                };
+                worker.onerror = event => finish(new Error(event.message || 'DXF worker failed.'));
+                worker.postMessage({ id, buffer, font: { map: font.map }, name,
+                    options: { preserveSource, regenerateDimensions, space, document, editMap, pageSize, maxEntities } }, [buffer]);
+            } catch (error) { finish(error); }
+        });
+    }
+}
+
+Object.assign(exports,{DxfWorkerClient});
+},
+"packages/dxf/worker-source.js":function(module,exports,require){
+// Generated worker bundle.
+const WORKER_SOURCE="(function(){\"use strict\";const factories={\"packages/dxf/worker.js\":function(module,exports,require){\nconst { parseDxf }=require(\"packages/dxf/index.js\");\nconst { transferList }=require(\"packages/model/index.js\");\nself.onmessage = event => { const { id, buffer, font, name, options = {} } = event.data; try {\n    const model = parseDxf(buffer, font, { ...options, name, onProgress: progress => self.postMessage({ id, progress }) });\n    self.postMessage({ id, model }, transferList(model));\n}\ncatch (error) {\n    self.postMessage({ id, error: { name: error.name, message: error.message, line: error.line || 0 } });\n} };\n\nObject.assign(exports,{});\n},\n\"packages/dxf/index.js\":function(module,exports,require){\nconst { SpaceCatalog }=require(\"packages/dxf/spaces.js\");\nconst { decodeHatch }=require(\"packages/dxf/hatch.js\");\nconst { ModelBuilder, TYPE, FLAGS, rgba }=require(\"packages/model/index.js\");\nclass DxfError extends Error {\n    constructor(message, line = 0) { super(line ? `${message} (line ${line})` : message); this.name = 'DxfError'; this.line = line; }\n}\nconst DEG = Math.PI / 180;\nconst BASE = ['#000000', '#ff0000', '#ffff00', '#00ff00', '#00ffff', '#0000ff', '#ff00ff', '#ffffff', '#808080', '#c0c0c0'];\nfunction aciColor(index) {\n    index = Math.abs(index);\n    if (index < 10)\n        return rgba(BASE[index]);\n    if (index >= 250)\n        return rgba('#' + [51, 80, 105, 130, 190, 255][Math.min(index - 250, 5)].toString(16).padStart(2, '0').repeat(3));\n    const h = Math.floor((index - 10) / 10) * 15 / 60, slot = (index - 10) % 10, v = [255, 255, 165, 165, 127, 127, 76, 76, 38, 38][slot] / 255, s = slot % 2 ? .5 : 1, c = v * s, x = c * (1 - Math.abs(h % 2 - 1)), m = v - c;\n    const rgb = h < 1 ? [c, x, 0] : h < 2 ? [x, c, 0] : h < 3 ? [0, c, x] : h < 4 ? [0, x, c] : h < 5 ? [x, 0, c] : [c, 0, x];\n    return (0xff000000 | Math.round((rgb[0] + m) * 255) | (Math.round((rgb[1] + m) * 255) << 8) | (Math.round((rgb[2] + m) * 255) << 16)) >>> 0;\n}\nfunction decodeDxfText(s, mtext = false) {\n    s = s.replace(/\\\\U\\+([0-9a-fA-F]{4})/g, (_, h) => { const cp = parseInt(h, 16); return cp <= 0x10ffff ? String.fromCodePoint(cp) : '□'; }).replace(/%%[dD]/g, '°').replace(/%%[pP]/g, '±').replace(/%%[cC]/g, 'Ø').replace(/%%[uUoOkK]/g, '');\n    if (mtext)\n        s = s.replace(/\\\\P/g, '\\n').replace(/\\\\~/g, ' ').replace(/\\\\S([^;]*);/g, (_, v) => v.replace(/[\\^#]/g, '/')).replace(/\\\\[ACFHQTWacfhtw][^;]*;/g, '').replace(/\\\\[LlOoKk]/g, '').replace(/[{}]/g, '').replace(/\\\\\\\\/g, '\\\\');\n    return s;\n}\nfunction groupType(c) {\n    if ((c >= 10 && c <= 59) || (c >= 110 && c <= 149) || (c >= 210 && c <= 239) || (c >= 460 && c <= 469) || (c >= 1010 && c <= 1059))\n        return 'double';\n    if ((c >= 60 && c <= 79) || (c >= 170 && c <= 179) || (c >= 270 && c <= 289) || (c >= 370 && c <= 389) || (c >= 400 && c <= 409) || (c >= 1060 && c <= 1070))\n        return 'short';\n    if ((c >= 90 && c <= 99) || (c >= 420 && c <= 429) || (c >= 440 && c <= 459) || c === 1071)\n        return 'int';\n    if (c >= 160 && c <= 169)\n        return 'long';\n    if (c >= 290 && c <= 299)\n        return 'bool';\n    if ((c >= 310 && c <= 319) || c === 1004)\n        return 'binary';\n    return 'string';\n}\nfunction* asciiGroups(text) {\n    let p = 0, line = 0;\n    const next = () => { if (p >= text.length)\n        return null; const start = p, k = text.indexOf('\\n', p); p = k < 0 ? text.length : k + 1; line++; return text.slice(start, k < 0 ? text.length : k).replace(/\\r$/, ''); };\n    while (p < text.length) {\n        let cs = next();\n        if (cs !== null && !cs.trim() && p >= text.length)\n            break;\n        const n = line;\n        if (cs === null)\n            break;\n        cs = cs.replace(/^\\uFEFF/, '');\n        if (!/^\\s*\\d+\\s*$/.test(cs))\n            throw new DxfError('Invalid DXF group code', n);\n        const code = Number(cs), vs = next();\n        if (vs === null)\n            throw new DxfError('Missing DXF group value', n);\n        if (code > 1071)\n            throw new DxfError('DXF group code out of range', n);\n        const type = groupType(code);\n        let value = type === 'string' || type === 'binary' ? vs.trimEnd() : Number(vs.trim());\n        if (typeof value === 'number' && !Number.isFinite(value))\n            throw new DxfError('Non-finite DXF numeric value', n + 1);\n        yield { code, value, line: n };\n    }\n}\nfunction* binaryGroups(buffer) {\n    const d = new DataView(buffer);\n    let p = 22;\n    let decoder = new TextDecoder('windows-1252'), headerKey = '', unicode = false;\n    const need = n => { if (p + n > d.byteLength)\n        throw new DxfError('Truncated binary DXF', p); };\n    need(2);\n    const wide = d.getUint8(p + 1) === 0;\n    while (p < d.byteLength) {\n        let code;\n        need(wide ? 2 : 1);\n        if (wide) {\n            code = d.getUint16(p, true);\n            p += 2;\n        }\n        else {\n            code = d.getUint8(p++);\n            if (code === 255) {\n                need(2);\n                code = d.getUint16(p, true);\n                p += 2;\n            }\n        }\n        const type = groupType(code);\n        let value;\n        if (type === 'double') {\n            need(8);\n            value = d.getFloat64(p, true);\n            p += 8;\n        }\n        else if (type === 'short') {\n            need(2);\n            value = d.getInt16(p, true);\n            p += 2;\n        }\n        else if (type === 'int') {\n            need(4);\n            value = d.getInt32(p, true);\n            p += 4;\n        }\n        else if (type === 'long') {\n            need(8);\n            value = Number(d.getBigInt64(p, true));\n            p += 8;\n        }\n        else if (type === 'bool') {\n            need(1);\n            value = d.getUint8(p++);\n        }\n        else if (type === 'binary') {\n            need(1);\n            let n = d.getUint8(p++);\n            need(n);\n            value = Array.from(new Uint8Array(buffer, p, n), v => v.toString(16).padStart(2, '0')).join('');\n            p += n;\n        }\n        else {\n            const start = p;\n            while (p < d.byteLength && d.getUint8(p) !== 0)\n                p++;\n            if (p >= d.byteLength)\n                throw new DxfError('Unterminated binary DXF string', start);\n            value = decoder.decode(new Uint8Array(buffer, start, p - start));\n            p++;\n        }\n        if (code === 9)\n            headerKey = value;\n        if (headerKey === '$ACADVER' && code === 1 && /^AC/.test(value) && Number(value.slice(2)) >= 1021) {\n            unicode = true;\n            decoder = new TextDecoder('utf-8');\n        }\n        if (!unicode && headerKey === '$DWGCODEPAGE' && code === 3 && /^ANSI_\\d+$/.test(value)) {\n            try {\n                decoder = new TextDecoder('windows-' + value.slice(5));\n            }\n            catch {\n                decoder = new TextDecoder('windows-1252');\n            }\n        }\n        if (typeof value === 'number' && !Number.isFinite(value))\n            throw new DxfError('Non-finite binary DXF numeric value', p);\n        yield { code, value, line: p };\n    }\n}\nfunction* records(groups) { let rec = null; for (const g of groups) {\n    if (g.code === 0) {\n        if (rec)\n            yield rec;\n        rec = { type: String(g.value).trim().toUpperCase(), groups: [], line: g.line };\n    }\n    else if (rec)\n        rec.groups.push(g);\n    else {\n        if (!rec)\n            rec = { type: 'PREAMBLE', groups: [], line: g.line };\n        rec.groups.push(g);\n    }\n} if (rec)\n    yield rec; }\nconst get = (r, c, def = 0) => { for (const g of r.groups)\n    if (g.code === c)\n        return g.value; return def; };\nconst all = (r, c) => r.groups.filter(g => g.code === c).map(g => g.value);\nconst pt = (r, c = 10) => [Number(get(r, c)), Number(get(r, c + 10))];\nconst has = (r, c) => r.groups.some(g => g.code === c);\nconst trueColor = v => ((0xff000000 | ((v >>> 16) & 255) | (v & 0xff00) | ((v & 255) << 16)) >>> 0);\n/** Streaming records: raw BLOCK records are retained; ordinary ENTITIES are immediately serialized. */\nfunction parseDxf(input, font, { name = 'Drawing.dxf', onProgress = () => { }, maxEntities = 16000000, regenerateDimensions = true, preserveSource = false, space = 'model', document = false, editMap = false, pageSize = 65536 } = {}) {\n    if (!['model', 'paper', 'all'].includes(space)) throw new DxfError('Space must be model, paper or all.');\n    if (!Number.isInteger(maxEntities) || maxEntities < 1 || maxEntities > 16000000) throw new DxfError('Invalid entity import limit.');\n    let text = null, binary = false;\n    if (typeof input === 'string')\n        text = input;\n    else {\n        const prefix = new TextDecoder().decode(new Uint8Array(input, 0, Math.min(128, input.byteLength)));\n        binary = prefix.startsWith('AutoCAD Binary DXF');\n        if (!binary) {\n            const head = new TextDecoder().decode(new Uint8Array(input, 0, Math.min(65536, input.byteLength)));\n            const v = /\\$ACADVER\\s*\\r?\\n\\s*1\\s*\\r?\\n\\s*AC(\\d+)/.exec(head);\n            const utf8 = v && Number(v[1]) >= 1021;\n            const cp = /\\$DWGCODEPAGE\\s*\\r?\\n\\s*3\\s*\\r?\\n\\s*ANSI_(\\d+)/.exec(head);\n            let encoding = utf8 ? 'utf-8' : cp ? 'windows-' + cp[1] : 'windows-1252';\n            try {\n                text = new TextDecoder(encoding).decode(input);\n            }\n            catch {\n                text = new TextDecoder('windows-1252').decode(input);\n            }\n        }\n    }\n    const blocks = new Map(), layers = [{ name: '0', color: aciColor(7), visible: true, locked: false }], layerMap = new Map([['0', 0]]), ltypes = new Map(), dimStyles = new Map(), header = {}, diagnostics = new Map();\n    const warn = (code, message, n = 1) => { const old = diagnostics.get(code); if (old)\n        old.count += n;\n    else\n        diagnostics.set(code, { code, message, count: n, severity: 'warning' }); };\n    const editRoots = [];\n    const catalog = new SpaceCatalog(), builders = new Map(), rootHandles = new Set(), originBuilders = new WeakSet();\n    let model = new ModelBuilder(font, { name, layers, pageSize }), totalCount = 0;\n    builders.set('model', model);\n    function documentBuilder(key) { if (!builders.has(key)) builders.set(key, new ModelBuilder(font, { name, layers, pageSize: Math.min(8192,pageSize) })); return builders.get(key); }\n    let section = '', block = null, poly = null, seenEOF = false, originSet = document, sourceCount = 0;\n    function layerFor(n) { if (!layerMap.has(n)) {\n        layerMap.set(n, layers.length);\n        layers.push({ name: n, color: aciColor(7), visible: true, locked: false });\n    } return layerMap.get(n); }\n    function style(r, context) { const ln = String(get(r, 8, '0')), layer = ln === '0' && context ? context.layer : layerFor(ln); let c = Number(get(r, 62, 256)); let color = has(r, 420) ? trueColor(get(r, 420)) : c === 256 ? 0 : c === 0 ? (context?.color || 0) : aciColor(c); if (has(r, 440) && (get(r, 440) & 0x02000000)) { const alpha = get(r, 440) & 255; color = (((color || layers[layer].color) & 0xffffff) | (alpha << 24)) >>> 0; } const lt = String(get(r, 6, 'BYLAYER')), pattern = ltypes.get(lt === 'BYLAYER' ? layers[layer].linetype : lt), scale = Number(get(r, 48, 1)); const dash = pattern?.find(x => x > 0) || 0, gap = Math.abs(pattern?.find(x => x < 0) || 0); return { layer, color, r: [dash * scale, gap * scale, Number(get(r, 370, 0)), 0] }; }\n    function append(e, r) { if (totalCount >= maxEntities)\n        throw new DxfError('Entity safety limit reached; split this drawing or increase maxEntities explicitly.'); e.handle = String(get(r, 5, '')); model.add(e); totalCount++; if ((totalCount & 8191) === 0)\n        onProgress({ phase: 'Packing GPU records', entities: totalCount }); }\n    function process(r, node = null, context = null, chain = []) {\n        if (!editMap || node || (editMap==='inserts' && r.type!=='INSERT')) return processEntity(r,node,context,chain);\n        const key=catalog.key(r), builder=document?documentBuilder(key):model, first=builder.count;\n        processEntity(r,node,context,chain);\n        if(builder.count>first) editRoots.push({handle:String(get(r,5,'')),type:r.type,block:r.type==='INSERT'?String(get(r,2,'')):null,key,first,count:builder.count-first});\n    }\n    function processEntity(r, node = null, context = null, chain = []) {\n        sourceCount++;\n        const rootKey = !node ? catalog.key(r) : null;\n        if (document && !node) { model = documentBuilder(rootKey); const h = String(get(r, 5, '')).toUpperCase(); if(h) rootHandles.add(h); }\n        if (document && r.type === 'VIEWPORT' && !node) { catalog.addViewport(r, rootKey); return; }\n        if (!document && !node && ((space === 'model' && rootKey !== 'model') || (space === 'paper' && rootKey === 'model'))) {\n            warn('PAPER_SPACE', 'Entities outside the selected drawing space were excluded.');\n            return;\n        }\n        if (get(r, 60, 0) === 1)\n            return;\n        const type = r.type, s = style(r, context);\n        let localNode = node;\n        if (['CIRCLE', 'ARC', 'ELLIPSE', 'LWPOLYLINE', 'POLYLINE', 'TEXT', 'ATTRIB', 'ATTDEF', 'HATCH', 'SOLID', 'TRACE', 'INSERT'].includes(type)) {\n            const normal = [get(r, 210, 0), get(r, 220, 0), get(r, 230, 1)];\n            if (normal.every(v => v === 0)) {\n                warn('INVALID_OCS', 'Entities with a zero extrusion normal were rejected.');\n                return;\n            }\n            if (normal[0] !== 0 || normal[1] !== 0 || normal[2] !== 1) {\n                localNode = { ocs: normal, elevation: get(r, 30, get(r, 38, 0)), parent: node };\n                warn('OCS_PROJECTED', 'Non-XY object coordinate systems are projected to a top-down XY view on the GPU.');\n            }\n        }\n        const common = { ...s, node: localNode };\n        const a = pt(r);\n        if (!node && type !== 'ATTDEF' && (document ? !originBuilders.has(model) : !originSet)) {\n            model.origin = a; originBuilders.add(model);\n            originSet = true;\n        }\n        if (type === 'LINE') {\n            const b = pt(r, 11);\n            append({ ...common, type: TYPE.LINE, anchor: a, p: [b[0] - a[0], b[1] - a[1], 0, 0] }, r);\n        }\n        else if (type === 'XLINE' || type === 'RAY') {\n            append({ ...common, type: TYPE[type], anchor: a, p: [get(r, 11), get(r, 21), 0, 0] }, r);\n        }\n        else if (type === 'CIRCLE' || type === 'ARC') {\n            const radius = get(r, 40);\n            if (!(radius > 0)) {\n                warn('BAD_RADIUS', 'Entities with nonpositive radii were rejected.');\n                return;\n            }\n            let start = type === 'ARC' ? get(r, 50) * DEG : 0, end = type === 'ARC' ? get(r, 51) * DEG : Math.PI * 2, sweep = end - start;\n            sweep = ((sweep % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) || Math.PI * 2;\n            append({ ...common, type: TYPE.ELLIPSE, anchor: a, p: [radius, 0, 1, 0], q: [start, sweep, 0, 0] }, r);\n        }\n        else if (type === 'ELLIPSE') {\n            const start = get(r, 41, 0), end = get(r, 42, Math.PI * 2);\n            let sweep = end - start;\n            sweep = ((sweep % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2) || Math.PI * 2;\n            append({ ...common, type: TYPE.ELLIPSE, anchor: a, p: [get(r, 11), get(r, 21), get(r, 40, 1), 0], q: [start, sweep, 0, 0] }, r);\n        }\n        else if (type === 'LWPOLYLINE' || type === 'POLYLINE' || type === 'LEADER') {\n            let points = [];\n            if (r.vertices)\n                points = r.vertices.map(v => [get(v, 10), get(v, 20), get(v, 42), get(v, 40, 0)]);\n            else {\n                let p = null;\n                for (const g of r.groups) {\n                    if (g.code === 10) {\n                        p = [g.value, 0, 0, 0];\n                        points.push(p);\n                    }\n                    else if (p && g.code === 20)\n                        p[1] = g.value;\n                    else if (p && g.code === 42)\n                        p[2] = g.value;\n                    else if (p && g.code === 40)\n                        p[3] = g.value;\n                }\n            }\n            if (points.length < 2) {\n                warn('EMPTY_POLY', 'Empty/one-vertex polylines were rejected.');\n                return;\n            }\n            if (type === 'POLYLINE' && (get(r, 70) & (16 | 64))) {\n                warn('POLY_MESH', 'Polyface and polygon meshes are not imported by the 2D path kernel.');\n                return;\n            }\n            if (points.some(p => p[3] > 0) || get(r, 43) > 0)\n                warn('POLY_WIDTH', 'Variable/constant polyline widths are represented as centerline strokes, not swept ribbons.');\n            append({ ...common, type: TYPE.POLYLINE, anchor: points[0].slice(0, 2), points, flags: (get(r, 70) & 1) ? FLAGS.CLOSED : 0 }, r);\n        }\n        else if (['TEXT', 'MTEXT', 'ATTRIB', 'ATTDEF'].includes(type)) {\n            if (type === 'ATTDEF' && !(get(r, 70) & 2))\n                return;\n            if ((type === 'ATTRIB' || type === 'ATTDEF') && (get(r, 70) & 1))\n                return;\n            let value = type === 'MTEXT' ? r.groups.filter(g => g.code === 3 || g.code === 1).map(g => g.value).join('') : String(get(r, 1, ''));\n            value = decodeDxfText(value, type === 'MTEXT');\n            let anchor = a, angle = get(r, 50) * DEG, hAlign = get(r, 72, 0), vAlign = get(r, type === 'ATTRIB' || type === 'ATTDEF' ? 74 : 73, 0), flags = 0, q = [0, 0, 0, 0], wrap = 0;\n            if (type === 'MTEXT') {\n                const attach = Math.max(1, Math.min(9, get(r, 71, 1)));\n                hAlign = (attach - 1) % 3;\n                vAlign = 3 - Math.floor((attach - 1) / 3);\n                if (has(r, 11)) {\n                    flags |= 16;\n                    q[0] = get(r, 11);\n                    q[1] = get(r, 21);\n                }\n                wrap = get(r, 41) / Math.max(get(r, 40, 1), 1e-20);\n            }\n            else if (hAlign === 3 || hAlign === 5) {\n                flags |= hAlign === 3 ? 8 : 4;\n                q[0] = get(r, 11) - a[0];\n                q[1] = get(r, 21) - a[1];\n                hAlign = 0;\n            }\n            else if ((hAlign || vAlign) && has(r, 11))\n                anchor = pt(r, 11);\n            q[2] = hAlign === 4 ? 1 : hAlign;\n            q[3] = hAlign === 4 ? 2 : vAlign;\n            if (/\\\\[ACFHQTW]/.test(String(get(r, 1, ''))) && type === 'MTEXT')\n                warn('MTEXT_FORMAT', 'MTEXT text, paragraph breaks, attachment and wrapping are supported; inline font/color/height overrides and stacked typography are simplified.');\n            if(type!=='MTEXT') {if(get(r,71)&2)flags|=32;if(get(r,71)&4)flags|=64;}\n            append({ ...common, type: TYPE.TEXT, anchor, text: value, p: [Math.max(get(r, 40, 1), 1e-6), type === 'MTEXT' ? 1 : (get(r, 41, 1) || 1), angle, get(r, 51, 0) * DEG], q, flags, wrap }, r);\n        }\n        else if (type === 'DIMENSION' && regenerateDimensions) {\n            const kind = get(r, 70) & 7;\n            if (kind > 6) { warn('DIMENSION_KIND', 'Unsupported dimension kind; preserveSource retains original bytes, not an edited round-trip.'); return; }\n            const ds = dimStyles.get(String(get(r, 3, 'STANDARD')));\n            const dim = (code, headerName, fallback) => ds ? get(ds, code, header[headerName]?.[0]?.value ?? fallback) : header[headerName]?.[0]?.value ?? fallback;\n            const scale = Number(dim(40, '$DIMSCALE', 1)) || 1;\n            append({ ...common, type: TYPE.DIMENSION, anchor: a, dimension: { kind, flags: get(r, 70), points: Array.from({ length: 7 }, (_, i) => pt(r, 10 + i)),\n                angle: get(r, 50) * DEG, text: decodeDxfText(String(get(r, 1, '<>')), true), precision: dim(271, '$DIMDEC', 2),\n                textHeight: dim(140, '$DIMTXT', 2.5) * scale, arrowSize: dim(41, '$DIMASZ', 2.5) * scale,\n                extensionOffset: dim(42, '$DIMEXO', .625) * scale, extensionLength: dim(44, '$DIMEXE', 1.25) * scale,\n                gap: dim(147, '$DIMGAP', .625) * scale, measureScale: dim(144, '$DIMLFAC', 1), rounding: dim(45, '$DIMRND', 0) } }, r);\n        }\n        else if (type === 'INSERT' || type === 'DIMENSION') {\n            const name = String(get(r, 2, '')), b = blocks.get(name.toUpperCase());\n            if (!b) {\n                warn('MISSING_BLOCK', `Missing block definitions (including dimensions without cached block graphics) were not rendered.`);\n                return;\n            }\n            if (chain.includes(name.toUpperCase()) || chain.length >= 48) {\n                warn('CYCLIC_BLOCK', 'Cyclic/excessively nested INSERT references were rejected.');\n                return;\n            }\n            const rows = Math.max(1, Math.trunc(get(r, 71, 1))), cols = Math.max(1, Math.trunc(get(r, 70, 1)));\n            if (rows * cols > 1e6)\n                throw new DxfError('Excessive MINSERT grid.');\n            for (let row = 0; row < rows; row++)\n                for (let col = 0; col < cols; col++) {\n                    const n = type === 'DIMENSION' ? node : { parent: localNode, translation: a, angle: get(r, 50) * DEG };\n                    const childNode = type === 'DIMENSION' ? n : { parent: n, translation: [col * get(r, 44), row * get(r, 45)], base: b.base, sx: get(r, 41, 1), sy: get(r, 42, 1) };\n                    for (const child of b.records)\n                        process(child, childNode, s, chain.concat(name.toUpperCase()));\n                    // ATTRIB coordinates belong to the enclosing coordinate system, not\n                    // the INSERT's scaled block-local basis. MINSERT offsets rotate but\n                    // do not scale. This also handles ATTRIB sequences inside BLOCKs.\n                    const angle=get(r,50)*DEG;\n                    const attrNode=(row||col)?{parent:{parent:{parent:localNode,angle},translation:[col*get(r,44),row*get(r,45)]},angle:-angle}:node;\n                    for(const attr of r.attributes||[]) {\n                        const normalized=!attrNode?{...attr,groups:[...attr.groups.filter(g=>g.code!==67&&g.code!==410&&g.code!==330),...r.groups.filter(g=>g.code===67||g.code===410||g.code===330)]}:attr;\n                        processEntity(normalized,attrNode,s,chain.concat(name.toUpperCase()));\n                    }\n                }\n            if (type === 'DIMENSION')\n                warn('DIMENSION_BLOCK', 'Dimensions use their supplied anonymous block graphics; dimension constraints are not regenerated.');\n        }\n        else if (type === 'SOLID' || type === 'TRACE' || type === '3DFACE') {\n            const b = pt(r, 11), c = pt(r, 12), d = pt(r, 13);\n            const ordered = type === '3DFACE' ? [a, b, c, d] : [a, b, d, c];\n            for (const t of [[ordered[0], ordered[1], ordered[2]], [ordered[0], ordered[2], ordered[3]]])\n                append({ ...common, type: TYPE.TRIANGLE, anchor: t[0], p: [t[1][0] - t[0][0], t[1][1] - t[0][1], t[2][0] - t[0][0], t[2][1] - t[0][1]] }, r);\n        }\n        else if (type === 'SPLINE') {\n            const xs = all(r, 10), ys = all(r, 20), points = xs.map((x, i) => [x, ys[i] || 0]), knots = all(r, 40), weights = all(r, 41), degree = get(r, 71, 3);\n            if (!Number.isInteger(degree) || degree < 1 || degree > 31 || weights.some(w => w <= 0) || ((weights.length !== 0) && (weights.length !== points.length)) || !(knots[points.length] > knots[degree]) || points.length <= degree || knots.length !== points.length + degree + 1 || knots.some((v, i) => i && v < knots[i - 1])) {\n                warn('BAD_SPLINE', 'Invalid, nonpositive-weight, degenerate-knot or degree > 31 splines are rejected (no fit-point reconstruction).');\n                return;\n            }\n            append({ ...common, type: TYPE.SPLINE, anchor: points[0].slice(0, 2), spline: { degree, knots, points, weights: weights.length === points.length ? weights : null } }, r);\n        }\n        else if (type === 'POINT')\n            append({ ...common, type: TYPE.POINT, anchor: a }, r);\n        else if (type === 'HATCH') {\n            try { const hatch = decodeHatch(r.groups); append({ ...common, type: TYPE.HATCH, anchor: a, hatch }, r); }\n            catch (error) { warn('HATCH_INVALID', error.message); }\n        }\n        else if (!['SEQEND', 'VERTEX', 'ENDBLK', 'VIEWPORT'].includes(type))\n            warn('UNSUPPORTED_' + type, `${type} entities are not supported by the 2D kernel.`);\n    }\n    function flushPoly() { if (!poly)\n        return; const r = poly; poly = null; if (block)\n        block.records.push(r);\n    else if (section === 'ENTITIES')\n        process(r); }\n    let pendingInsert=null;\n    function accept(r){if(block)block.records.push(r);else if(section==='ENTITIES')process(r);}\n    function flushInsert(){if(pendingInsert){const r=pendingInsert;pendingInsert=null;accept(r);}}\n    for (const r of records(binary ? binaryGroups(input) : asciiGroups(text))) {\n        if(pendingInsert) {\n            if(r.type==='ATTRIB'){pendingInsert.attributes.push(r);continue;}\n            if(r.type==='SEQEND'){flushInsert();continue;}\n            flushInsert();\n        }\n        if (r.type === 'SECTION') {\n            flushPoly();\n            section = String(get(r, 2, ''));\n            if (section === 'HEADER') {\n                let key = null;\n                for (const g of r.groups) {\n                    if (g.code === 9)\n                        key = g.value;\n                    else if (key)\n                        (header[key] ??= []).push(g);\n                }\n            }\n            continue;\n        }\n        if (r.type === 'ENDSEC') {\n            flushPoly();\n            section = '';\n            block = null;\n            continue;\n        }\n        if (r.type === 'EOF') {\n            flushPoly();\n            seenEOF = true;\n            break;\n        }\n        if (section === 'HEADER') {\n            let key = null;\n            for (const g of r.groups) {\n                if (g.code === 9)\n                    key = g.value;\n                else if (key) {\n                    (header[key] ??= []).push(g);\n                }\n            }\n            continue;\n        }\n        catalog.record(r, section);\n        if (section === 'TABLES') {\n            if (r.type === 'DIMSTYLE') dimStyles.set(String(get(r, 2, 'STANDARD')), r);\n            if (r.type === 'LAYER') {\n                const name = String(get(r, 2, '0')), i = layerFor(name), flags = get(r, 70);\n                layers[i] = { name, color: has(r, 420) ? trueColor(get(r, 420)) : aciColor(get(r, 62, 7)), visible: get(r, 62, 7) >= 0 && !(flags & 1), locked: !!(flags & 4), linetype: String(get(r, 6, 'CONTINUOUS')) };\n            }\n            if (r.type === 'LTYPE') {\n                const name = String(get(r, 2, '')), pattern = all(r, 49);\n                ltypes.set(name, pattern);\n                if (pattern.length > 2)\n                    warn('COMPLEX_LINETYPE', 'Complex linetypes are simplified to their first dash/gap pair.');\n            }\n            if (r.type === 'STYLE' && get(r, 3, ''))\n                warn('FONT_SUBSTITUTION', 'DXF font styles use the single selected engineering/TrueType/SHX font; original per-style fonts are not automatically resolved.');\n            continue;\n        }\n        if (section !== 'BLOCKS' && section !== 'ENTITIES')\n            continue;\n        if (r.type === 'BLOCK') {\n            flushPoly();\n            block = { name: String(get(r, 2, '')), base: pt(r), header: r, records: [] };\n            blocks.set(block.name.toUpperCase(), block);\n            continue;\n        }\n        if (r.type === 'ENDBLK') {\n            flushPoly();\n            block = null;\n            continue;\n        }\n        if (r.type === 'POLYLINE') {\n            flushPoly();\n            poly = { ...r, vertices: [] };\n            continue;\n        }\n        if (r.type === 'VERTEX' && poly) {\n            poly.vertices.push(r);\n            continue;\n        }\n        if (r.type === 'SEQEND') {\n            flushPoly();\n            continue;\n        }\n        flushPoly();\n        if(r.type==='INSERT'&&get(r,66,0)===1){pendingInsert={...r,attributes:[]};continue;}\n        accept(r);\n    }\n    flushInsert();\n    if (document) {\n        // Some writers store layout entities in the special space BLOCKs rather than ENTITIES.\n        for (const b of blocks.values()) if (/^[*$](?:model_space|paper_space)/i.test(b.name)) {\n            const h=b.header, paper=/^[*$]paper_space/i.test(b.name), owner=String(get(h,330,''));\n            for(const r of b.records) { const handle=String(get(r,5,'')).toUpperCase(); if(handle && rootHandles.has(handle))continue;\n                const groups=r.groups.filter(g=>g.code!==67 && g.code!==330);\n                groups.push({code:67,value:paper?1:0}); if(owner)groups.push({code:330,value:owner});\n                process({...r,groups});\n            }\n        }\n    }\n    if (!seenEOF)\n        warn('MISSING_EOF', 'The DXF has no EOF marker; complete records before the end were imported.');\n    if (!document && !model.count)\n        throw new DxfError('No supported drawable entities were found in the selected space.');\n    const result = document ? catalog.finish(builders, layers, name, [...diagnostics.values()], { header, sourceCount, binary, space: 'document' }) : model.finish();\n    if (!document) result.diagnostics = [...diagnostics.values()];\n    if(editMap) {\n        const offsets=new Map(),sums=new Map();if(document)for(const [key,builder] of builders){const id=catalog.resolve(key),offset=sums.get(id)||0;offsets.set(key,offset);sums.set(id,offset+builder.count);}result.editRoots=editRoots.map(r=>{const id=document?catalog.resolve(r.key):'model',space=result.spaces?.find(s=>s.id===id);return {...r,spaceId:id,first:r.first+(offsets.get(r.key)||0)+(space?.idBase||0)+1};}).sort((a,b)=>a.first-b.first);\n    }\n    result.blockCatalog=[...blocks.values()].filter(b=>!(/^[*$](model_space|paper_space)/i.test(b.name))).map(b=>({name:b.name,base:b.base,flags:get(b.header,70,0),count:b.records.length,\n        dependencies:[...new Set(b.records.filter(r=>r.type==='INSERT').map(r=>String(get(r,2,''))))],attributes:b.records.filter(r=>r.type==='ATTDEF').map(r=>({tag:String(get(r,2,'')),value:String(get(r,1,'')),flags:get(r,70,0)}))}));\n    result.header = header;\n    result.sourceCount = sourceCount;\n    result.binary = binary;\n    result.space = document ? 'document' : space;\n    if (preserveSource) result.source = typeof input === 'string' ? { kind: 'text', data: input } : { kind: 'bytes', data: input.slice(0) };\n    if (result.missing.length)\n        result.diagnostics.push({ code: 'MISSING_GLYPHS', severity: 'warning', count: result.missing.length, message: 'Missing glyphs use an explicit □ placeholder: ' + result.missing.join(' ') });\n    return result;\n}\n/** Parse every layout once into partitioned GPU pages with globally stable IDs. */\nfunction parseDxfDocument(input, font, options = {}) { return parseDxf(input, font, { ...options, document: true, space: 'all' }); }\n/** Export overlays, not a lossless rewrite of the original DXF. */\nfunction annotationsToDxf(annotations) {\n    const lines = ['0', 'SECTION', '2', 'HEADER', '9', '$ACADVER', '1', 'AC1021', '0', 'ENDSEC', '0', 'SECTION', '2', 'ENTITIES'];\n    const add = (...v) => lines.push(...v.map(String));\n    const safe = s => String(s).replace(/[\\r\\n]/g, ' ');\n    for (const a of annotations) {\n        const layer = safe(a.layerName || 'APERTURE_ANNOTATIONS'), color = a.color ?? rgba('#ffb15c'), tc = ((color & 255) << 16) | (color & 0xff00) | ((color >>> 16) & 255), p = a.p || [0, 0, 0, 0], q = a.q || [0, 0, 0, 0];\n        const base = t => add(0, t, 8, layer, 420, tc);\n        if (a.type === TYPE.TEXT) {\n            const text = String(a.text || '');\n            if (text.includes('\\n')) {\n                base('MTEXT');\n                add(10, a.anchor[0], 20, a.anchor[1], 40, p[0], 71, 7, 50, (p[2] || 0) / DEG, 1, text.replace(/\\\\/g, '\\\\\\\\').replace(/\\r?\\n/g, '\\\\P'));\n            }\n            else {\n                base('TEXT');\n                add(10, a.anchor[0], 20, a.anchor[1], 40, p[0], 41, p[1] || 1, 1, safe(text), 50, (p[2] || 0) / DEG);\n            }\n        }\n        else if (a.type === TYPE.LINE) {\n            base('LINE');\n            add(10, a.anchor[0], 20, a.anchor[1], 11, a.anchor[0] + p[0], 21, a.anchor[1] + p[1]);\n        }\n        else if (a.type === TYPE.POLYLINE) {\n            base('LWPOLYLINE');\n            add(90, a.points.length, 70, (a.flags || 0) & 1);\n            for (const point of a.points)\n                add(10, point[0], 20, point[1], 42, point[2] || 0);\n        }\n        else if (a.type === TYPE.ELLIPSE) {\n            base('ELLIPSE');\n            add(10, a.anchor[0], 20, a.anchor[1], 11, p[0], 21, p[1], 40, p[2], 41, q[0], 42, q[0] + q[1]);\n        }\n        else if (a.type === TYPE.POINT) {\n            base('POINT');\n            add(10, a.anchor[0], 20, a.anchor[1]);\n        }\n        else if (a.type === TYPE.TRIANGLE) {\n            base('SOLID');\n            add(10, a.anchor[0], 20, a.anchor[1], 11, a.anchor[0] + p[0], 21, a.anchor[1] + p[1], 12, a.anchor[0] + p[2], 22, a.anchor[1] + p[3], 13, a.anchor[0] + p[2], 23, a.anchor[1] + p[3]);\n        }\n        else if (a.type === TYPE.CLOUD) {\n            // Serialize the exact raw scallop endpoints and bulges, never CPU-render them.\n            const nx = Math.min(256, Math.max(1, Math.ceil(Math.abs(p[0]) / Math.max(q[0], .01)))), ny = Math.min(256, Math.max(1, Math.ceil(Math.abs(p[1]) / Math.max(q[0], .01))));\n            const points = [];\n            for (let i = 0; i < nx; i++)\n                points.push([p[0] * i / nx, 0]);\n            for (let i = 0; i < ny; i++)\n                points.push([p[0], p[1] * i / ny]);\n            for (let i = 0; i < nx; i++)\n                points.push([p[0] * (1 - i / nx), p[1]]);\n            for (let i = 0; i < ny; i++)\n                points.push([0, p[1] * (1 - i / ny)]);\n            base('LWPOLYLINE');\n            add(90, points.length, 70, 1);\n            for (const point of points)\n                add(10, a.anchor[0] + point[0], 20, a.anchor[1] + point[1], 42, .45);\n        }\n        else\n            throw new DxfError('Unsupported annotation export type: ' + a.type);\n    }\n    add(0, 'ENDSEC', 0, 'EOF');\n    return lines.join('\\n') + '\\n';\n}\n\n/** Byte/text preserving round-trip. This does not apply model edits to the DXF document. */\nfunction originalDxf(model) {\n    if (!model.source) throw new DxfError('Load with preserveSource:true to retain the original DXF.');\n    return model.source.kind === 'bytes' ? model.source.data.slice(0) : model.source.data;\n}\n\nObject.assign(exports,{DxfError,aciColor,decodeDxfText,asciiGroups,binaryGroups,records,parseDxf,parseDxfDocument,annotationsToDxf,originalDxf});\n},\n\"packages/dxf/spaces.js\":function(module,exports,require){\n/** DXF space/layout catalogue. Handles are resolved after OBJECTS (usually after ENTITIES).\n * No per-entity strings or duplicated tessellation are sent to the GPU.\n */\nconst value = (r, code, fallback = 0) => r.groups.find(g => g.code === code)?.value ?? fallback;\nconst point = (r, code, z = false) => z ? [value(r,code),value(r,code+10),value(r,code+20)] : [value(r,code),value(r,code+10)];\nconst handle = x => String(x || '').toUpperCase();\nfunction subclass(r, name) {\n    const start = r.groups.findIndex(g => g.code === 100 && g.value === name);\n    if (start < 0) return r;\n    let end = r.groups.findIndex((g,i) => i > start && g.code === 100);\n    return { groups: r.groups.slice(start + 1, end < 0 ? undefined : end) };\n}\nfunction owner(r) { let depth = 0; for (const g of r.groups) { if (g.code === 102) { if (String(g.value).startsWith('{')) depth++; else if (g.value === '}') depth--; } if (!depth && g.code === 330) return handle(g.value); } return ''; }\nfunction canonicalName(name) { return String(name).toLowerCase() === 'model' ? 'model' : 'layout:' + String(name); }\nfunction viewCamera(view) {\n    const a = -(view.twist || 0), c = Math.cos(a), s = Math.sin(a), target = view.target || [0,0,0], p = view.viewCenter || [0,0];\n    return { x: target[0] + c*p[0] - s*p[1], y: target[1] + s*p[0] + c*p[1], angle: a };\n}\nfunction supportedPlanView(view) {\n    const d = view.direction || [0,0,1];\n    return view.viewHeight > 0 && Number.isFinite(view.viewHeight) && Math.abs(d[0]) < 1e-10 && Math.abs(d[1]) < 1e-10 && d[2] > 0 && !(view.flags & 1) && !(view.flags & 65536) && !view.clipHandle;\n}\nclass SpaceCatalog {\n    constructor() { this.layouts = new Map(); this.blockNames = new Map(); this.blockLayouts = new Map(); this.layoutHandles = new Map(); this.viewportRecords = []; this.namedViews = []; this.layerHandles = new Map(); }\n    key(r) {\n        const name = value(r,410,''); if (name) return canonicalName(name);\n        const o = owner(r), b = this.blockNames.get(o);\n        if (b && /^[*$]model_space$/i.test(b)) return 'model';\n        if (o && (value(r,67,0) === 1 || /^[*$]paper_space/i.test(b || ''))) return 'owner:' + o;\n        return value(r,67,0) === 1 ? 'paper:unnamed' : 'model';\n    }\n    record(r, section) {\n        if (section === 'TABLES' && r.type === 'BLOCK_RECORD') { const h=handle(value(r,5,'')); this.blockNames.set(h,String(value(r,2,''))); const layout=handle(value(r,340,'')); if(layout) this.blockLayouts.set(h,layout); }\n        if (section === 'TABLES' && r.type === 'LAYER') this.layerHandles.set(handle(value(r,5,'')),String(value(r,2,'0')));\n        if (r.type === 'LAYOUT' && section === 'OBJECTS') {\n            const l=subclass(r,'AcDbLayout'), p=subclass(r,'AcDbPlotSettings'), name=String(value(l,1,'Layout')), id=canonicalName(name);\n            const refs=l.groups.filter(g=>g.code===330); const block=handle(refs.at(-1)?.value);\n            const width=value(p,44,0),height=value(p,45,0);\n            const item={ id,name,kind:id==='model'?'model':'paper',order:value(l,71,id==='model'?0:1),block,\n                paperSize:width>0&&height>0?[width,height]:null, limits:[...point(l,10),...point(l,11)], extents:[...point(l,14),...point(l,15)], viewports:[] };\n            this.layouts.set(id,item); this.layoutHandles.set(handle(value(r,5,'')),id); if(block) this.blockLayouts.set(block,id);\n        }\n        if (section === 'TABLES' && r.type === 'VIEW') {\n            const v=subclass(r,'AcDbViewTableRecord');\n            this.namedViews.push({ id:'view:'+String(value(r,2,'')),name:String(value(r,2,'')),kind:'named',spaceId:(value(r,70,0)&1)?'paper:unnamed':'model',\n                viewHeight:value(v,40,0),viewWidth:value(v,41,0),viewCenter:point(v,10),direction:hasCode(v,11)?point(v,11,true):[0,0,1],target:point(v,12,true),twist:value(v,50,0)*Math.PI/180,flags:value(v,71,0) });\n        }\n    }\n    addViewport(r, key) {\n        const v=subclass(r,'AcDbViewport');\n        this.viewportRecords.push({ key,id:'viewport:'+String(value(r,5,this.viewportRecords.length+1)),handle:handle(value(r,5,'')),\n            number:value(v,69,0),name:'Viewport '+value(v,69,this.viewportRecords.length+1),kind:'viewport',center:point(v,10),width:value(v,40,0),height:value(v,41,0),\n            status:value(v,68,1),viewCenter:point(v,12),direction:hasCode(v,16)?point(v,16,true):[0,0,1],target:point(v,17,true),viewHeight:value(v,45,0),twist:value(v,51,0)*Math.PI/180,\n            flags:value(v,90,0),clipHandle:handle(value(v,340,'')),frozenLayers:v.groups.filter(g=>g.code===331).map(g=>handle(g.value)) });\n    }\n    resolve(key) {\n        if(key==='model') return key;\n        if(key.startsWith('owner:')) { const block=key.slice(6), mapped=this.blockLayouts.get(block), id=this.layoutHandles.get(mapped)||mapped; if(id?.startsWith('layout:')||id==='model')return id;\n            const b=this.blockNames.get(block); if(/^[*$]model_space$/i.test(b||''))return 'model'; return canonicalName(b?.replace(/^\\*/,'')||'Paper '+block); }\n        if(key==='paper:unnamed') return [...this.layouts.values()].filter(l=>l.kind==='paper').sort((a,b)=>a.order-b.order)[0]?.id || 'layout:Layout1';\n        return key;\n    }\n    finish(builders, layers, name, diagnostics, metadata) {\n        const spaces=new Map([['model',{id:'model',name:'Model',kind:'model',order:0,viewports:[]}],...this.layouts]);\n        const ensure=id=>{ if(!spaces.has(id))spaces.set(id,{id,name:id.replace(/^layout:/,''),kind:id==='model'?'model':'paper',order:spaces.size,viewports:[]}); return spaces.get(id); };\n        const groups=new Map(), origins=new Map();\n        for(const [key,builder] of builders){const id=this.resolve(key);ensure(id);const m=builder.finish();if(m.pages.length&&!origins.has(id))origins.set(id,m.origin);if(!groups.has(id))groups.set(id,[]);groups.get(id).push(...m.pages);}\n        for(const raw of this.viewportRecords){const id=this.resolve(raw.key),v={...raw,spaceId:id};delete v.key;v.frozenLayers=v.frozenLayers.map(h=>this.layerHandles.get(h)).filter(Boolean);v.supported=supportedPlanView(v);ensure(id).viewports.push(v);}\n        const ordered=[...spaces.values()].sort((a,b)=>a.kind==='model'?-1:b.kind==='model'?1:a.order-b.order||a.name.localeCompare(b.name));\n        const pages=[];let count=0;\n        for(const space of ordered){space.origin=origins.get(space.id)||[0,0];space.pageIndices=[];space.count=0;space.idBase=count;\n            for(const page of groups.get(space.id)||[]){page.idBase=count;page.spaceId=space.id;page.origin=space.origin;const u=new Uint32Array(page.entities);for(let i=0;i<page.count;i++)u[i*32+19]=count+i+1;\n                space.pageIndices.push(pages.length);pages.push(page);count+=page.count;space.count+=page.count;}\n            space.viewports.sort((a,b)=>b.status-a.status||a.number-b.number);\n            for(const v of space.viewports)if(v.number!==1&&!v.supported)diagnostics.push({code:'VIEWPORT_PROJECTION',severity:'warning',count:1,message:`${space.name} / ${v.name}: only rectangular top-XY orthographic viewports are composed; perspective, oblique 3D, and nonrectangular clipping are explicitly unsupported.`});\n        }\n        const views=this.namedViews.map(v=>{const spaceId=this.resolve(v.spaceId);return {...v,spaceId,supported:supportedPlanView(v)&&!(spaceId.startsWith('layout:')&&Math.abs(v.twist)>1e-10)};});\n        for(const v of views)if(!v.supported)diagnostics.push({code:'NAMED_VIEW_PROJECTION',severity:'warning',count:1,message:`Named view ${v.name} is listed, but its projection is not supported by the top-XY renderer.`});\n        const missing=[...new Set(pages.flatMap(p=>p.missing))];\n        const model={version:1,name,origin:[0,0],layers,pages,count,idBase:0,diagnostics,missing,spaces:ordered,namedViews:views,...metadata};\n        const active=metadata.header?.$CTAB?.[0]?.value;model.initialSpace=metadata.header?.$TILEMODE?.[0]?.value===0?(ordered.find(s=>s.name===active)?.id||ordered.find(s=>s.kind==='paper')?.id||'model'):'model';\n        model.origin=ordered.find(s=>s.id===model.initialSpace)?.origin || [0,0];return model;\n    }\n}\nfunction hasCode(r,c){return r.groups.some(g=>g.code===c);}\n\nObject.assign(exports,{viewCamera,supportedPlanView,SpaceCatalog});\n},\n\"packages/dxf/hatch.js\":function(module,exports,require){\n/** DXF boundary/pattern decoding only: no sampled paths, clipping, or hatch-line expansion. */\nfunction decodeHatch(groups) {\n    let p = groups.findIndex(g => g.code === 91);\n    if (p < 0) throw new Error('HATCH is missing boundary count.');\n    const get = (code, fallback = 0) => groups.find(g => g.code === code)?.value ?? fallback;\n    const take = code => { const g = groups[p++]; if (!g || g.code !== code) throw new Error(`HATCH expected group ${code}, received ${g?.code ?? 'EOF'}.`); return Number(g.value); };\n    const optional = (code, fallback = 0) => groups[p]?.code === code ? take(code) : fallback;\n    const point = (x = 10, y = x + 10) => [take(x), take(y)];\n    const count = (code, limit = 1000000) => { const n = take(code); if (!Number.isInteger(n) || n < 0 || n > limit) throw new Error(`Invalid HATCH count ${code}.`); return n; };\n    const loops = count(91), edges = [];\n    for (let loop = 0; loop < loops; loop++) {\n        const flags = take(92);\n        if (flags & 2) {\n            const bulges = take(72), closed = take(73), n = count(93), vertices = [];\n            for (let i = 0; i < n; i++) { const a = point(); vertices.push({ point: a, bulge: bulges ? optional(42) : 0 }); }\n            for (let i = 0; i < n - (closed ? 0 : 1); i++) {\n                const a = vertices[i], b = vertices[(i + 1) % n];\n                edges.push({ kind: 2, loop, flags, a: a.point, b: b.point, bulge: a.bulge });\n            }\n        } else {\n            const n = count(93);\n            for (let i = 0; i < n; i++) {\n                const kind = take(72);\n                if (kind === 1) edges.push({ kind: 1, loop, flags, a: point(), b: point(11) });\n                else if (kind === 2 || kind === 3) {\n                    const center = point(); let major, ratio;\n                    if (kind === 2) { major = [take(40), 0]; ratio = 1; }\n                    else { major = point(11); ratio = take(40); }\n                    const start = take(50) * Math.PI / 180, end = take(51) * Math.PI / 180, ccw = take(73);\n                    let sweep = ((end - start) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);\n                    if (!ccw) sweep = sweep === 0 ? -2 * Math.PI : sweep - 2 * Math.PI;\n                    else if (sweep === 0) sweep = 2 * Math.PI;\n                    edges.push({ kind: 3, loop, flags, center, major, ratio, start, sweep });\n                } else if (kind === 4) {\n                    const degree = take(94), rational = take(73), periodic = take(74), nk = count(95), np = count(96);\n                    const knots = Array.from({ length: nk }, () => take(40)), points = [], weights = [];\n                    for (let j = 0; j < np; j++) { points.push(point()); weights.push(rational ? optional(42, 1) : 1); }\n                    if (groups[p]?.code === 97) { const fit = count(97); for (let j = 0; j < fit; j++) point(11); if (groups[p]?.code === 12) point(12); if (groups[p]?.code === 13) point(13); }\n                    if (degree < 1 || degree > 31 || np <= degree || nk !== np + degree + 1 || weights.some(w => !(w > 0)) || knots.some((v, j) => j > 0 && v < knots[j - 1])) throw new Error('Invalid HATCH spline edge.');\n                    edges.push({ kind: 4, loop, flags, spline: { degree, knots, points, weights, periodic } });\n                } else throw new Error(`Unsupported HATCH boundary edge type ${kind}.`);\n            }\n        }\n        if (groups[p]?.code === 97) { const handles = count(97); for (let i = 0; i < handles; i++) take(330); }\n    }\n    const families = []; p = groups.findIndex(g => g.code === 78);\n    if (p >= 0) {\n        const n = count(78, 4096);\n        for (let i = 0; i < n; i++) {\n            const angle = take(53) * Math.PI / 180, base = point(43, 44), offset = point(45, 46), nd = count(79, 4096);\n            const dashes = Array.from({ length: nd }, () => take(49));\n            families.push({ angle, base, offset, dashes });\n        }\n    }\n    if (!edges.length) throw new Error('HATCH has no boundary edges.');\n    if (!get(70) && !families.length) throw new Error('Pattern HATCH has no pattern line definitions.');\n    if (get(450)) throw new Error('Gradient HATCH requires a per-pixel material backend; not treated as a solid fill.');\n    return { edges, families: get(70) ? [] : families, style: get(75), solid: !!get(70), name: String(get(2, 'SOLID')) };\n}\n\nObject.assign(exports,{decodeHatch});\n},\n\"packages/model/index.js\":function(module,exports,require){\n/** Host-shareable CAD ABI. Host work is parsing/serialization, not tessellation. */\nconst ENTITY_BYTES = 128;\nconst PAGE_ENTITIES = 65536;\nconst TYPE = Object.freeze({ LINE: 1, ELLIPSE: 2, POLYLINE: 3, TEXT: 4, TRIANGLE: 5, SPLINE: 6, POINT: 7, FILL: 8, XLINE: 9, RAY: 10, CLOUD: 11, HATCH: 12, DIMENSION: 13 });\nconst ENTITY_TYPES = new Set(Object.values(TYPE));\nconst FLAGS = Object.freeze({ CLOSED: 1, NUMERIC: 256, ANNOTATION: 512 });\nconst UINT_MAX = 0xffffffff;\nfunction split64(x) { if (!Number.isFinite(x) || !Number.isFinite(Math.fround(x)))\n    throw new RangeError('Coordinate is not finite in the GPU representation.'); const hi = Math.fround(x); return [hi, Math.fround(x - hi)]; }\nfunction rgba(hex) { if (typeof hex === 'number')\n    return hex >>> 0; let h = String(hex).replace('#', ''); if (h.length === 3)\n    h = h.split('').map(c => c + c).join(''); return ((parseInt(h.slice(0, 2), 16) || 0) | ((parseInt(h.slice(2, 4), 16) || 0) << 8) | ((parseInt(h.slice(4, 6), 16) || 0) << 16) | 0xff000000) >>> 0; }\nfunction colorHex(v) { return '#' + [v & 255, (v >>> 8) & 255, (v >>> 16) & 255].map(x => x.toString(16).padStart(2, '0')).join(''); }\nclass WordArena {\n    constructor(cap = 4096) { this.buffer = new ArrayBuffer(cap * 4); this.u = new Uint32Array(this.buffer); this.f = new Float32Array(this.buffer); this.length = 0; }\n    alloc(n) { const o = this.length; this.length += n; if (this.length > this.u.length) {\n        const b = new ArrayBuffer(Math.max(this.length, 2 * this.u.length) * 4);\n        new Uint32Array(b).set(this.u);\n        this.buffer = b;\n        this.u = new Uint32Array(b);\n        this.f = new Float32Array(b);\n    } return o; }\n    finish() { return this.buffer.slice(0, Math.max(this.length, 4) * 4); }\n}\nclass PageBuilder {\n    constructor(font, { origin = [0, 0], idBase = 0, pageSize = PAGE_ENTITIES } = {}) { this.font = font; this.origin = origin; this.idBase = idBase; this.capacity = pageSize; this.buffer = new ArrayBuffer(pageSize * ENTITY_BYTES); this.u = new Uint32Array(this.buffer); this.f = new Float32Array(this.buffer); this.count = 0; this.aux = new WordArena(); this.runs = []; this.runMap = new Map(); this.nodeMap = new Map(); this.missing = new Set(); this.handles = []; }\n    node(n, ancestors = null) {\n        if (!n)\n            return UINT_MAX;\n        if (ancestors?.has(n) || (ancestors?.size || 0) >= 192)\n            throw new RangeError('Cyclic or excessively deep GPU transform chain.');\n        if (this.nodeMap.has(n))\n            return this.nodeMap.get(n);\n        const next = new Set(ancestors || []);\n        next.add(n);\n        const parent = this.node(n.parent, next);\n        const o = this.aux.alloc(16);\n        this.nodeMap.set(n, o);\n        const t = n.translation || [0, 0], b = n.base || [0, 0], [tx, tlx] = split64(t[0]), [ty, tly] = split64(t[1]), [bx, blx] = split64(b[0]), [by, bly] = split64(b[1]);\n        this.aux.f.set([n.sx ?? 1, n.sy ?? 1, n.angle || 0, 0, tx, ty, tlx, tly, bx, by, blx, bly], o);\n        this.aux.u[o + 12] = parent;\n        if (n.ocs) {\n            this.aux.f.set([...n.ocs, n.elevation || 0], o);\n            this.aux.u[o + 13] = 2;\n        }\n        return o;\n    }\n    run(text, wrap = 0) {\n        const key = wrap + '\\0' + text;\n        if (this.runMap.has(key))\n            return this.runMap.get(key);\n        const cps = Array.from(text);\n        if (cps.length > 16384)\n            throw new RangeError('A GPU glyph run is limited to 16,384 codepoints. Split the text into multiple entities.');\n        const o = this.aux.alloc(4 + cps.length * 5);\n        this.aux.u[o] = cps.length;\n        this.aux.f[o + 3] = wrap;\n        cps.forEach((c, i) => { let gid = c === '\\n' ? UINT_MAX : this.font.map.get(c.codePointAt(0)); if (gid === undefined) {\n            this.missing.add(c);\n            gid = 0;\n        } this.aux.u[o + 4 + i * 4] = gid; this.aux.u[o + 4 + cps.length * 4 + i] = gid; });\n        this.runs.push(o);\n        this.runMap.set(key, o);\n        return o;\n    }\n    add(e) {\n        const state = [this.count, this.aux.length, this.runs.length, this.handles.length];\n        try { return this.appendEntity(e); }\n        catch (error) {\n            [this.count, this.aux.length, this.runs.length, this.handles.length] = state;\n            // Failure-only rollback: no per-entity map cloning on the successful import path.\n            for (const [key, offset] of this.runMap) if (offset >= state[1]) this.runMap.delete(key);\n            for (const [key, offset] of this.nodeMap) if (offset >= state[1]) this.nodeMap.delete(key);\n            throw error;\n        }\n    }\n    appendEntity(e) {\n        if (!e || !ENTITY_TYPES.has(e.type))\n            throw new TypeError('Unknown CAD entity type.');\n        const finite = a => Array.isArray(a) && a.every(x => Number.isFinite(x) && Number.isFinite(Math.fround(x)));\n        for (const key of ['anchor', 'p', 'q', 'r'])\n            if (e[key] && (!finite(e[key]) || e[key].length !== (key === 'anchor' ? 2 : 4)))\n                throw new RangeError('Invalid GPU entity ' + key + '.');\n        if (e.points && (!Array.isArray(e.points) || e.points.length > 1000000 || e.points.some(p => !finite(p) || p.length < 2 || p.length > 4)))\n            throw new RangeError('Invalid or excessive GPU path points.');\n        if (e.type === TYPE.POLYLINE && (!e.points || e.points.length < 2))\n            throw new RangeError('A polyline requires at least two points.');\n        if (e.type === TYPE.SPLINE) {\n            const v = e.spline;\n            if (!v || !Number.isInteger(v.degree) || v.degree < 1 || v.degree > 31 || !Array.isArray(v.points) || !Array.isArray(v.knots) || v.points.length <= v.degree || v.knots.length !== v.points.length + v.degree + 1 || !finite(v.knots) || v.points.some(p => !finite(p)) || v.knots.some((x, i) => i > 0 && x < v.knots[i - 1]) || v.points.some(p => p.length !== 2) || (v.weights && (v.weights.length !== v.points.length || v.weights.some(w => !Number.isFinite(w) || w <= 0))))\n                throw new RangeError('Invalid rational spline.');\n        }\n        if (this.count >= this.capacity)\n            throw new Error('Page capacity exceeded.');\n        const i = this.count++, j = i * 32, id = this.idBase + i + 1, anchor = e.anchor || [0, 0], [xh, xl] = split64(anchor[0]), [yh, yl] = split64(anchor[1]);\n        this.f.set([xh, yh, xl, yl], j);\n        this.f.set(e.p || [0, 0, 0, 0], j + 4);\n        this.f.set(e.q || [0, 0, 0, 0], j + 8);\n        this.f.set(e.r || [0, 0, 0, 0], j + 12);\n        this.u.set([e.type, e.color ?? 0, e.layer || 0, id], j + 16);\n        let offset = 0, count = 0, flags = e.flags || 0;\n        if (e.type === TYPE.TEXT) {\n            offset = this.run(e.text || '', e.wrap || 0);\n            count = e.numeric || 0;\n        }\n        else if (e.type === TYPE.HATCH) {\n            const h = e.hatch;\n            if (!h || !Array.isArray(h.edges) || !h.edges.length || h.edges.length > 1000000 || !Array.isArray(h.families) || h.families.length > 4096 || ![0, 1, 2].includes(h.style || 0)) throw new RangeError('Invalid hatch data.');\n            const point = p => finite(p) && p.length === 2;\n            for (const edge of h.edges) {\n                if (!Number.isInteger(edge.loop || 0) || (edge.loop || 0) < 0) throw new RangeError('Invalid hatch loop ID.');\n                if ([1, 2].includes(edge.kind) && (!point(edge.a) || !point(edge.b) || !Number.isFinite(edge.bulge || 0))) throw new RangeError('Invalid hatch line/bulge.');\n                if (edge.kind === 3 && (!point(edge.center) || !point(edge.major) || !finite([edge.ratio, edge.start, edge.sweep]) || edge.ratio <= 0 || Math.abs(edge.sweep) > Math.PI * 2 + 1e-6)) throw new RangeError('Invalid hatch conic.');\n                if (edge.kind === 4) { const v = edge.spline;\n                    if (!v || !Number.isInteger(v.degree) || v.degree < 1 || v.degree > 31 || !Array.isArray(v.points) || v.points.length <= v.degree || v.points.some(p => !point(p)) || !finite(v.knots) || v.knots.length !== v.points.length + v.degree + 1 || v.knots.some((x, i) => i > 0 && x < v.knots[i - 1]) || (v.weights && (v.weights.length !== v.points.length || v.weights.some(w => !Number.isFinite(w) || w <= 0)))) throw new RangeError('Invalid hatch spline.'); }\n                if (![1, 2, 3, 4].includes(edge.kind)) throw new RangeError('Unknown hatch edge kind.');\n            }\n            for (const line of h.families) if (!Number.isFinite(line.angle) || !point(line.base) || !point(line.offset) || !finite(line.dashes) || line.dashes.length > 4096) throw new RangeError('Invalid hatch pattern family.');\n            offset = this.aux.alloc(8); count = h.edges.length;\n            const edgeTable = this.aux.alloc(h.edges.length * 16), families = this.aux.alloc(h.families.length * 8);\n            this.aux.u.set([h.edges.length, h.families.length, h.style || 0, h.solid ? 1 : 0, edgeTable, families, 0, 0], offset);\n            h.edges.forEach((edge, i) => {\n                const o = edgeTable + i * 16;\n                this.aux.u.set([edge.kind, edge.loop || 0, edge.flags || 0, 0], o);\n                if (edge.kind === 1 || edge.kind === 2) this.aux.f.set([edge.a[0] - anchor[0], edge.a[1] - anchor[1], edge.b[0] - anchor[0], edge.b[1] - anchor[1], edge.bulge || 0], o + 4);\n                else if (edge.kind === 3) this.aux.f.set([edge.center[0] - anchor[0], edge.center[1] - anchor[1], ...edge.major, edge.ratio, edge.start, edge.sweep], o + 4);\n                else if (edge.kind === 4) {\n                    const v = edge.spline, so = this.aux.alloc(4 + v.knots.length + v.points.length * 4);\n                    this.aux.u[o + 3] = so; this.aux.u.set([v.degree, v.knots.length, v.points.length, 0], so); this.aux.f.set(v.knots, so + 4);\n                    v.points.forEach((pt, j) => this.aux.f.set([pt[0] - anchor[0], pt[1] - anchor[1], v.weights?.[j] ?? 1, 0], so + 4 + v.knots.length + j * 4));\n                } else throw new RangeError('Unknown hatch edge kind.');\n            });\n            h.families.forEach((line, i) => {\n                const o = families + i * 8, dash = this.aux.alloc(line.dashes.length);\n                this.aux.f.set([line.angle, line.base[0] - anchor[0], line.base[1] - anchor[1], ...line.offset], o);\n                this.aux.u.set([line.dashes.length, dash, 0], o + 5); this.aux.f.set(line.dashes, dash);\n            });\n        }\n        else if (e.type === TYPE.DIMENSION) {\n            const d = e.dimension;\n            if (!d || !Number.isInteger(d.kind) || d.kind < 0 || d.kind > 6 || !Array.isArray(d.points) || d.points.length !== 7 || d.points.some(p => !finite(p) || p.length !== 2)) throw new RangeError('Invalid dimension definition.');\n            for (const key of ['angle', 'textHeight', 'arrowSize', 'extensionOffset', 'extensionLength', 'gap', 'measureScale', 'rounding']) if (key in d && (!Number.isFinite(d[key]) || !Number.isFinite(Math.fround(d[key])))) throw new RangeError('Invalid dimension ' + key);\n            if ((d.textHeight ?? 2.5) < 0 || (d.arrowSize ?? 2.5) < 0 || (d.rounding ?? 0) < 0 || !Number.isInteger(d.precision ?? 2) || (d.precision ?? 2) < 0 || (d.precision ?? 2) > 8) throw new RangeError('Invalid dimension formatting.');\n            offset = this.aux.alloc(32); count = 7;\n            this.aux.u.set([d.kind, d.flags || 0, this.run(d.text && d.text !== '<>' ? d.text : ''), Math.max(0, Math.min(8, d.precision ?? 2))], offset);\n            d.points.forEach((pt, i) => this.aux.f.set([pt[0] - anchor[0], pt[1] - anchor[1]], offset + 4 + i * 2));\n            this.aux.f.set([d.angle || 0, d.textHeight ?? 2.5, d.arrowSize ?? 2.5, d.extensionOffset ?? .625, d.extensionLength ?? 1.25, d.gap ?? .625, d.measureScale ?? 1, d.rounding ?? 0], offset + 18);\n            this.aux.u[offset + 26] = d.text && d.text !== '<>' ? 1 : 0;\n            this.aux.u[offset + 27] = this.font.map.get(46) ?? 0;\n            this.aux.u[offset + 28] = this.font.map.get(45) ?? 0;\n            this.aux.u[offset + 29] = this.font.map.get(82) ?? 0;\n            this.aux.u[offset + 30] = this.font.map.get(216) ?? 0;\n            this.aux.u[offset + 31] = this.font.map.get(176) ?? 0;\n        }\n        else if (e.points) {\n            count = e.points.length;\n            offset = this.aux.alloc(count * 4);\n            e.points.forEach((p, k) => this.aux.f.set([p[0] - anchor[0], p[1] - anchor[1], p[2] || 0, p[3] ?? 1], offset + k * 4));\n        }\n        else if (e.spline) {\n            const { degree, knots, points, weights } = e.spline;\n            count = points.length;\n            offset = this.aux.alloc(4 + knots.length + points.length * 4);\n            this.aux.u.set([degree, knots.length, points.length, 0], offset);\n            this.aux.f.set(knots, offset + 4);\n            points.forEach((p, k) => this.aux.f.set([p[0] - anchor[0], p[1] - anchor[1], weights?.[k] ?? 1, 0], offset + 4 + knots.length + k * 4));\n        }\n        this.u.set([offset, count, this.node(e.node), flags], j + 20);\n        this.f.set([1, 0, 0, 1], j + 24);\n        this.handles.push(e.handle || null);\n        return id;\n    }\n    finish() { const table = this.aux.alloc(this.runs.length); this.aux.u.set(this.runs, table); return { count: this.count, idBase: this.idBase, entities: this.buffer.slice(0, Math.max(this.count, 1) * ENTITY_BYTES), aux: this.aux.finish(), runTable: table, runCount: this.runs.length, handles: this.handles, missing: [...this.missing] }; }\n}\nclass ModelBuilder {\n    constructor(font, { name = 'Untitled', origin = [0, 0], layers, pageSize = PAGE_ENTITIES, idBase = 0 } = {}) { this.font = font; this.name = name; this.origin = origin; this.layers = layers || [{ name: '0', color: rgba('#c3cfda'), visible: true }]; this.pageSize = pageSize; this.count = 0; this.idBase = idBase; this.pages = []; this.current = null; this.diagnostics = []; }\n    add(e) { if (!this.current || this.current.count === this.pageSize || this.current.aux.length > 16 * 1024 * 1024) {\n        if (this.current)\n            this.pages.push(this.current.finish());\n        this.current = new PageBuilder(this.font, { origin: this.origin, idBase: this.idBase + this.count, pageSize: this.pageSize });\n    } const id = this.current.add(e); this.count++; return id; }\n    line(a, b, layer = 0, color = 0, width = 0, node = null) { return this.add({ type: TYPE.LINE, anchor: a, p: [b[0] - a[0], b[1] - a[1], width, 0], layer, color, node }); }\n    rect(x, y, w, h, layer = 0, color = 0) { return this.add({ type: TYPE.POLYLINE, anchor: [x, y], points: [[x, y], [x + w, y], [x + w, y + h], [x, y + h]], flags: FLAGS.CLOSED, layer, color }); }\n    circle(x, y, r, layer = 0, color = 0) { return this.add({ type: TYPE.ELLIPSE, anchor: [x, y], p: [r, 0, 1, 0], q: [0, Math.PI * 2, 0, 0], layer, color }); }\n    text(text, x, y, height = 10, layer = 0, color = 0, rotation = 0) { return this.add({ type: TYPE.TEXT, anchor: [x, y], p: [height, 1, rotation, 0], text, layer, color }); }\n    finish() { if (this.current) {\n        if (this.current.count) this.pages.push(this.current.finish());\n        this.current = null;\n    } return { version: 1, name: this.name, origin: this.origin, layers: this.layers, pages: this.pages, count: this.count, idBase: this.idBase, diagnostics: this.diagnostics, missing: [...new Set(this.pages.flatMap(p => p.missing))] }; }\n}\nfunction transferList(model) { const list = model.pages.flatMap(p => [p.entities, p.aux]).filter(Boolean); if (model.source?.kind === 'bytes') list.push(model.source.data); return [...new Set(list)]; }\nfunction modelBytes(model) { return model.pages.reduce((n, p) => n + (p.entities?.byteLength || 0) + p.aux.byteLength, 0); }\n\nObject.assign(exports,{ENTITY_BYTES,PAGE_ENTITIES,TYPE,FLAGS,UINT_MAX,split64,rgba,colorHex,WordArena,PageBuilder,ModelBuilder,transferList,modelBytes});\n}};const cache={};function require(id){if(cache[id])return cache[id].exports;const module={exports:{}};cache[id]=module;factories[id](module,module.exports,require);return module.exports;}require(\"packages/dxf/worker.js\");})();\n";
+
+Object.assign(exports,{WORKER_SOURCE});
+},
+"packages/gpu/index.js":function(module,exports,require){
+const { EDIT_BINDINGS, selectRanges, snapPoint, explodeGeometry }=require("packages/gpu/edit-tools.js");
+const { reconcileBlockModel, queuePlacement, uploadPlacement, encodePlacement }=require("packages/gpu/block-tools.js");
+const { viewCamera, supportedPlanView }=require("packages/dxf/spaces.js");
+const { decodeGpuInterval }=require("packages/performance/timing.js");
+const { FramePlanner, ResolutionGovernor, summarizeSamples }=require("packages/performance/index.js");
+const { SHADERS, SHADER_MAPS }=require("packages/gpu/shaders.js");
+const { compileKernels }=require("packages/gpu/compiler.js");
+const { ReadbackPool }=require("packages/gpu/transfer.js");
+const { PaperRasterState, paperQueueBytes }=require("packages/gpu/paper-cache.js");
+const { ENTITY_BYTES, PAGE_ENTITIES, PageBuilder, rgba, split64 }=require("packages/model/index.js");
+const MiB = 1024 * 1024;
+const SCENE_BINDINGS = { identity: [1, 14], layoutText: [1, 3, 8, 12], generate: [1, 2], prepare: [1, 2, 3, 4, 6, 11, 12], reduceBounds: [1, 4], reset: [6], cull: [0, 1, 2, 4, 5, 6, 7, 14], cullScan: [0, 1, 2, 4, 5, 6, 7, 14], indirect: [6, 13], raster: [0, 1, 2, 3, 4, 5, 6, 8, 9, 10, 12, 15, 16], rasterBatch: [0, 2, 3, 4, 5, 6, 8, 9, 10, 12, 15, 16], sampleText: [0, 1, 2, 3, 4, 5, 6], sumViewport: [6, 17], sumViewportCached: [6, 17] };
+const INDEX_BINDINGS = { spatialClear: [4], spatialAssign: [0, 1, 3, 4], spatialScan: [4], spatialScatter: [0, 2, 3, 4], spatialBounds: [0, 1, 2] };
+const PIXEL_BINDINGS = { clear: [0, 1], copyViewport: [0, 1, 9], resolve: [0, 1, 2, 3, 4, 9], resolveExact: [0, 2, 3, 4, 8], clearFragments: [0, 8], pick: [0, 1, 5, 6, 9], measure: [5, 7] };
+class CadGpuError extends Error {
+    constructor(message, details = '') { super(message); this.name = 'CadGpuError'; this.details = details; }
+}
+function align(n, a = 4) { return Math.ceil(n / a) * a; }
+function dispatchCount(n, size = 256) { const count = Math.ceil(n / size); return [Math.min(count, 65535), Math.ceil(count / 65535) || 1]; }
+class ComputeCad extends EventTarget {
+    constructor(canvas, { memoryBudget = 768 * MiB, maxPixels = 8294400, pixelRatio = globalThis.devicePixelRatio || 1, powerPreference = 'high-performance', cache = true, batch = true, maxFramesInFlight = 1, fragmentCapacity = 4194304, paperCacheBudget = 64 * MiB } = {}) {
+        super();
+        if (!Number.isFinite(memoryBudget) || memoryBudget < 1048576 || !Number.isInteger(maxPixels) || maxPixels < 1 || !Number.isFinite(pixelRatio) || pixelRatio <= 0) throw new RangeError('Invalid GPU budget, pixel budget or pixel ratio.');
+        this.canvas = canvas;
+        this.options = { memoryBudget, maxPixels, pixelRatio, powerPreference, maxFramesInFlight, fragmentCapacity, paperCacheBudget };
+        if (!Number.isSafeInteger(paperCacheBudget) || paperCacheBudget < 0) throw new RangeError('paperCacheBudget must be a non-negative safe integer.');
+        this.paperCache = true; this.paperCacheBytes = 0; this.layerRevision = 0;
+        if (![1, 2].includes(maxFramesInFlight)) throw new RangeError('maxFramesInFlight must be 1 or 2.');
+        if (!Number.isInteger(fragmentCapacity) || fragmentCapacity < 1 || fragmentCapacity > 16777216) throw new RangeError('fragmentCapacity must be 1…16,777,216.');
+        this.planner = new FramePlanner({ cache, batch }); this.overlayRevision = 0; this.fontRevision = 0;
+        this.compositing = 'opaque'; this.governor = null;
+        this.lastQueueMs = null; this.lastPlan = null;
+        this.camera = { x: 0, y: 0, zoom: 1 };
+        this.flags = 3;
+        this.selected = 0;
+        this.hovered = 0;
+        this.settings = { textLOD: 3.5, curveTolerance: .25, strokeWidth: 1 };
+        this.frameData = new ArrayBuffer(128);
+        this.frameF = new Float32Array(this.frameData);
+        this.frameU = new Uint32Array(this.frameData);
+        this.previousFrameU = new Uint32Array(32); this.uniformInitialized = false;
+        this.resolveGroups = new WeakMap(); this.compaction = 'mask';
+        this.metrics = { frames: 0, cpuMs: 0, gpuMs: null, gpuTimingStatus: 'not-sampled', gpuTimingScope: 'compute-pass', visible: 0, proxyTexts: 0, glyphs: 0, bytesUploaded: 0, bytesReadback: 0, frameUniformBytes: 0, uniformWriteCalls: 0, indirectBuilds: 0, indirectCacheHits: 0, clearCommands: 0, baseCacheHits: 0, overlayCacheHits: 0, cullPasses: 0, visibilityCacheHits: 0, dispatches: 0, batchEntities: 0, cooperativeEntities: 0, fragmentOverflow: false, queueCompletionMs: null };
+        this.pages = []; this.viewPages = null; this.activeSpace = null; this.paperResources = new Map();
+        this.annotationPages = [];
+        this.previewPages = [];
+        this.model = null;
+        this.disposed = false;
+        this.pendingFrame = 0;
+        this.errors = [];
+        this.gpuBytes = 0;
+        this.lastFrameAt = 0;
+        this.measuring = false;
+        this.preparing = false;
+        this.inFlight = 0;
+        this.frameDirty = false;
+        this.queryTail = Promise.resolve(); this.sceneEpoch = 0; this.timingFrame = null; this.timingPending = null;
+    }
+    emit(type, detail) { this.dispatchEvent(new CustomEvent(type, { detail })); }
+    async initialize(font) {
+        if (!globalThis.isSecureContext)
+            throw new CadGpuError('WebGPU requires HTTPS or localhost.', 'Serve this application on HTTPS or run npm start on localhost.');
+        if (!navigator.gpu)
+            throw new CadGpuError('WebGPU is not available in this browser.', 'No Canvas2D/WebGL fallback is used. Enable a supported WebGPU browser and GPU driver.');
+        const adapter = await navigator.gpu.requestAdapter({ powerPreference: this.options.powerPreference });
+        if (!adapter) throw new CadGpuError('No WebGPU adapter is available.');
+        return this.initializeAdapter(font, adapter, this.canvas.getContext('webgpu'));
+    }
+    /** Native/headless hosts supply an actual WebGPU adapter and texture presentation target.
+     * Browser initialize() retains the HTTPS and navigator.gpu checks above. */
+    async initializeAdapter(font, adapter, context) {
+        if (this.device || this.initializing || this.disposed) throw new CadGpuError('The engine is already initialized, initializing, or disposed.');
+        if (!adapter || !context) throw new CadGpuError('A WebGPU adapter and presentation context are required.');
+        this.initializing = true;
+        try {
+        this.adapter = adapter;
+        const optional = ['timestamp-query'].filter(f => this.adapter.features.has(f));
+        this.hasTimestamps = optional.includes('timestamp-query');
+        this.device = await this.adapter.requestDevice({ label: 'Aperture compute device', requiredFeatures: optional, requiredLimits: { maxStorageBufferBindingSize: Math.min(this.adapter.limits.maxStorageBufferBindingSize, 512 * MiB), maxBufferSize: Math.min(this.adapter.limits.maxBufferSize, 1024 * MiB) } });
+        this.readbacks = new ReadbackPool((size) => {
+            if (this.allocatedBytes() + size > this.options.memoryBudget) throw new CadGpuError('Readback pool exceeds the GPU allocation budget.');
+            return this.buffer('Pooled explicit readback', size, GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST);
+        });
+        this.info = { vendor: this.adapter.info?.vendor || 'unknown', architecture: this.adapter.info?.architecture || '', device: this.adapter.info?.device || '', description: this.adapter.info?.description || 'WebGPU adapter', timestampQuery: this.hasTimestamps, maxBindingBytes: this.device.limits.maxStorageBufferBindingSize };
+        this.device.addEventListener('uncapturederror', e => { this.errors.push(e.error.message); this.emit('error', new CadGpuError(e.error.message)); });
+        this.device.lost.then(info => { if (!this.disposed) {
+            this.lost = true;
+            this.disposed = true;
+            this.emit('error', new CadGpuError('The GPU device was lost.', info.message + ' Reload the application to rebuild GPU resources.'));
+        } });
+        this.context = context;
+        if (!this.context)
+            throw new CadGpuError('Cannot create a WebGPU canvas context.');
+        // rgba8unorm is storage-writable without the optional bgra8unorm-storage feature.
+        this.context.configure({ device: this.device, format: 'rgba8unorm', usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.RENDER_ATTACHMENT, alphaMode: 'opaque', colorSpace: 'srgb' });
+        this.atlasSampler = this.device.createSampler({ label: 'Bilinear distance atlas', minFilter: 'linear', magFilter: 'linear' });
+        this.paperStats = this.buffer('Sheet viewport candidate summary', 64, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST);
+        this.fragmentBuffer = this.buffer('Inactive exact-fragment arena', 16, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST);
+        this.frameBuffer = this.buffer('Camera / frame (128 bytes)', 128, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
+        this.pickBuffer = this.buffer('Small query result', 16, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST);
+        this.pickParams = this.buffer('Pick query', 16, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
+        this.measureParams = this.buffer('Measurement query', 32, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST);
+        const compiled = await compileKernels(this.device, SHADERS, SHADER_MAPS,
+            { scene: SCENE_BINDINGS, index: INDEX_BINDINGS, pixels: PIXEL_BINDINGS,
+                font: { bake: [0, 1, 2] }, stroke: { compileStroke: [0, 1, 2] }, edit:EDIT_BINDINGS });
+        this.pipelines = compiled.pipelines; this.compilation = compiled.report;
+        if (this.hasTimestamps) {
+            this.querySet = this.device.createQuerySet({ label: 'Frame GPU timings', type: 'timestamp', count: 2 });
+            this.queryResolve = this.buffer('GPU timestamp resolve', 16, GPUBufferUsage.QUERY_RESOLVE | GPUBufferUsage.COPY_SRC);
+        }
+        await this.setFont(font);
+        this.setSize(this.canvas.clientWidth || 1024, this.canvas.clientHeight || 700, this.options.pixelRatio);
+        return this;
+        } catch (error) { this.dispose(); throw error; }
+        finally { this.initializing = false; }
+    }
+    buffer(label, size, usage, data = null) {
+        size = align(Math.max(size, 4));
+        if (size > this.device.limits.maxBufferSize)
+            throw new CadGpuError(label + ' exceeds the adapter buffer limit.');
+        if ((usage & GPUBufferUsage.STORAGE) && size > this.device.limits.maxStorageBufferBindingSize)
+            throw new CadGpuError(label + ' exceeds the adapter storage-binding limit.');
+        const buffer = this.device.createBuffer({ label, size, usage, mappedAtCreation: !!data });
+        if (data) {
+            new Uint8Array(buffer.getMappedRange()).set(new Uint8Array(data.buffer || data, data.byteOffset || 0, data.byteLength));
+            buffer.unmap();
+            this.metrics.bytesUploaded += data.byteLength;
+        }
+        return buffer;
+    }
+    group(entry, resources, bindings) { return this.device.createBindGroup({ label: entry + ' resources', layout: this.pipelines[entry].getBindGroupLayout(0), entries: bindings.map(binding => { const r = resources[binding]; if (!r)
+            throw new CadGpuError(`Missing ${entry} resource ${binding}`); return { binding, resource: r instanceof GPUBuffer ? { buffer: r } : r }; }) }); }
+    async setFont(font) {
+        if (this.benchmarking) throw new CadGpuError('Cannot replace the font during a benchmark.');
+        if (!font?.glyphs?.length || font.count !== font.glyphs.length) throw new CadGpuError('Invalid font model.');
+        const extent = this.device.limits.maxTextureDimension2D;
+        if (font.atlasWidth > extent || font.atlasHeight > extent) throw new CadGpuError('Font atlas exceeds the adapter texture limit. Use a smaller atlas cell or fewer glyphs.');
+        const old = { fontBuffer: this.fontBuffer, fontInfo: this.fontInfo, atlas: this.atlas, atlasView: this.atlasView, font: this.font };
+        let fontBuffer, fontInfo, atlas, programBuffer, readback;
+        await this.device.queue.onSubmittedWorkDone();
+        try {
+            const all = new Uint8Array(font.meta.byteLength + font.edges.byteLength + (font.layoutData?.byteLength || 0));
+            all.set(new Uint8Array(font.meta)); all.set(new Uint8Array(font.edges.buffer, font.edges.byteOffset, font.edges.byteLength), font.meta.byteLength);
+            if (font.layoutData) all.set(new Uint8Array(font.layoutData.buffer, font.layoutData.byteOffset, font.layoutData.byteLength), font.meta.byteLength + font.edges.byteLength);
+            this.trimPaperCaches(all.byteLength + font.atlasWidth * font.atlasHeight * 4 + 96 + (font.strokeProgram ? font.strokeProgram.byteLength + font.meta.byteLength : 0));
+            const fontPeak = this.allocatedBytes() + all.byteLength + font.atlasWidth * font.atlasHeight * 4 + 96 + (font.strokeProgram ? font.strokeProgram.byteLength + font.meta.byteLength : 0);
+            if (fontPeak > this.options.memoryBudget) throw new CadGpuError('Font replacement exceeds the GPU budget, including overlapping old/new resources.');
+            fontBuffer = this.buffer('Glyph outlines, metrics and OpenType programs', all.byteLength, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC, all);
+            const info = new ArrayBuffer(96), u = new Uint32Array(info), f = new Float32Array(info);
+            const fillInfo = () => {
+                u.set([font.atlasWidth, font.atlasHeight, font.count, font.meta.byteLength / 4]);
+                const digitIds = Array.from({ length: 10 }, (_, i) => font.map.get(48 + i) ?? 0);
+                const advance = Math.max(.01, ...digitIds.map(i => font.glyphs[i].advance));
+                f.set([advance, font.cellSize || 64, font.atlasWidth / (font.cellSize || 64), font.capHeight ? 1 / font.capHeight : 0], 4); u.set(digitIds, 8);
+                u[18] = font.layoutData ? (font.meta.byteLength + font.edges.byteLength) / 4 : 0;
+                u[19] = font.strokeProgram ? Number(font.vertical) : Number(!!font.layoutData);
+                f.set([Math.min(...font.glyphs.map(g => g.box[0])), Math.max(...font.glyphs.map(g => g.box[2])), Math.min(...font.glyphs.map(g => g.box[1])), Math.max(...font.glyphs.map(g => g.box[3]))], 20);
+            };
+            fillInfo(); fontInfo = this.buffer('Font atlas ABI', 96, GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST, info);
+            if (font.strokeProgram) {
+                programBuffer = this.buffer('Parsed SHX/SHP bytecode', font.strokeProgram.byteLength, GPUBufferUsage.STORAGE, font.strokeProgram);
+                const encoder = this.device.createCommandEncoder({ label: 'Compile SHX/SHP glyph geometry on GPU' }), pass = encoder.beginComputePass();
+                pass.setPipeline(this.pipelines.compileStroke); pass.setBindGroup(0, this.group('compileStroke', { 0: fontBuffer, 1: fontInfo, 2: programBuffer }, [0, 1, 2])); pass.dispatchWorkgroups(font.count); pass.end();
+                readback = this.buffer('One-time font metrics and status', font.meta.byteLength, GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST);
+                encoder.copyBufferToBuffer(fontBuffer, 0, readback, 0, font.meta.byteLength); this.device.queue.submit([encoder.finish()]); await readback.mapAsync(GPUMapMode.READ);
+                const data = readback.getMappedRange(), ru = new Uint32Array(data), rf = new Float32Array(data);
+                for (let i = 0; i < font.count; i++) {
+                    const o = i * 12; if (ru[o + 3]) throw new CadGpuError('Stroke glyph program rejected: glyph ' + i + ', status ' + ru[o + 3]);
+                    const box = Array.from(rf.subarray(o + 4, o + 8)), advance = rf[o + 8];
+                    if (!box.every(Number.isFinite) || !Number.isFinite(advance) || advance < 0) throw new CadGpuError('Unsupported non-finite or negative-advance SHX glyph.');
+                    Object.assign(font.glyphs[i], { box, advance });
+                }
+                this.metrics.bytesReadback += data.byteLength; readback.unmap(); fillInfo(); this.device.queue.writeBuffer(fontInfo, 0, info); this.metrics.bytesUploaded += info.byteLength;
+            }
+            atlas = this.device.createTexture({ label: 'GPU-generated glyph SDF atlas', size: [font.atlasWidth, font.atlasHeight], format: 'rgba8unorm', usage: GPUTextureUsage.STORAGE_BINDING | GPUTextureUsage.TEXTURE_BINDING | GPUTextureUsage.COPY_SRC });
+            const atlasView = atlas.createView(), bind = this.group('bake', { 0: fontBuffer, 1: fontInfo, 2: atlasView }, [0, 1, 2]);
+            const command = this.device.createCommandEncoder({ label: 'Bake glyph atlas on GPU' }), pass = command.beginComputePass();
+            pass.setPipeline(this.pipelines.bake); pass.setBindGroup(0, bind); pass.dispatchWorkgroups(Math.ceil(font.atlasWidth / 8), Math.ceil(font.atlasHeight / 8)); pass.end();
+            this.device.queue.submit([command.finish()]); await this.device.queue.onSubmittedWorkDone();
+            Object.assign(this, { fontBuffer, fontInfo, atlas, atlasView, font }); this.fontRevision++; this.planner.invalidate(); this.needsModelRebuild = !!this.model;
+            old.fontBuffer?.destroy(); old.fontInfo?.destroy(); old.atlas?.destroy();
+        } catch (error) { fontBuffer?.destroy(); fontInfo?.destroy(); atlas?.destroy(); throw error; }
+        finally { programBuffer?.destroy(); readback?.destroy(); }
+    }
+    setSize(width, height, pixelRatio = this.options.pixelRatio) {
+        if (![width, height, pixelRatio].every(Number.isFinite) || width < 0 || height < 0 || pixelRatio <= 0) throw new RangeError('Viewport dimensions and pixel ratio must be finite and non-negative.');
+        if (!this.device) return;
+        width = Math.max(1, width); height = Math.max(1, height);
+        const cap = Math.sqrt(this.options.maxPixels / (width * height));
+        const ratio = Math.min(Math.max(.01, pixelRatio), 2, cap, this.device.limits.maxTextureDimension2D / width, this.device.limits.maxTextureDimension2D / height);
+        const w = Math.max(1, Math.floor(width * ratio)), h = Math.max(1, Math.floor(height * ratio));
+        if (w === this.canvas.width && h === this.canvas.height && this.pixelBuffer) {
+            const changed = this.cssWidth !== width || this.cssHeight !== height || this.ratio !== ratio;
+            this.cssWidth = width; this.cssHeight = height; this.ratio = ratio;
+            if (changed) { this.planner.invalidate(); this.requestFrame(); }
+            return;
+        }
+        const fragmentBytes = this.compositing === 'exact' ? 16 + w * h * 4 + this.options.fragmentCapacity * 8 : 0;
+        this.trimPaperCaches(w * h * 8 + fragmentBytes);
+        const peak = this.allocatedBytes() + w * h * 8 + fragmentBytes;
+        if (peak > this.options.memoryBudget) throw new CadGpuError('Resizing would exceed the GPU allocation budget, including replacement surfaces. Reduce pixelRatio or maxPixels.');
+        let base, overlay, fragments;
+        try {
+            base = this.buffer('Persistent base coverage / entity-ID surface', w * h * 4, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST);
+            overlay = this.buffer('Overlay coverage / entity-ID surface', w * h * 4, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST);
+            if (fragmentBytes) fragments = this.buffer('Bounded exact source-over fragment arena', fragmentBytes, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST);
+        } catch (error) { base?.destroy(); overlay?.destroy(); fragments?.destroy(); throw error; }
+        const previous = [this.basePixelBuffer, this.pixelBuffer, fragments ? this.fragmentBuffer : null];
+        this.basePixelBuffer = base; this.pixelBuffer = overlay; if (fragments) this.fragmentBuffer = fragments;
+        this.canvas.width = w; this.canvas.height = h; this.cssWidth = width; this.cssHeight = height; this.ratio = ratio;
+        this.planner.invalidate();
+        for (const p of [...this.pages, ...this.annotationPages, ...this.previewPages]) this.bindPage(p);
+        this.bindPixels(); for (const resource of previous) resource?.destroy(); this.requestFrame();
+    }
+    bindPixels() { this.disposePaperResources(); this.resolveGroups = new WeakMap(); if (!this.pixelBuffer)
+        return; const base = { 0: this.frameBuffer, 1: this.pixelBuffer, 2: this.styleBuffer, 3: this.layerBuffer, 5: this.pickBuffer, 6: this.pickParams, 7: this.measureParams, 8: this.fragmentBuffer, 9: this.basePixelBuffer }; this.pixelGroups = { clear: this.group('clear', base, PIXEL_BINDINGS.clear), clearBase: this.group('clear', { ...base, 1: this.basePixelBuffer }, PIXEL_BINDINGS.clear), clearFragments: this.group('clearFragments', base, PIXEL_BINDINGS.clearFragments), pick: this.group('pick', base, PIXEL_BINDINGS.pick), measure: this.group('measure', base, PIXEL_BINDINGS.measure) }; }
+    bindPage(p) { const resources = { 0: this.frameBuffer, 1: p.header, 2: p.entities, 3: p.aux, 4: p.bounds, 5: p.visible, 6: p.stats, 7: this.layerBuffer, 8: this.fontBuffer, 9: p.overlay ? this.pixelBuffer : this.basePixelBuffer, 10: this.atlasView, 11: this.styleBuffer, 12: this.fontInfo, 13: p.indirect, 14: p.order, 15: this.fragmentBuffer, 16: this.atlasSampler, 17: this.paperStats }; p.groups = {}; for (const [entry, bindings] of Object.entries(SCENE_BINDINGS))
+        p.groups[entry] = this.group(entry, resources, bindings); }
+    makePage(source, origin, synthetic = null, overlay = false) {
+        const n = source.count, leaves = Math.ceil(n / 128);
+        const h = new ArrayBuffer(48), u = new Uint32Array(h), f = new Float32Array(h);
+        const [xh, xl] = split64(origin[0]), [yh, yl] = split64(origin[1]);
+        f.set([xh, yh, xl, yl]);
+        u.set([n, leaves, source.idBase, source.runCount], 4);
+        u.set([source.runTable, synthetic?.mode || 0, synthetic?.total || 0, synthetic?.run || 0], 8);
+        const owned = []; const allocate = (...args) => { const resource = this.buffer(...args); owned.push(resource); return resource; };
+        try {
+        const p = { overlay, count: n, leaves, idBase: source.idBase, source, header: allocate('Page header', 48, GPUBufferUsage.UNIFORM, new Uint8Array(h)), entities: allocate('Packed source entities', n * ENTITY_BYTES, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST, source.entities), aux: allocate('Page paths, glyph runs, INSERT hierarchy', source.aux.byteLength, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST, source.aux), bounds: allocate('GPU entity and cluster bounds', (n + leaves * 2 + 1) * 16, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC), order: allocate('GPU Morton-bucket entity order', n * 4, GPUBufferUsage.STORAGE), visible: allocate('Exact-capacity visible entity queue', n * 4, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC), stats: allocate('Visible count and telemetry', 64, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST), indirect: allocate('Cooperative, batched and diagnostic indirect arguments', 48, GPUBufferUsage.STORAGE | GPUBufferUsage.INDIRECT | GPUBufferUsage.COPY_SRC) };
+        p.bytes = p.entities.size + p.aux.size + p.bounds.size + p.visible.size + p.order.size + p.header.size + p.stats.size + p.indirect.size;
+        p.destroy = () => { for (const key of ['header', 'entities', 'aux', 'bounds', 'visible', 'order', 'stats', 'indirect'])
+            p[key].destroy(); };
+        this.bindPage(p);
+        return p;
+        } catch (error) { for (const resource of owned) resource.destroy(); throw error; }
+    }
+    async setModel(model) {
+        if (this.benchmarking) throw new CadGpuError('Cannot replace the drawing during a benchmark.');
+        if (this.preparing)
+            throw new CadGpuError("A model preparation is already in progress.");
+        if ((!model.count || !model.pages.length) && !model.spaces)
+            throw new CadGpuError("Cannot display an empty model.");
+        if (model.count > 0x00ff0000)
+            throw new CadGpuError('The deterministic picking/compositing ABI supports up to 16,711,680 base entities.');
+        const estimated = model.pages.reduce((s, p) => s + p.count * 152 + p.aux.byteLength + Math.ceil(p.count / 128) * 32 + 176, 0) + (model.count + 65536) * 8 + this.canvas.width * this.canvas.height * 8 + this.fragmentBuffer.size + this.font.atlasWidth * this.font.atlasHeight * 4 + (this.fontBuffer?.size || 0) + (this.fontInfo?.size || 0) + (model.layers.length + 2) * 16 + Math.max(1, ...model.pages.map(p => p.count)) * 8 + 2048 + model.pages.length * 16 + 512;
+        if (estimated > this.options.memoryBudget)
+            throw new CadGpuError(`The model needs approximately ${(estimated / MiB).toFixed(0)} MiB GPU memory; the configured budget is ${(this.options.memoryBudget / MiB).toFixed(0)} MiB.`, `Raise memoryBudget explicitly only on a device with sufficient memory. The model was not silently truncated.`);
+        // Validate every binding before replacing the resident scene.
+        const limit = this.device.limits.maxStorageBufferBindingSize;
+        if ((model.count + 65536) * 8 > limit || model.pages.some(p => p.count * ENTITY_BYTES > limit || p.aux.byteLength > limit))
+            throw new CadGpuError('A model buffer exceeds this adapter’s storage-binding limit.');
+        this.preparing = true;
+        try {
+            await this.device.queue.onSubmittedWorkDone();
+            this.disposeScene(); this.planner.invalidate();
+            this.model = model;
+            this.layers = [...model.layers.map(l => ({ ...l })), { name: 'Annotations', color: rgba('#ffb05c'), visible: true }, { name: 'Measurements', color: rgba('#7df2d2'), visible: true }];
+            this.annotationLayer = model.layers.length;
+            this.layerBuffer = this.buffer('Layer palette and visibility', Math.max(16, this.layers.length * 16), GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_DST);
+            this.uploadLayers();
+            this.styleBuffer = this.buffer('Stable global entity style table', (model.count + 65536) * 8, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST);
+            this.device.pushErrorScope('out-of-memory');
+            this.device.pushErrorScope('validation');
+            try {
+                for (const source of model.pages)
+                    this.pages.push(this.makePage(source, source.origin || model.origin, model.synthetic ? { ...model.synthetic, run: source.demoRun } : null));
+                const maxPage = Math.max(1, ...this.pages.map(p => p.count));
+                this.indexRanks = this.buffer('Reused spatial rank scratch', maxPage * 8, GPUBufferUsage.STORAGE);
+                this.indexBuckets = this.buffer('Reused Morton histogram and prefix', 2048, GPUBufferUsage.STORAGE);
+                const encoder = this.device.createCommandEncoder({ label: 'GPU text layout, model transforms and hierarchy construction' }), pass = encoder.beginComputePass();
+                for (const p of this.pages) {
+                    if (model.synthetic) {
+                        pass.setPipeline(this.pipelines.generate);
+                        pass.setBindGroup(0, p.groups.generate);
+                        pass.dispatchWorkgroups(Math.ceil(p.count / 128));
+                    }
+                    if (p.source.runCount) {
+                        pass.setPipeline(this.pipelines.layoutText);
+                        pass.setBindGroup(0, p.groups.layoutText);
+                        pass.dispatchWorkgroups(Math.ceil(p.source.runCount / 64));
+                    }
+                    pass.setPipeline(this.pipelines.prepare);
+                    pass.setBindGroup(0, p.groups.prepare);
+                    pass.dispatchWorkgroups(p.leaves);
+                    pass.setPipeline(this.pipelines.reduceBounds);
+                    pass.setBindGroup(0, p.groups.reduceBounds);
+                    pass.dispatchWorkgroups(1);
+                    const indexResources = { 0: p.header, 1: p.bounds, 2: p.order, 3: this.indexRanks, 4: this.indexBuckets };
+                    for (const [entry, bindings] of Object.entries(INDEX_BINDINGS)) {
+                        pass.setPipeline(this.pipelines[entry]);
+                        pass.setBindGroup(0, this.group(entry, indexResources, bindings));
+                        pass.dispatchWorkgroups(entry === 'spatialClear' || entry === 'spatialScan' ? 1 : p.leaves);
+                    }
+                }
+                pass.end();
+                const readback = this.buffer('One-time bounds readback', Math.max(16, this.pages.length * 16), GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ);
+                this.pages.forEach((p, i) => encoder.copyBufferToBuffer(p.bounds, (p.count + p.leaves) * 16, readback, i * 16, 16));
+                this.device.queue.submit([encoder.finish()]);
+                await readback.mapAsync(GPUMapMode.READ);
+                const boxes = new Float32Array(readback.getMappedRange());
+                let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+                for (let i = 0; i < this.pages.length * 4; i += 4) {
+                    this.pages[i / 4].finiteBounds = Array.from(boxes.subarray(i, i + 4));
+                    minX = Math.min(minX, boxes[i]);
+                    minY = Math.min(minY, boxes[i + 1]);
+                    maxX = Math.max(maxX, boxes[i + 2]);
+                    maxY = Math.max(maxY, boxes[i + 3]);
+                }
+                readback.unmap();
+                readback.destroy();
+                this.metrics.bytesReadback += this.pages.length * 16;
+                this.extents = Number.isFinite(minX) && maxX >= minX && Math.max(Math.abs(minX), Math.abs(maxX), Math.abs(minY), Math.abs(maxY)) < 1e20 ? [minX, minY, maxX, maxY] : [-100, -100, 100, 100];
+            }
+            catch (error) {
+                await this.device.popErrorScope();
+                await this.device.popErrorScope();
+                throw error;
+            }
+            const validation = await this.device.popErrorScope(), memory = await this.device.popErrorScope();
+            if (validation || memory)
+                throw new CadGpuError((validation || memory).message);
+            this.gpuBytes = estimated; this.needsModelRebuild = false;
+            this.bindPixels();
+            this.selected = 0;
+            if (model.spaces) this.setSpace(model.initialSpace || 'model'); else { this.viewPages = this.pages; this.activeSpace = null; this.camera.angle = 0; this.fit(); }
+            this.emit('model', model);
+            return this;
+        }
+        catch (error) {
+            this.disposeScene();
+            throw error;
+        }
+        finally {
+            this.indexRanks?.destroy();
+            this.indexBuckets?.destroy();
+            this.indexRanks = null;
+            this.indexBuckets = null;
+            this.preparing = false;
+            this.requestFrame();
+        }
+    }
+    selectEntities(ranges=[]){return selectRanges(this,ranges);}
+    snap(x,y,options){return snapPoint(this,x,y,options);}
+    explode(ranges,options){return explodeGeometry(this,ranges,options);}
+    async reconcileModel(model) { return reconcileBlockModel(this,model,INDEX_BINDINGS); }
+    updateBlockPreview(values) { queuePlacement(this,values); }
+    uploadLayers() { this.layerRevision++; if (!this.layerBuffer)
+        return; const a = new Uint32Array(this.layers.length * 4); this.layers.forEach((l, i) => a.set([l.color, l.visible ? 1 : 0, l.locked ? 1 : 0, 0], i * 4)); this.device.queue.writeBuffer(this.layerBuffer, 0, a); this.metrics.bytesUploaded += a.byteLength; }
+    updateLayer(index, patch) { if (this.benchmarking) throw new CadGpuError('Cannot change layers during a benchmark.'); if (!this.layers[index])
+        throw new RangeError('Unknown layer.'); Object.assign(this.layers[index], patch); if ('visible' in patch) { this.layerRevision++; this.planner.invalidate(); } const l = this.layers[index], a = new Uint32Array([l.color, l.visible ? 1 : 0, l.locked ? 1 : 0, 0]); this.device.queue.writeBuffer(this.layerBuffer, index * 16, a); this.metrics.bytesUploaded += 16; this.requestFrame(); }
+    async setAnnotations(model) {
+        await this.updateOverlay(model, 'annotationPages');
+        for (const p of this.previewPages) p.destroy();
+        this.previewPages = []; this.overlayRevision++; this.requestFrame();
+    }
+    async setPreview(model) { return this.updateOverlay(model, 'previewPages'); }
+    async updateOverlay(model, key) {
+        if (!this.model || this.preparing || this.benchmarking) throw new CadGpuError('An idle resident drawing is required for an annotation update.');
+        const committed = key === 'previewPages' ? this.annotationPages.reduce((n, p) => n + p.count, 0) : 0;
+        if (model.count + committed >= 65535) throw new CadGpuError('The annotation reservation is limited to 65,534 entities including the preview.');
+        const nextBytes = model.pages.reduce((n, p) => n + p.count * 152 + p.aux.byteLength + Math.ceil(p.count / 128) * 32 + 176, 0);
+        this.trimPaperCaches(nextBytes);
+        if (this.allocatedBytes() + nextBytes > this.options.memoryBudget) throw new CadGpuError('Annotation replacement exceeds the GPU budget, including old and new pages.');
+        for (const p of model.pages) if (p.aux.byteLength > this.device.limits.maxStorageBufferBindingSize || p.count * ENTITY_BYTES > this.device.limits.maxStorageBufferBindingSize) throw new CadGpuError('Annotation page exceeds the adapter binding limit.');
+        const replacement=[];
+        try {
+            for (const source of model.pages) if(source.count) replacement.push(this.makePage(source,this.model.origin,null,true));
+            if (replacement.length) {
+                const encoder=this.device.createCommandEncoder({label:key==='previewPages'?'Transient overlay only':'Committed annotation replacement'}),pass=encoder.beginComputePass();
+                for (const p of replacement) {
+                    pass.setPipeline(this.pipelines.identity);pass.setBindGroup(0,p.groups.identity);pass.dispatchWorkgroups(p.leaves);
+                    if(p.source.runCount){pass.setPipeline(this.pipelines.layoutText);pass.setBindGroup(0,p.groups.layoutText);pass.dispatchWorkgroups(Math.ceil(p.source.runCount/64));}
+                    pass.setPipeline(this.pipelines.prepare);pass.setBindGroup(0,p.groups.prepare);pass.dispatchWorkgroups(p.leaves);
+                }
+                pass.end();this.device.queue.submit([encoder.finish()]);
+            }
+        } catch(error) {for(const page of replacement)page.destroy();throw error;}
+        const previous=this[key];this[key]=replacement;this.overlayRevision++;for(const page of previous)page.destroy();this.requestFrame();
+    }
+    disposeScene() { this.selectionRanges=[]; this.disposePaperResources(); this.viewPages = null; this.activeSpace = null; this.sceneEpoch++; this.timingFrame = null; this.resetTiming(); this.planner.invalidate(); for (const p of [...this.pages, ...this.annotationPages, ...this.previewPages])
+        p.destroy(); this.pages = []; this.annotationPages = []; this.previewPages = []; this.layerBuffer?.destroy(); this.styleBuffer?.destroy(); this.layerBuffer = null; this.styleBuffer = null; this.model = null; }
+    fit(bounds = this.extents) { if (!bounds)
+        return; this.camera.x = (bounds[0] + bounds[2]) * .5; this.camera.y = (bounds[1] + bounds[3]) * .5; const co=Math.abs(Math.cos(this.camera.angle||0)),si=Math.abs(Math.sin(this.camera.angle||0)),w=bounds[2]-bounds[0],h=bounds[3]-bounds[1];this.camera.zoom = Math.max(1e-8, Math.min(this.cssWidth * .88 / Math.max(1e-8, co*w+si*h), this.cssHeight * .84 / Math.max(1e-8, si*w+co*h))); this.requestFrame(); }
+    worldAt(x, y) { return this.screenToWorld(x,y); }
+    screenToWorld(x,y) { const dx=(x-this.cssWidth/2)/this.camera.zoom,dy=(this.cssHeight/2-y)/this.camera.zoom,c=Math.cos(this.camera.angle||0),s=Math.sin(this.camera.angle||0);return [this.camera.x+c*dx-s*dy+(this.model?.origin[0]||0),this.camera.y+s*dx+c*dy+(this.model?.origin[1]||0)]; }
+    zoomAt(x,y,factor) { const p=this.screenToWorld(x,y);this.camera.zoom=Math.max(1e-8,Math.min(1e9,this.camera.zoom*factor));const q=this.screenToWorld(x,y);this.camera.x+=p[0]-q[0];this.camera.y+=p[1]-q[1];this.requestFrame(); }
+    pan(dx,dy) { const c=Math.cos(this.camera.angle||0),s=Math.sin(this.camera.angle||0);this.camera.x-=(c*dx+s*dy)/this.camera.zoom;this.camera.y+=(c*dy-s*dx)/this.camera.zoom;this.requestFrame(); }
+    requestFrame() { if (this.pendingFrame || this.disposed || !this.device)
+        return; this.pendingFrame = requestAnimationFrame(() => { this.pendingFrame = 0; try {
+        this.render();
+    }
+    catch (error) {
+        this.emit('error', error);
+    } }); }
+    /** Reuse one host staging block. Only a changed, four-byte-aligned span crosses the queue. */
+    writeFrame() {
+        const f = this.frameF, u = this.frameU, c = this.camera;
+        f[0] = Math.fround(c.x); f[1] = Math.fround(c.y); f[2] = c.x - f[0]; f[3] = c.y - f[1];
+        f[4] = this.canvas.width; f[5] = this.canvas.height; f[6] = c.zoom * this.ratio; f[7] = this.ratio;
+        f[8] = this.settings.textLOD; f[9] = this.settings.curveTolerance; f[10] = this.settings.strokeWidth;
+        u[12] = this.selected; u[13] = this.flags; u[14] = this.hovered;
+        f[16] = .035; f[17] = .047; f[18] = .065; f[19] = 1;
+        f[20] = this.planner.guardBand; f[21] = Number(this.planner.batch);
+        // Grid spacing depends only on the frame, never on a pixel. Keep the 128-byte ABI.
+        f[22] = 10 ** Math.floor(Math.log(100 / f[6]) / Math.LN10);
+        f[24] = Math.cos(c.angle || 0); f[25] = Math.sin(c.angle || 0);
+        f[28] = this.options.fragmentCapacity;
+        f[29] = Number(this.annotationPages.length > 0 || this.previewPages.length > 0);
+        let first = 0, last = 31;
+        if (this.uniformInitialized) {
+            while (first < 32 && u[first] === this.previousFrameU[first]) first++;
+            while (last >= first && u[last] === this.previousFrameU[last]) last--;
+        }
+        const bytes = Math.max(0, last - first + 1) * 4;
+        if (bytes) {
+            this.device.queue.writeBuffer(this.frameBuffer, first * 4, this.frameData, first * 4, bytes);
+            this.previousFrameU.set(u); this.uniformInitialized = true;
+            this.metrics.bytesUploaded += bytes; this.metrics.uniformWriteCalls++;
+        }
+        this.metrics.frameUniformBytes = bytes; return bytes;
+    }
+    frameDescriptor() { return { camera: this.camera, width: this.canvas.width, height: this.canvas.height, ratio: this.ratio, settings: this.settings, flags: this.flags, fontRevision: this.fontRevision }; }
+    allocateFragments() {
+        const size = 16 + this.canvas.width * this.canvas.height * 4 + this.options.fragmentCapacity * 8;
+        const used = this.allocatedBytes() + size; // Old and replacement buffers overlap until the swap.
+        if (used > this.options.memoryBudget) throw new CadGpuError('Exact compositing exceeds the configured GPU memory budget. Reduce fragmentCapacity or increase memoryBudget.');
+        if (size === this.fragmentBuffer?.size) return;
+        const next = this.buffer('Bounded exact source-over fragment arena', size, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST);
+        this.fragmentBuffer?.destroy(); this.fragmentBuffer = next;
+    }
+    setCompositing(mode = 'opaque') {
+        if (this.benchmarking) throw new CadGpuError('Cannot change compositing during a benchmark.');
+        if (!['opaque', 'exact'].includes(mode)) throw new RangeError('Unknown compositing mode.');
+        if (mode === 'exact' && this.activeSpace?.viewports?.some(v => v.number !== 1 && v.supported)) throw new CadGpuError('Ordered alpha is not supported in composed paper viewports. Select Model space to use it.');
+        if (mode === this.compositing) return;
+        if (mode === 'exact') this.allocateFragments();
+        else { const next = this.buffer('Disabled exact compositor', 16, GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST); this.fragmentBuffer.destroy(); this.fragmentBuffer = next; }
+        this.compositing = mode; this.flags = mode === 'exact' ? this.flags | 8 : this.flags & ~8;
+        this.planner.invalidate(); for (const p of [...this.pages, ...this.annotationPages, ...this.previewPages]) this.bindPage(p);
+        this.bindPixels(); this.requestFrame();
+    }
+    setPerformance({ cache = this.planner.cache, batch = this.planner.batch, guardBand = this.planner.guardBand, compaction = this.compaction, paperCache = this.paperCache } = {}) {
+        if (this.benchmarking) throw new CadGpuError('Cannot change performance settings during a benchmark.');
+        if (!Number.isFinite(guardBand) || !(guardBand >= 0 && guardBand <= 1)) throw new RangeError('guardBand must be between 0 and 1.');
+        if (!['mask', 'scan'].includes(compaction)) throw new RangeError('compaction must be mask or scan.');
+        if (this.paperCache !== !!paperCache) this.disposePaperResources();
+        this.paperCache = !!paperCache; this.compaction = compaction; Object.assign(this.planner, { cache: !!cache, batch: !!batch, guardBand }); this.planner.invalidate(); this.requestFrame();
+    }
+    setAdaptiveResolution(options = null) { if (options && !this.hasTimestamps) throw new CadGpuError('Adaptive resolution requires actual GPU timestamp support; CPU encoding time is not substituted.'); this.governor = options ? new ResolutionGovernor(options) : null; if (!options) this.setSize(this.cssWidth, this.cssHeight, this.options.pixelRatio); }
+    render() {
+        if (!this.model || this.disposed || this.preparing || this.suspended || this.needsModelRebuild || !this.pixelBuffer) return false;
+        if (this.inFlight >= this.options.maxFramesInFlight) { this.frameDirty = true; return false; }
+        this.frameDirty = false; const start = performance.now(), frame = this.frameDescriptor(), basePages = this.viewPages || this.pages;
+        const plan = this.planner.plan(frame, { overlayRevision: this.overlayRevision, exact: this.compositing === 'exact' });
+        uploadPlacement(this); this.writeFrame(); const encoder = this.device.createCommandEncoder({ label: 'Compute CAD: persistent dispatch / sparse transfers' });
+        let dispatches = 0, culled = 0, reused = 0, clearCommands = 0;
+        // Both timestamps belong to the SAME nonempty pass. Native fills before it
+        // are intentionally excluded; do not label this compute interval as presentation time.
+        // Native buffer fills precede compute work. Queue counts/arguments survive guarded pans.
+        const preparePage = p => {
+            p.textSampleValid = false;
+            p.rebuildVisibility = plan.exact || this.planner.visibility(p, frame);
+            if (p.rebuildVisibility) { encoder.clearBuffer(p.stats, 0, 32); clearCommands++; }
+            else { encoder.clearBuffer(p.stats, 24, 4); clearCommands++; }
+        };
+        if (plan.base) for (const p of basePages) preparePage(p);
+        if (plan.overlay) { for (const p of this.annotationPages) preparePage(p); for (const p of this.previewPages) preparePage(p); }
+        // Buffer clear operations do not need an atomic store shader or a workgroup per 256 pixels.
+        if (plan.base) { encoder.clearBuffer(this.basePixelBuffer); clearCommands++; if(this.activeSpace?.kind==='paper'){encoder.clearBuffer(this.paperStats);clearCommands++;} }
+        const overlayRasterized = plan.overlay && (this.annotationPages.length > 0 || this.previewPages.length > 0);
+        if (overlayRasterized) { encoder.clearBuffer(this.pixelBuffer); clearCommands++; }
+        if (plan.exact) { encoder.clearBuffer(this.fragmentBuffer, 0, 16 + this.canvas.width * this.canvas.height * 4); clearCommands++; }
+        const sheetViews = plan.base ? this.preparePaperViews(encoder) : [];
+        const timestampWrites = this.hasTimestamps ? { querySet: this.querySet, beginningOfPassWriteIndex: 0, endOfPassWriteIndex: 1 } : undefined;
+        const pass = encoder.beginComputePass({ label: 'Compute coverage and composition', timestampWrites });
+        dispatches += encodePlacement(this,pass);
+        const dispatch = (entry, group, ...args) => { pass.setPipeline(this.pipelines[entry]); pass.setBindGroup(0, group); pass.dispatchWorkgroups(...args); dispatches++; };
+        const encodePage = p => {
+            if (p.rebuildVisibility) {
+                const cull = this.compaction === 'scan' ? 'cullScan' : 'cull';
+                dispatch(cull, p.groups[cull], p.leaves); dispatch('indirect', p.groups.indirect, 1); culled++;
+            } else reused++;
+            pass.setPipeline(this.pipelines.raster); pass.setBindGroup(0, p.groups.raster); pass.dispatchWorkgroupsIndirect(p.indirect, 0);
+            pass.setPipeline(this.pipelines.rasterBatch); pass.setBindGroup(0, p.groups.rasterBatch); pass.dispatchWorkgroupsIndirect(p.indirect, 16); dispatches += 2;
+        };
+        // Sequential compute dispatches reuse one viewport-sized coverage arena and the
+        // resident model geometry. No expanded model copy per viewport or CPU readback.
+        let viewportCoverageHits=0, viewportRasterized=0, viewportQueueHits=0, viewportQueueBuilds=0;
+        for (const v of sheetViews) {
+            clearCommands+=v.statsClearCommands;
+            if(v.reuseCoverage) viewportCoverageHits++;
+            else {
+                viewportRasterized++; dispatch('clear', v.clearGroup, ...dispatchCount(v.width*v.height));
+            }
+            for (const p of this.modelSpacePages) {
+                const q=v.queues.get(p),g=v.groups.get(p);
+                if(!v.reuseCoverage){
+                    if(q.rebuildVisibility){
+                        if(!q.owned)dispatch('reset',g.reset,1);
+                        const cull=this.compaction==='scan'?'cullScan':'cull';
+                        dispatch(cull,g[cull],p.leaves);dispatch('indirect',g.indirect,1);culled++;viewportQueueBuilds++;
+                    }else{reused++;viewportQueueHits++;}
+                    pass.setPipeline(this.pipelines.raster);pass.setBindGroup(0,g.raster);pass.dispatchWorkgroupsIndirect(q.indirect,0);
+                    pass.setPipeline(this.pipelines.rasterBatch);pass.setBindGroup(0,g.rasterBatch);pass.dispatchWorkgroupsIndirect(q.indirect,16);dispatches+=2;
+                }
+                const sum=v.reuseCoverage?'sumViewportCached':'sumViewport';dispatch(sum,g[sum],1);
+            }
+            dispatch('copyViewport',v.copyGroup,Math.ceil(v.width/8),Math.ceil(v.height/8));
+            v.rasterState.commit(v.u,this.planner.revision);
+        }
+        if (plan.base) for (const p of basePages) encodePage(p);
+        if (overlayRasterized) { for (const p of this.annotationPages) encodePage(p); for (const p of this.previewPages) encodePage(p); }
+        const texture = this.context.getCurrentTexture(), resolve = plan.exact ? 'resolveExact' : 'resolve';
+        let cached = this.resolveGroups.get(texture);
+        if (!cached) { cached = { view: texture.createView() }; this.resolveGroups.set(texture, cached); }
+        if (!cached[resolve]) cached[resolve] = this.group(resolve,
+            { 0: this.frameBuffer, 1: this.pixelBuffer, 2: this.styleBuffer, 3: this.layerBuffer, 4: cached.view, 8: this.fragmentBuffer, 9: this.basePixelBuffer }, PIXEL_BINDINGS[resolve]);
+        dispatch(resolve, cached[resolve], Math.ceil(this.canvas.width / 8), Math.ceil(this.canvas.height / 8)); pass.end();
+        if (this.hasTimestamps) encoder.resolveQuerySet(this.querySet, 0, 2, this.queryResolve, 0);
+        this.device.queue.submit([encoder.finish()]); this.planner.commit(plan); this.lastPlan = plan;
+        this.timingFrame = { frameId: this.metrics.frames + 1, epoch: this.sceneEpoch, submittedAt: start };
+        Object.assign(this.metrics, { cpuMs: performance.now() - start, frames: this.metrics.frames + 1, dispatches, clearCommands,
+            indirectBuilds: culled, indirectCacheHits: reused, viewportCoverageHits, viewportRasterized, viewportQueueHits, viewportQueueBuilds, paperCacheBytes: this.paperCacheBytes,
+            cullPasses: culled, visibilityCacheHits: reused, baseCacheHits: this.metrics.baseCacheHits + Number(!plan.base),
+            overlayCacheHits: this.metrics.overlayCacheHits + Number(!overlayRasterized), compositing: this.compositing,
+            baseRasterized: plan.base, overlayRasterized, paperViewportCount: this.activeSpace?.viewports?.filter(v=>v.number!==1&&v.supported&&v.status!==0&&!(v.flags&131072)).length || 0 });
+        this.lastFrameAt = performance.now(); this.inFlight++;
+        this.device.queue.onSubmittedWorkDone().then(() => {
+            this.inFlight--; this.metrics.queueCompletionMs = performance.now() - start;
+            if (this.frameDirty) this.requestFrame();
+        }, error => { this.inFlight--; if (!this.disposed) this.emit('error', error); });
+        this.emit('frame', { ...this.metrics, camera: { ...this.camera } }); return true;
+    }
+    /** Timestamp-only sampling: one 16-byte GPU->CPU payload, no entity traversal.
+     * Counters retain their explicit countersSampleFrame; stale maps cannot publish.
+     */
+    captureTiming({ force = false } = {}) {
+        if (this.timingPending) return this.timingPending;
+        if (this.disposed || this.preparing || !this.model || !this.metrics.frames ||
+            (!force && this.metrics.timingSampleFrame === this.metrics.frames)) return Promise.resolve({ ...this.metrics });
+        if (!this.hasTimestamps) {
+            Object.assign(this.metrics, {gpuMs:null,gpuTimingStatus:'unsupported'});
+            this.emit('metrics',this.metrics);return Promise.resolve({...this.metrics});
+        }
+        const timing=this.timingFrame,frameId=this.metrics.frames,epoch=this.sceneEpoch;
+        const sampledCpuMs=this.metrics.cpuMs,base=this.lastPlan?.base,overlay=this.lastPlan?.overlay;
+        const sample=async()=>{
+            let lease;const start=performance.now();
+            try {
+                lease=this.readbacks.acquire(16);
+                const encoder=this.device.createCommandEncoder({label:'Timestamp only: no scene readback'});
+                encoder.copyBufferToBuffer(this.queryResolve,0,lease.buffer,0,16);this.device.queue.submit([encoder.finish()]);
+                await lease.buffer.mapAsync(GPUMapMode.READ);
+                if(this.disposed || epoch!==this.sceneEpoch || frameId<(this.metrics.timingSampleFrame ?? -1))return {...this.metrics};
+                const ticks=new BigUint64Array(lease.buffer.getMappedRange(0,16));
+                const value=timing?.frameId===frameId && timing.epoch===epoch?
+                    decodeGpuInterval(ticks[0],ticks[1],{wallUpperBoundMs:performance.now()-timing.submittedAt}):{gpuMs:null,gpuTimingStatus:'stale-sample'};
+                Object.assign(this.metrics,value,{timingSampleFrame:frameId,timingBaseRasterized:base,timingCpuMs:sampledCpuMs,sampledCpuMs,sampledBaseRasterized:base,sampledOverlayRasterized:overlay,
+                    bytesReadback:this.metrics.bytesReadback+16,timingReadbackBytes:16,timingReadbackMs:performance.now()-start});
+                this.sampleResolutionGovernor(frameId,base);
+                this.emit('metrics',this.metrics);return {...this.metrics};
+            }finally{lease?.release();}
+        };
+        this.timingPending=sample().finally(()=>{this.timingPending=null;});return this.timingPending;
+    }
+    sampleResolutionGovernor(frameId, base) {
+        if(this.governor && base && this.hasTimestamps && frameId===this.metrics.timingSampleFrame && frameId>(this.lastGovernorFrame ?? -1)){
+            this.lastGovernorFrame=frameId;const scale=this.governor.sample(this.metrics.gpuMs);
+            if(scale!==null)this.setSize(this.cssWidth,this.cssHeight,this.options.pixelRatio*scale);
+        }
+    }
+    async captureMetrics({ force = false } = {}) {
+        if (this.measuring || !this.model || !this.metrics.frames || (!force && this.metrics.measuredFrame === this.metrics.frames)) return { ...this.metrics };
+        this.measuring = true; const pages = [...(this.viewPages || this.pages), ...this.annotationPages, ...this.previewPages];
+        if (this.metrics.paperViewportCount) pages.push({ stats: this.paperStats, textSampleValid: true, isViewSummary: true });
+        const timingFrame = this.timingFrame, epoch = this.sceneEpoch;
+        const size = 32 + pages.length * 32, frameId = this.metrics.frames, sampledCpuMs = this.metrics.cpuMs, sampledCompositing = this.compositing, fullFrame = this.lastPlan?.base, overlayFrame = this.lastPlan?.overlay;
+        let lease;
+        try {
+            const sampleStart = performance.now(), samplePages = pages.filter(p => !p.isViewSummary && (force || !p.textSampleValid)); lease = this.readbacks.acquire(size); const buffer = lease.buffer;
+            const encoder = this.device.createCommandEncoder();
+            if (this.hasTimestamps) encoder.copyBufferToBuffer(this.queryResolve, 0, buffer, 0, 16);
+            // Text/glyph diagnostics are paid only by explicit capture, not every render.
+            if (samplePages.length) {
+                for (const p of samplePages) encoder.clearBuffer(p.stats, 4, 12);
+                const diagnostics = encoder.beginComputePass({ label: 'On-demand text diagnostics (outside frame timing)' });
+                diagnostics.setPipeline(this.pipelines.sampleText);
+                for (const p of samplePages) { diagnostics.setBindGroup(0, p.groups.sampleText); diagnostics.dispatchWorkgroupsIndirect(p.indirect, 32); }
+                diagnostics.end();
+            }
+            encoder.copyBufferToBuffer(this.fragmentBuffer, 0, buffer, 16, 16);
+            pages.forEach((p, i) => encoder.copyBufferToBuffer(p.stats, 0, buffer, 32 + i * 32, 32));
+            this.device.queue.submit([encoder.finish()]); for (const p of samplePages) p.textSampleValid = true; await buffer.mapAsync(GPUMapMode.READ);
+            const mapped = buffer.getMappedRange(0, size), u = new Uint32Array(mapped);
+            if (epoch !== this.sceneEpoch || this.disposed) return { ...this.metrics };
+            if (this.hasTimestamps && timingFrame?.frameId === frameId && timingFrame.epoch === epoch) {
+                const ticks = new BigUint64Array(mapped, 0, 2);
+                if (frameId >= (this.metrics.timingSampleFrame ?? -1)) Object.assign(this.metrics, decodeGpuInterval(ticks[0], ticks[1], { wallUpperBoundMs: performance.now() - timingFrame.submittedAt }), { timingSampleFrame: frameId, timingBaseRasterized: fullFrame, timingCpuMs: sampledCpuMs });
+            } else Object.assign(this.metrics, { gpuMs: null, gpuTimingStatus: this.hasTimestamps ? 'stale-sample' : 'unsupported' });
+            let visible = 0, texts = 0, proxyTexts = 0, glyphs = 0, batchEntities = 0, cooperativeEntities = 0, curveCapHits = 0;
+            for (let i = 0; i < pages.length; i++) { const o = 8 + i * 8; visible += u[o]; texts += u[o + 1]; proxyTexts += u[o + 2]; glyphs += u[o + 3]; batchEntities += u[o + 4]; cooperativeEntities += u[o + 5]; curveCapHits += u[o + 6]; }
+            const fragmentOverflow = sampledCompositing === 'exact' && !!u[5], fragmentCount = sampledCompositing === 'exact' ? u[4] : 0;
+            Object.assign(this.metrics, { visible, texts, proxyTexts, glyphs: this.metrics.paperViewportCount ? null : glyphs, batchEntities, cooperativeEntities, curveCapHits, fragmentOverflow, fragmentCount,
+                sampledCpuMs, sampledBaseRasterized: fullFrame, sampledOverlayRasterized: overlayFrame, gpuBytes: this.allocatedBytes(), bytesReadback: this.metrics.bytesReadback + size, measuredFrame: frameId, countersSampleFrame: frameId,
+                executedRasterWorkgroups: pages.reduce((n, p, i) => n + ((p.overlay ? overlayFrame : fullFrame) ? (p.isViewSummary ? u[8 + i * 8 + 7] : u[8 + i * 8 + 5] + Math.ceil(u[8 + i * 8 + 4] / 64)) : 0), 0),
+                rasterWorkgroups: pages.reduce((n, p, i) => n + (p.isViewSummary ? u[8+i*8+7] : u[8+i*8+5]+Math.ceil(u[8+i*8+4]/64)), 0) });
+            buffer.unmap();
+            if (fragmentOverflow && !this.lastOverflow) this.emit('error', new CadGpuError('Exact compositing fragment arena overflow. This frame is incomplete; raise fragmentCapacity, reduce overlap, or choose opaque mode.'));
+            this.lastOverflow = fragmentOverflow;
+            // A cached resolve-only frame must never drive the raster-resolution governor.
+            this.sampleResolutionGovernor(frameId, fullFrame);
+            this.metrics.telemetryWallMs = performance.now() - sampleStart; this.metrics.telemetryDispatches = samplePages.length; this.metrics.telemetryCacheHits = pages.length - samplePages.length;
+            this.emit('metrics', this.metrics); return { ...this.metrics };
+        } finally { lease?.release(); this.measuring = false; }
+    }
+    /** Select resident page partitions. This operation uploads no entity geometry. */
+    setSpace(id, { fit = true } = {}) {
+        if(this.selectionRanges?.length)this.selectEntities([]);
+        if (!this.model?.spaces) { if (id !== 'model') throw new CadGpuError('Unknown drawing space.'); return; }
+        const space = this.model.spaces.find(s=>s.id===id); if (!space) throw new CadGpuError('Unknown drawing space: '+id);
+        if (space.kind === 'paper' && this.compositing === 'exact' && space.viewports.some(v=>v.number!==1&&v.supported)) this.setCompositing('opaque');
+        this.disposePaperResources(); this.activeSpace = space; this.model.origin = space.origin || [0,0];
+        this.viewPages = space.pageIndices.map(i=>this.pages[i]);
+        this.modelSpacePages = (this.model.spaces.find(s=>s.kind==='model')?.pageIndices || []).map(i=>this.pages[i]);
+        const b=[Infinity,Infinity,-Infinity,-Infinity];
+        const include=x=>{if(!x||x.some(v=>!Number.isFinite(v)||Math.abs(v)>=1e20)||x[2]<x[0]||x[3]<x[1])return; b[0]=Math.min(b[0],x[0]);b[1]=Math.min(b[1],x[1]);b[2]=Math.max(b[2],x[2]);b[3]=Math.max(b[3],x[3]);};
+        for(const p of this.viewPages)include(p.finiteBounds);
+        for(const v of space.viewports)if(v.number!==1&&v.width>0&&v.height>0)include([v.center[0]-v.width/2-this.model.origin[0],v.center[1]-v.height/2-this.model.origin[1],v.center[0]+v.width/2-this.model.origin[0],v.center[1]+v.height/2-this.model.origin[1]]);
+        if(space.kind==='paper'&&space.paperSize)include([-this.model.origin[0],-this.model.origin[1],space.paperSize[0]-this.model.origin[0],space.paperSize[1]-this.model.origin[1]]);
+        this.extents=Number.isFinite(b[0])?b:[-100,-100,100,100];
+        this.selected=0;this.hovered=0;this.camera.angle=0;this.sceneEpoch++;this.resetTiming();this.planner.invalidate();
+        if(fit)this.fit();this.requestFrame();this.emit('space',space);
+    }
+    setNamedView(view) {
+        if((view.spaceId?.startsWith('layout:') && Math.abs(view.twist || 0)>1e-10) || !supportedPlanView(view))throw new CadGpuError('This saved view uses an unsupported projection or clipping boundary.');
+        this.setSpace(view.kind==='viewport'?'model':view.spaceId || 'model',{fit:false});
+        const c=viewCamera(view);this.camera={...c,x:c.x-this.model.origin[0],y:c.y-this.model.origin[1],zoom:Math.min(this.cssHeight/view.viewHeight,view.viewWidth>0?this.cssWidth/view.viewWidth:Infinity)};
+        this.planner.invalidate();this.requestFrame();
+    }
+    /** Optional caches never make an otherwise admissible edit/resize fail. */
+    trimPaperCaches(requiredBytes = 0) {
+        if (this.paperCacheBytes && this.allocatedBytes() + requiredBytes > this.options.memoryBudget) this.disposePaperResources();
+    }
+    invalidatePageViews(pages) {
+        const affected = new Set(pages); this.planner.invalidatePages(affected);
+        for (const v of this.paperResources.values()) {
+            for (const [source, q] of v.queues) if (affected.has(source)) {
+                this.planner.invalidatePages([q]); v.rasterState.invalidate();
+            }
+        }
+    }
+    disposePaperResources() {
+        if (!this.paperResources) return;
+        for (const v of this.paperResources.values()) {
+            v.frame.destroy(); v.layers.destroy(); v.surface?.destroy();
+            for (const q of v.queues.values()) if (q.owned) { q.visible.destroy(); q.stats.destroy(); q.indirect.destroy(); }
+        }
+        this.paperResources.clear(); this.paperCacheBytes = 0;
+        this.paperScratch?.destroy(); this.paperScratch = null;
+    }
+    canCachePaper(bytes) {
+        return this.paperCache && this.planner.cache && this.paperCacheBytes + bytes <= this.options.paperCacheBudget &&
+            this.allocatedBytes() + bytes + (this.paperStateReserve || 0) <= this.options.memoryBudget;
+    }
+    bindPaperView(v) {
+        const surface = v.surface || this.paperScratch;
+        v.clearGroup = this.group('clear', {0:v.frame,1:surface}, PIXEL_BINDINGS.clear);
+        v.copyGroup = this.group('copyViewport', {0:v.frame,1:surface,9:this.basePixelBuffer}, PIXEL_BINDINGS.copyViewport);
+        v.groups.clear();
+        for (const p of this.modelSpacePages) {
+            const q = v.queues.get(p);
+            const resources={0:v.frame,1:p.header,2:p.entities,3:p.aux,4:p.bounds,5:q.visible,6:q.stats,7:v.layers,
+                8:this.fontBuffer,9:surface,10:this.atlasView,12:this.fontInfo,13:q.indirect,14:p.order,
+                15:this.fragmentBuffer,16:this.atlasSampler,17:this.paperStats};
+            const groups={};
+            for (const entry of ['cull','cullScan','raster','rasterBatch','reset','indirect','sumViewport','sumViewportCached'])
+                groups[entry]=this.group(entry,resources,SCENE_BINDINGS[entry]);
+            v.groups.set(p,groups);
+        }
+    }
+    preparePaperViews(encoder) {
+        try { return this.preparePaperViewsCore(encoder); }
+        catch(error) { this.disposePaperResources(); this.planner.invalidate(); throw error; }
+        finally { this.paperStateReserve=0; }
+    }
+    preparePaperViewsCore(encoder) {
+        if(this.activeSpace?.kind!=='paper')return [];
+        const views=this.activeSpace.viewports.filter(v=>v.number!==1&&v.supported&&v.status!==0&&!(v.flags&131072));
+        if(!views.length||!this.modelSpacePages?.length)return [];
+        const size=this.canvas.width*this.canvas.height*4;
+        if(!this.paperScratch){if(this.allocatedBytes()+size>this.options.memoryBudget)throw new CadGpuError('Paper viewport scratch exceeds the GPU budget.');this.paperScratch=this.buffer('Reusable paper viewport coverage',size,GPUBufferUsage.STORAGE);}
+        this.paperStateReserve=views.filter(view=>!this.paperResources.has(view.id)).length*(128+this.layers.length*16);
+        const result=[], zoom=this.camera.zoom*this.ratio,modelOrigin=this.model.spaces.find(s=>s.kind==='model')?.origin || [0,0];
+        for(const view of views){
+            const cx=(view.center[0]-this.model.origin[0]-this.camera.x)*zoom+this.canvas.width/2,cy=-(view.center[1]-this.model.origin[1]-this.camera.y)*zoom+this.canvas.height/2;
+            const x=Math.max(0,Math.ceil(cx-view.width*zoom/2)), y=Math.max(0,Math.ceil(cy-view.height*zoom/2));
+            const width=Math.min(this.canvas.width,Math.ceil(cx+view.width*zoom/2))-x, height=Math.min(this.canvas.height,Math.ceil(cy+view.height*zoom/2))-y;
+            if(width<=0||height<=0)continue;
+            let v=this.paperResources.get(view.id), rebind=false;
+            if(!v){
+                const layerBytes=this.layers.length*16;
+                this.paperStateReserve-=128+layerBytes;
+                if(this.allocatedBytes()+128+layerBytes>this.options.memoryBudget)throw new CadGpuError('Paper viewport state exceeds the GPU budget.');
+                let frame,layers;try{frame=this.buffer('Paper viewport camera',128,GPUBufferUsage.UNIFORM|GPUBufferUsage.COPY_DST);layers=this.buffer('Viewport frozen-layer palette',layerBytes,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST);}catch(e){frame?.destroy();layers?.destroy();throw e;}
+                const data=new ArrayBuffer(128);
+                v={frame,layers,data,u:new Uint32Array(data),f:new Float32Array(data),previous:new Uint32Array(32),groups:new Map(),queues:new Map(),initialized:false,layerVersion:-1,frozenKey:null,rasterState:new PaperRasterState()};
+                this.paperResources.set(view.id,v); rebind=true;
+                for(const p of this.modelSpacePages){
+                    const bytes=paperQueueBytes(p.count); let q;
+                    if(this.canCachePaper(bytes)){
+                        const owned=[];
+                        try {
+                            const alloc=(...args)=>{const b=this.buffer(...args);owned.push(b);return b;};
+                            q={owned:true,visible:alloc('Viewport exact-capacity queue',p.count*4,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_SRC),
+                                stats:alloc('Viewport GPU counts',64,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_SRC|GPUBufferUsage.COPY_DST),
+                                indirect:alloc('Viewport persistent dispatch arguments',48,GPUBufferUsage.STORAGE|GPUBufferUsage.INDIRECT|GPUBufferUsage.COPY_SRC),bytes};
+                            this.paperCacheBytes+=bytes;
+                        }catch(error){for(const b of owned)b.destroy();throw error;}
+                    }else q={owned:false,visible:p.visible,stats:p.stats,indirect:p.indirect,bytes:0};
+                    v.queues.set(p,q);
+                }
+            }
+            // Cache only exact coverage. Allocation limits fall back to the same compute raster path.
+            const surfaceBytes=align(width*height*4,256);
+            if(v.surface && v.surface.size<surfaceBytes){this.paperCacheBytes-=v.surface.size;v.surface.destroy();v.surface=null;v.rasterState.invalidate();rebind=true;}
+            if(!v.surface && [...v.queues.values()].every(q=>q.owned) && this.canCachePaper(surfaceBytes)){
+                v.surface=this.buffer('Persistent paper viewport coverage',surfaceBytes,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_SRC);
+                this.paperCacheBytes+=v.surface.size;v.rasterState.invalidate();rebind=true;
+            }
+            if(rebind)this.bindPaperView(v);
+            const frozenKey=JSON.stringify(view.frozenLayers || []);
+            if(this.layerRevision!==v.layerVersion || frozenKey!==v.frozenKey){
+                const frozen=new Set(view.frozenLayers),a=new Uint32Array(this.layers.length*4);
+                this.layers.forEach((l,i)=>a.set([l.color,Number(l.visible&&!frozen.has(l.name)),Number(l.locked),0],i*4));
+                this.device.queue.writeBuffer(v.layers,0,a);this.metrics.bytesUploaded+=a.byteLength;
+                v.layerVersion=this.layerRevision;v.frozenKey=frozenKey;v.rasterState.invalidate();
+                this.planner.invalidatePages(v.queues.values());
+            }
+            const f=v.f,u=v.u;u.set(this.frameU);
+            const c=viewCamera(view),scale=view.height*zoom/view.viewHeight,dx=(x+width/2-cx)/scale,dy=-(y+height/2-cy)/scale,co=Math.cos(c.angle),si=Math.sin(c.angle);
+            const wx=c.x+co*dx-si*dy-modelOrigin[0],wy=c.y+si*dx+co*dy-modelOrigin[1];
+            f[0]=Math.fround(wx);f[1]=Math.fround(wy);f[2]=wx-f[0];f[3]=wy-f[1];f[4]=width;f[5]=height;f[6]=scale;
+            f[20]=this.planner.guardBand;f[24]=co;f[25]=si;f[26]=x;f[27]=y;f[30]=this.canvas.width;f[31]=this.canvas.height;
+            u[12]=0;u[13]&=2;u[14]=0;f[29]=0; // Selection/grid/overlay state is applied only by final resolve.
+            let first=0,last=31;if(v.initialized){while(first<32&&u[first]===v.previous[first])first++;while(last>=first&&u[last]===v.previous[last])last--;}
+            if(last>=first){const bytes=(last-first+1)*4;this.device.queue.writeBuffer(v.frame,first*4,v.data,first*4,bytes);this.metrics.bytesUploaded+=bytes;this.metrics.frameUniformBytes+=bytes;v.previous.set(u);v.initialized=true;}
+            v.width=width;v.height=height;
+            v.reuseCoverage=!!v.surface && this.paperCache && this.planner.cache && v.rasterState.matches(u,this.planner.revision);
+            const frame={camera:{x:wx,y:wy,zoom:scale/this.ratio,angle:c.angle},width,height,ratio:this.ratio,settings:this.settings,flags:this.flags,fontRevision:this.fontRevision};
+            v.statsClearCommands=0;
+            for(const [p,q] of v.queues){
+                q.rebuildVisibility=!q.owned || !this.paperCache || this.planner.visibility(q,frame);
+                if(!v.reuseCoverage && q.owned){
+                    encoder.clearBuffer(q.stats,q.rebuildVisibility?0:24,q.rebuildVisibility?32:4);v.statsClearCommands++;
+                    if(q.rebuildVisibility)encoder.copyBufferToBuffer(p.stats,32,q.stats,32,4);
+                }
+            }
+            result.push(v);
+        }
+        this.paperStateReserve=0;return result;
+    }
+    resetTiming() { Object.assign(this.metrics, { gpuMs: null, gpuTimingStatus: this.hasTimestamps ? 'not-sampled' : 'unsupported', measuredFrame: -1, timingSampleFrame: -1, countersSampleFrame: -1 }); }
+    allocatedBytes() {
+        const pages = [...this.pages, ...this.annotationPages, ...this.previewPages];
+        return pages.reduce((n, p) => n + p.bytes, 0) + [this.frameBuffer, this.fontBuffer, this.fontInfo, this.basePixelBuffer, this.pixelBuffer,
+            this.fragmentBuffer, this.styleBuffer, this.layerBuffer, this.paperStats, this.paperScratch, this.queryResolve, this.pickBuffer, this.pickParams, this.measureParams].reduce((n, b) => n + (b?.size || 0), 0)
+            + (this.font ? this.font.atlasWidth * this.font.atlasHeight * 4 : 0) + (this.readbacks?.bytes || 0) + [...this.paperResources.values()].reduce((n,v)=>n+v.frame.size+v.layers.size,0) + this.paperCacheBytes;
+    }
+    /** Strict-quality A/B: identical moving-camera trace and display settings in every profile. */
+    async benchmarkProfiles({ frames = 60, warmup = 8, panPixels = 160, profiles = [{ name: 'reference', cache: false, batch: false, compaction: 'scan', paperCache: false }, { name: 'optimized', cache: true, batch: true, compaction: 'mask', paperCache: true }] } = {}) {
+        if (!Number.isInteger(frames) || frames < 2 || frames > 10000 || !Number.isInteger(warmup) || warmup < 0 || warmup > 1000 || !Number.isFinite(panPixels)) throw new RangeError('Invalid benchmark configuration.');
+        if (!this.model || this.benchmarking || this.preparing || this.needsModelRebuild) throw new CadGpuError('Benchmark requires an idle resident drawing.');
+        if (!Array.isArray(profiles) || !profiles.length || profiles.some(p => typeof p.name !== 'string' || typeof p.cache !== 'boolean' || typeof p.batch !== 'boolean' || (p.compaction !== undefined && !['mask','scan'].includes(p.compaction)) || (p.paperCache !== undefined && typeof p.paperCache !== 'boolean'))) throw new RangeError('Benchmark profiles require names, cache/batch flags and a valid optional compaction mode.');
+        this.benchmarking = true; const camera = { ...this.camera }, old = { cache: this.planner.cache, batch: this.planner.batch, guardBand: this.planner.guardBand }, governor = this.governor, oldCompaction = this.compaction, oldPaperCache = this.paperCache, wasSuspended = this.suspended;
+        this.governor = null; this.suspended = true; if (this.pendingFrame) { cancelAnimationFrame(this.pendingFrame); this.pendingFrame = 0; }
+        const result = { schema: 'aperture-benchmark/4', gpuTimingScope: 'compute-pass (excludes native fills, uploads, queue waits and presentation)', capturedAt: new Date().toISOString(), adapter: this.info, entityCount: this.model.count,
+            viewport: [this.canvas.width, this.canvas.height], settings: { ...this.settings }, flags: this.flags, compositing: this.compositing,
+            quality: { exactText: !(this.flags & 2), adaptiveResolution: false }, trace: { type: 'sinusoidal-pan', frames, warmup, panPixels }, profiles: [] };
+        const signature = JSON.stringify([this.settings, this.flags, this.canvas.width, this.canvas.height, this.model.count, this.fontRevision, this.compositing]);
+        try {
+            await this.device.queue.onSubmittedWorkDone();
+            for (const profile of profiles) {
+                this.disposePaperResources(); this.paperCache = profile.paperCache ?? oldPaperCache;
+                Object.assign(this.planner, old, { cache: profile.cache, batch: profile.batch }); this.compaction = profile.compaction || oldCompaction; this.planner.invalidate(); const samples = [];
+                for (let i = -warmup; i < frames; i++) {
+                    const t = Math.max(0, i) / (frames - 1); this.camera.x = camera.x + Math.sin(t * Math.PI * 2) * panPixels / camera.zoom;
+                    this.camera.y = camera.y + Math.sin(t * Math.PI * 4) * panPixels * .2 / camera.zoom;
+                    const start = performance.now(); this.suspended = false; const submitted = this.render(); this.suspended = true;
+                    if (!submitted) throw new CadGpuError('Benchmark frame was not submitted.');
+                    await this.device.queue.onSubmittedWorkDone(); const completionMs = performance.now() - start;
+                    const m = await this.captureMetrics(); const iterationWallMs = performance.now() - start;
+                    if (JSON.stringify([this.settings, this.flags, this.canvas.width, this.canvas.height, this.model.count, this.fontRevision, this.compositing]) !== signature) throw new CadGpuError('Benchmark cancelled: model or rendering quality changed.');
+                    if (m.fragmentOverflow) throw new CadGpuError('Benchmark rejected an incomplete exact-compositing frame.');
+                    if (i >= 0) samples.push({ cpuEncodeMs: m.cpuMs, gpuMs: m.gpuMs, gpuTimingStatus: m.gpuTimingStatus, queueCompletionMs: completionMs,
+                        telemetryWallMs: m.telemetryWallMs, iterationWallMs, frameUniformBytes: m.frameUniformBytes, indirectBuilds: m.indirectBuilds, clearCommands: m.clearCommands, cullPasses: m.cullPasses, visibilityCacheHits: m.visibilityCacheHits, rasterWorkgroups: m.rasterWorkgroups,
+                        visibleCandidates: m.visible, curveCapHits: m.curveCapHits });
+                }
+                result.profiles.push({ name: profile.name, cache: this.planner.cache, batch: this.planner.batch, compaction: this.compaction, samples, invalidGpuSamples: samples.filter(s=>s.gpuMs===null).length,
+                    cpuEncodeMs: summarizeSamples(samples.map(s => s.cpuEncodeMs)), gpuMs: summarizeSamples(samples.map(s => s.gpuMs).filter(v => v !== null)),
+                    queueCompletionMs: summarizeSamples(samples.map(s => s.queueCompletionMs)), telemetryWallMs: summarizeSamples(samples.map(s => s.telemetryWallMs)), iterationWallMs: summarizeSamples(samples.map(s => s.iterationWallMs)) });
+            }
+            return result;
+        } finally { Object.assign(this.camera, camera); Object.assign(this.planner, old); this.compaction = oldCompaction; this.paperCache = oldPaperCache; this.disposePaperResources(); this.planner.invalidate(); this.governor = governor; this.benchmarking = false; this.suspended = wasSuspended; this.requestFrame(); }
+    }
+    /** Patch existing fixed-size source records; no scene-wide upload or CPU tessellation. */
+    async patchEntities(changes) {
+        if (!Array.isArray(changes) || !changes.length) return;
+        if (!this.model || this.preparing || this.benchmarking || this.needsModelRebuild) throw new CadGpuError('The drawing is not available for editing.');
+        const affected = new Set(), writes = [], seen = new Set();
+        for (const change of changes) {
+            const { id } = change; if (!Number.isInteger(id) || seen.has(id)) throw new RangeError('Patch IDs must be unique integers.'); seen.add(id);
+            const page = this.pages.find(p => id > p.idBase && id <= p.idBase + p.count);
+            if (!page?.source.entities) throw new CadGpuError('Patch requires a retained source record; synthetic pages are GPU-generated.');
+            const offset = (id - page.idBase - 1) * ENTITY_BYTES, data = page.source.entities.slice(offset, offset + ENTITY_BYTES), f = new Float32Array(data), u = new Uint32Array(data);
+            for (const key of Object.keys(change)) if (!['id', 'anchor', 'p', 'q', 'r', 'color', 'layer', 'flags'].includes(key)) throw new RangeError('Unsupported fixed-record patch: ' + key);
+            for (const [key, at, size] of [['anchor', 0, 2], ['p', 4, 4], ['q', 8, 4], ['r', 12, 4]]) if (key in change) {
+                const a = change[key]; if (!Array.isArray(a) || a.length !== size || a.some(v => !Number.isFinite(v) || !Number.isFinite(Math.fround(v)))) throw new RangeError('Invalid patch ' + key);
+                if (key === 'anchor') { const [xh, xl] = split64(a[0]), [yh, yl] = split64(a[1]); f.set([xh, yh, xl, yl]); } else f.set(a, at);
+            }
+            for (const [key, at] of [['color', 17], ['layer', 18], ['flags', 23]]) if (key in change) {
+                const n = change[key]; if (!Number.isInteger(n) || n < 0 || n > 0xffffffff || (key === 'layer' && n >= this.model.layers.length)) throw new RangeError('Invalid patch ' + key); u[at] = n;
+            }
+            const source = new Uint32Array(page.source.entities, offset, 32);
+            if (u.every((value, i) => value === source[i])) continue;
+            const geometry = ['anchor', 'p', 'q', 'r', 'flags'].some(key => key in change);
+            const colorChanged = u[17] !== source[17], layerChanged = u[18] !== source[18];
+            writes.push({ id, page, offset, data, geometry, colorChanged, layerChanged }); if (geometry) affected.add(page);
+        }
+        if (affected.size) this.trimPaperCaches(this.editScratchBytes([...affected]));
+        if (affected.size && this.allocatedBytes() + this.editScratchBytes([...affected]) > this.options.memoryBudget)
+            throw new CadGpuError('Entity edit exceeds the GPU budget including spatial-index scratch. No records were changed.');
+        if (!writes.length) return;
+        this.preparing = true;
+        try {
+            const geometryWrites = writes.filter(w => w.geometry).sort((a,b) => a.page.idBase - b.page.idBase || a.offset - b.offset);
+            for (const { page, offset, data } of writes) new Uint8Array(page.source.entities, offset, ENTITY_BYTES).set(new Uint8Array(data));
+            let uploaded = 0, calls = 0;
+            const upload = (buffer, destinationOffset, source, sourceOffset, size) => {
+                this.device.queue.writeBuffer(buffer, destinationOffset, source, sourceOffset, size); uploaded += size; calls++;
+            };
+            // Adjacent edited records share one queue write. Geometry processing remains on GPU.
+            for (let i = 0; i < geometryWrites.length;) {
+                const first = geometryWrites[i++]; let end = first.offset + ENTITY_BYTES;
+                while (i < geometryWrites.length && geometryWrites[i].page === first.page && geometryWrites[i].offset === end) { end += ENTITY_BYTES; i++; }
+                upload(first.page.entities, first.offset, first.page.source.entities, first.offset, end - first.offset);
+            }
+            for (const w of writes) if (!w.geometry) {
+                const first = w.colorChanged ? 17 : 18, last = w.layerChanged ? 18 : 17, size = (last - first + 1) * 4;
+                upload(w.page.entities, w.offset + first * 4, w.data, first * 4, size);
+                upload(this.styleBuffer, w.id * 8 + (first - 17) * 4, w.data, first * 4, size);
+                if (w.layerChanged) this.invalidatePageViews([w.page]);
+            }
+            this.metrics.bytesUploaded += uploaded; this.metrics.editUploadCalls = calls;
+            // No pre-edit whole-queue wait: writes and the rebuild submission are ordered on one queue.
+            if (affected.size) { await this.rebuildPages([...affected]); this.invalidatePageViews(affected); }
+            this.emit('edit', { ids: writes.map(w => w.id), bytesUploaded: uploaded, writeCalls: calls, rebuiltPages: affected.size });
+        } finally { this.preparing = false; this.requestFrame(); }
+    }
+    editScratchBytes(pages) { return pages.length ? Math.max(...pages.map(p => p.count)) * 8 + 2048 + Math.max(4, pages.length * 16) : 0; }
+    async rebuildPages(pages) {
+        if (!pages.length) return;
+        if (this.allocatedBytes() + this.editScratchBytes(pages) > this.options.memoryBudget)
+            throw new CadGpuError('Spatial-index rebuild exceeds the GPU allocation budget.');
+        let ranks, buckets, readback;
+        try {
+            ranks = this.buffer('Edit spatial-rank scratch', Math.max(...pages.map(p => p.count)) * 8, GPUBufferUsage.STORAGE);
+            buckets = this.buffer('Edit spatial-prefix scratch', 2048, GPUBufferUsage.STORAGE);
+            readback = this.buffer('Changed page bounds only', pages.length * 16, GPUBufferUsage.COPY_DST | GPUBufferUsage.MAP_READ);
+            const encoder = this.device.createCommandEncoder(), pass = encoder.beginComputePass();
+            for (const p of pages) {
+                pass.setPipeline(this.pipelines.prepare); pass.setBindGroup(0, p.groups.prepare); pass.dispatchWorkgroups(p.leaves);
+                pass.setPipeline(this.pipelines.reduceBounds); pass.setBindGroup(0, p.groups.reduceBounds); pass.dispatchWorkgroups(1);
+                const resources = { 0: p.header, 1: p.bounds, 2: p.order, 3: ranks, 4: buckets };
+                for (const [entry, bindings] of Object.entries(INDEX_BINDINGS)) { pass.setPipeline(this.pipelines[entry]); pass.setBindGroup(0, this.group(entry, resources, bindings)); pass.dispatchWorkgroups(entry === 'spatialClear' || entry === 'spatialScan' ? 1 : p.leaves); }
+            }
+            pass.end(); pages.forEach((p, i) => encoder.copyBufferToBuffer(p.bounds, (p.count + p.leaves) * 16, readback, i * 16, 16));
+            this.device.queue.submit([encoder.finish()]); await readback.mapAsync(GPUMapMode.READ); const f = new Float32Array(readback.getMappedRange());
+            for (let i = 0; i < pages.length; i++) pages[i].finiteBounds = Array.from(f.subarray(i * 4, i * 4 + 4));
+            const box = [Infinity, Infinity, -Infinity, -Infinity];
+            // These are 16-byte page roots already returned by explicit preparation, not host entity geometry.
+            for (const page of (this.viewPages || this.pages)) { const b = page.finiteBounds; if (!b || b[2] < b[0] || b[3] < b[1]) continue;
+                box[0] = Math.min(box[0], b[0]); box[1] = Math.min(box[1], b[1]); box[2] = Math.max(box[2], b[2]); box[3] = Math.max(box[3], b[3]); }
+            this.extents = box.every(v => Number.isFinite(v) && Math.abs(v) < 1e20) && box[2] >= box[0] ? box : [-100,-100,100,100];
+            readback.unmap(); this.metrics.bytesReadback += pages.length * 16;
+        } finally { ranks?.destroy(); buckets?.destroy(); readback?.destroy(); }
+    }
+    query(entry, params) { const work = this.queryTail.catch(() => { }).then(() => this.executeQuery(entry, params)); this.queryTail = work; return work; }
+    async executeQuery(entry, params) { this.queryBusy = true; let lease; try {
+        if (this.disposed) throw new CadGpuError('Cannot query a disposed engine.');
+        const target = entry === 'pick' ? this.pickParams : this.measureParams;
+        this.device.queue.writeBuffer(target, 0, params);
+        this.metrics.bytesUploaded += params.byteLength;
+        const encoder = this.device.createCommandEncoder(), pass = encoder.beginComputePass();
+        pass.setPipeline(this.pipelines[entry]);
+        pass.setBindGroup(0, this.pixelGroups[entry]);
+        pass.dispatchWorkgroups(1);
+        pass.end();
+        lease = this.readbacks.acquire(16); const readback = lease.buffer;
+        encoder.copyBufferToBuffer(this.pickBuffer, 0, readback, 0, 16);
+        this.device.queue.submit([encoder.finish()]);
+        await readback.mapAsync(GPUMapMode.READ);
+        const result = readback.getMappedRange(0, 16).slice(0);
+        readback.unmap();
+        this.metrics.bytesReadback += 16;
+        return result;
+    }
+    finally {
+        lease?.release();
+        this.queryBusy = false;
+    } }
+    async pick(x, y, radius = 5, baseOnly = false) { if (!this.model)
+        return 0; const result = await this.query('pick', new Uint32Array([Math.round(x * this.ratio), Math.round(y * this.ratio), Math.round(radius * this.ratio), Number(baseOnly)])); return result ? new Uint32Array(result)[0] : 0; }
+    async measure(a, b) { const origin = this.model?.origin || [0, 0], [ax, alx] = split64(a[0] - origin[0]), [ay, aly] = split64(a[1] - origin[1]), [bx, blx] = split64(b[0] - origin[0]), [by, bly] = split64(b[1] - origin[1]); const result = await this.query('measure', new Float32Array([ax, ay, alx, aly, bx, by, blx, bly])); return result ? Array.from(new Float32Array(result)) : null; }
+    describe(id) {
+        const p = [...this.pages, ...this.annotationPages, ...this.previewPages].find(p => id > p.idBase && id <= p.idBase + p.count);
+        if (!p)
+            return null;
+        let type = null, layer = null, color = null;
+        if (p.source.entities) {
+            const u = new Uint32Array(p.source.entities), j = (id - p.idBase - 1) * 32;
+            type = u[j + 16];
+            color = u[j + 17];
+            layer = u[j + 18];
+        }
+        else if (this.model?.synthetic) {
+            const global = id - 1, typeIndex = this.model.synthetic.mode === 2 ? 4 : global % 10 === 9 ? 2 : global % 10 >= 6 ? 4 : 1;
+            type = typeIndex;
+            layer = type === 4 ? 2 : type === 2 ? 1 : 0;
+        }
+        return { id, type, layer: layer === null ? 'Unknown' : this.layers[layer]?.name, color, handle: p.source.handles?.[id - p.idBase - 1] || null, gpuResident: true };
+    }
+    async exportPng() { await this.device.queue.onSubmittedWorkDone(); this.render(); await this.device.queue.onSubmittedWorkDone(); return new Promise((resolve, reject) => this.canvas.toBlob(blob => blob ? resolve(blob) : reject(new CadGpuError('Canvas export failed.')), 'image/png')); }
+    dispose() { this.disposed = true; if (this.pendingFrame)
+        cancelAnimationFrame(this.pendingFrame); this.paperStats?.destroy(); this.readbacks?.dispose(); this.disposeScene(); for (const b of [this.frameBuffer, this.fontBuffer, this.fontInfo, this.pixelBuffer, this.basePixelBuffer, this.fragmentBuffer, this.pickBuffer, this.pickParams, this.measureParams, this.queryResolve])
+        b?.destroy(); this.atlas?.destroy(); this.querySet?.destroy(); this.device?.destroy(); }
+}
+/** No million-record CPU array: raw records, IDs and unique numeric labels are GPU-generated. */
+function makeSyntheticModel(font, count = 1000000, mode = 1) {
+    if (!Number.isInteger(count) || count < 1 || count > 16000000)
+        throw new RangeError('Synthetic entity count must be 1…16,000,000.');
+    const pages = [];
+    for (let base = 0; base < count; base += PAGE_ENTITIES) {
+        const n = Math.min(PAGE_ENTITIES, count - base), builder = new PageBuilder(font, { pageSize: 1, idBase: base });
+        const demoRun = builder.run(mode === 2 ? 'TAG ' : 'EQ ');
+        const template = builder.finish();
+        pages.push({ count: n, idBase: base, entities: null, aux: template.aux, runTable: template.runTable, runCount: template.runCount, demoRun, handles: null, missing: [] });
+    }
+    return { version: 1, name: mode === 2 ? 'Unique text / ' + count.toLocaleString() : 'GPU stress scene / ' + count.toLocaleString(), origin: [0, 0], count, pages, layers: [{ name: 'Geometry', color: rgba('#5ecbbd'), visible: true }, { name: 'Equipment', color: rgba('#eab879'), visible: true }, { name: 'Unique text', color: rgba('#afc2d8'), visible: true }], diagnostics: [], missing: [], synthetic: { mode, total: count } };
+}
+
+Object.assign(exports,{SCENE_BINDINGS,INDEX_BINDINGS,PIXEL_BINDINGS,CadGpuError,ComputeCad,makeSyntheticModel});
+},
+"packages/gpu/edit-tools.js":function(module,exports,require){
+/** Explicit, bounded GPU editing queries. No CPU tessellation or transform evaluation. */
+const { split64 }=require("packages/model/index.js");
+const EDIT_BINDINGS={clearSelection:[0,4,5],markSelection:[0,4,5],snapEntity:[0,1,2,3],bakeExplode:[0,1,2],snapCandidates:[0,1,2,3,6,7],reduceSnap:[0,3]};
+function queued(e,fn){const next=e.queryTail.catch(()=>{}).then(fn);e.queryTail=next;return next;}
+function epoch(e){return [e.sceneEpoch,e.camera.x,e.camera.y,e.camera.zoom,e.camera.angle||0].join('/');}
+function uniform(e,label){return e.buffer(label,64,GPUBufferUsage.UNIFORM|GPUBufferUsage.COPY_DST);}
+function normalizeRanges(ranges,max){if(!Array.isArray(ranges)||ranges.length>4096)throw new RangeError('At most 4,096 source selections per command.');const sorted=ranges.map(r=>({first:Number(r.first),count:Number(r.count)})).sort((a,b)=>a.first-b.first),out=[];for(const r of sorted){if(!Number.isSafeInteger(r.first)||!Number.isSafeInteger(r.count)||r.first<1||r.count<0||r.first+r.count-1>max)throw new RangeError('Invalid entity selection interval.');if(!r.count)continue;const prev=out.at(-1);if(prev&&r.first<=prev.first+prev.count)prev.count=Math.max(prev.first+prev.count,r.first+r.count)-prev.first;else out.push({...r});}return out;}
+function selectRanges(e,ranges=[]){const next=normalizeRanges(ranges,e.model?.count||0),previous=e.selectionRanges||[];if(JSON.stringify(next)===JSON.stringify(previous))return;const entries=[...previous,...next],data=new Uint32Array(Math.max(4,entries.length*4));let totalOld=0,totalNew=0;entries.forEach((r,i)=>{const before=i<previous.length?totalOld:totalNew;data.set([r.first,r.count,before,0],i*4);if(i<previous.length)totalOld+=r.count;else totalNew+=r.count;});const bytes=data.byteLength+64;if(e.allocatedBytes()+bytes>e.options.memoryBudget)throw new Error('Selection command exceeds the GPU budget.');let params,buffer;try{params=uniform(e,'Selection range counts');buffer=e.buffer('Selected source intervals',data.byteLength,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST,data);const u=new Uint32Array(16);u.set([previous.length,next.length,totalOld,totalNew],8);e.device.queue.writeBuffer(params,0,u);const encoder=e.device.createCommandEncoder({label:'GPU source-selection mask'}),pass=encoder.beginComputePass();for(const [entry,n] of [['clearSelection',totalOld],['markSelection',totalNew]]){if(!n)continue;pass.setPipeline(e.pipelines[entry]);pass.setBindGroup(0,e.group(entry,{0:params,4:buffer,5:e.styleBuffer},EDIT_BINDINGS[entry]));const count=Math.ceil(n/256);pass.dispatchWorkgroups(Math.min(65535,count),Math.ceil(count/65535));}pass.end();e.device.queue.submit([encoder.finish()]);e.selectionRanges=next;e.metrics.bytesUploaded+=bytes;e.metrics.blockSelectionUploadBytes=bytes;e.requestFrame();}finally{params?.destroy();buffer?.destroy();}}
+async function snapPoint(e,x,y,{radius=12,modes=15}={}){
+ if(!Number.isFinite(x)||!Number.isFinite(y)||!Number.isFinite(radius)||radius<=0||radius>24||!Number.isInteger(modes)||modes<0||modes>15)throw new RangeError('Invalid snap query.');if(!e.model||e.preparing||e.disposed)return null;const stamp=epoch(e);
+ return queued(e,async()=>{if(stamp!==epoch(e)||e.preparing||e.disposed)return null;const pages=e.viewPages||e.pages,total=pages.reduce((n,p)=>n+p.leaves,0);if(!total)return null;let result,lease;const params=[];e.queryBusy=true;
+  try{const bytes=(total+1)*32+(pages.length+1)*64+32;e.trimPaperCaches(bytes);if(e.allocatedBytes()+bytes>e.options.memoryBudget)throw new Error('Snap scratch exceeds the GPU budget.');result=e.buffer('GPU spatial snap candidates',(total+1)*32,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_SRC);lease=e.readbacks.acquire(32);const encoder=e.device.createCommandEncoder({label:'GPU-only object snap, bounded winning-point readback'}),pass=encoder.beginComputePass(),[wx,wy]=e.worldAt(x,y);let offset=1;
+   for(const page of pages){const origin=page.source.origin||e.model.origin,[xh,xl]=split64(wx-origin[0]),[yh,yl]=split64(wy-origin[1]),[oxh,oxl]=split64(origin[0]),[oyh,oyl]=split64(origin[1]),data=new ArrayBuffer(64),f=new Float32Array(data),u=new Uint32Array(data);f.set([oxh,oyh,oxl,oyl]);f.set([xh,yh,xl,yl],4);u.set([page.count,modes,offset,page.leaves],8);f[12]=radius/e.camera.zoom;offset+=page.leaves;const buffer=uniform(e,'Snap page parameters');params.push(buffer);e.device.queue.writeBuffer(buffer,0,data);pass.setPipeline(e.pipelines.snapCandidates);pass.setBindGroup(0,e.group('snapCandidates',{0:buffer,1:page.entities,2:page.aux,3:result,6:page.bounds,7:e.layerBuffer},EDIT_BINDINGS.snapCandidates));pass.dispatchWorkgroups(page.leaves);}
+   const last=uniform(e,'Snap global reduction count');params.push(last);const data=new Uint32Array(16);data[8]=total;e.device.queue.writeBuffer(last,0,data);pass.setPipeline(e.pipelines.reduceSnap);pass.setBindGroup(0,e.group('reduceSnap',{0:last,3:result},EDIT_BINDINGS.reduceSnap));pass.dispatchWorkgroups(1);pass.end();encoder.copyBufferToBuffer(result,0,lease.buffer,0,32);e.device.queue.submit([encoder.finish()]);await lease.buffer.mapAsync(GPUMapMode.READ);const copy=lease.buffer.getMappedRange(0,32).slice(0),rf=new Float32Array(copy),ru=new Uint32Array(copy);e.metrics.bytesUploaded+=params.length*64;e.metrics.bytesReadback+=32;e.metrics.blockSnapReadbackBytes=32;if(stamp!==epoch(e)||!ru[7])return null;return {point:[rf[0]+rf[2],rf[1]+rf[3]],kind:['','Endpoint','Midpoint','Center','Quadrant','Insertion'][ru[4]],id:ru[5],distance:Math.sqrt(rf[6])};
+  }finally{lease?.release();for(const p of params)p.destroy();result?.destroy();e.queryBusy=false;}});
+}
+/** Explicit export/edit boundary: bounded readback only on the user's explode command. */
+function explodeGeometry(e,ranges,{maxEntities=100000,maxBytes=128*1024*1024}={}){const selected=normalizeRanges(ranges,e.model?.count||0),stamp=e.sceneEpoch;return queued(e,async()=>{
+ if(e.disposed||e.preparing||stamp!==e.sceneEpoch)throw new Error('The drawing changed before GPU explode.');const slices=[];for(const range of selected)for(const page of e.pages){const start=Math.max(range.first,page.idBase+1),end=Math.min(range.first+range.count,page.idBase+page.count+1);if(end>start)slices.push({page,start:start-page.idBase-1,count:end-start});}
+ const total=slices.reduce((n,s)=>n+s.count,0),bytes=slices.reduce((n,s)=>n+s.count*128+s.page.aux.size,0);if(total>maxEntities||bytes>maxBytes)throw new RangeError('GPU explode exceeds the explicit 100,000-entity / 128 MiB command budget.');const output=[];e.queryBusy=true;
+ try{for(const slice of slices){if(stamp!==e.sceneEpoch)throw new Error('The drawing changed during GPU explode.');const {page,start,count}=slice,entityBytes=count*128,auxBytes=page.aux.size,readBytes=entityBytes+auxBytes;let params,entities,aux,readback;try{
+  const peak=64+2*readBytes;e.trimPaperCaches(peak);if(e.allocatedBytes()+peak>e.options.memoryBudget)throw new Error('GPU explode scratch and explicit readback exceed the GPU budget.');
+  params=uniform(e,'Explode world origin');entities=e.buffer('Transactional explode entities',entityBytes,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST|GPUBufferUsage.COPY_SRC);aux=e.buffer('Transactional explode auxiliary',auxBytes,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST|GPUBufferUsage.COPY_SRC);readback=e.buffer('Explicit exploded DXF geometry',readBytes,GPUBufferUsage.MAP_READ|GPUBufferUsage.COPY_DST);
+  const data=new ArrayBuffer(64),f=new Float32Array(data),u=new Uint32Array(data),origin=page.source.origin||e.model.origin,[xh,xl]=split64(origin[0]),[yh,yl]=split64(origin[1]);f.set([xh,yh,xl,yl]);u[8]=count;e.device.queue.writeBuffer(params,0,data);
+  const encoder=e.device.createCommandEncoder({label:'GPU affine explode; original scene is never modified'});encoder.copyBufferToBuffer(page.entities,start*128,entities,0,entityBytes);encoder.copyBufferToBuffer(page.aux,0,aux,0,auxBytes);const pass=encoder.beginComputePass();pass.setPipeline(e.pipelines.bakeExplode);pass.setBindGroup(0,e.group('bakeExplode',{0:params,1:entities,2:aux},EDIT_BINDINGS.bakeExplode));pass.dispatchWorkgroups(Math.ceil(count/64));pass.end();encoder.copyBufferToBuffer(entities,0,readback,0,entityBytes);encoder.copyBufferToBuffer(aux,0,readback,entityBytes,auxBytes);e.device.queue.submit([encoder.finish()]);await readback.mapAsync(GPUMapMode.READ);const copy=readback.getMappedRange().slice(0),check=new Uint32Array(copy,0,count*32);for(let i=0;i<count;i++)if(!check[i*32+16])throw new Error('Explode rejected an unsupported affine primitive, wrapped text, or nonuniform bulged polyline. No source objects were changed.');output.push({entities:copy.slice(0,entityBytes),aux:copy.slice(entityBytes),count,handles:page.source.handles?.slice(start,start+count)||[]});e.metrics.bytesUploaded+=64;e.metrics.bytesReadback+=readBytes;
+ }finally{readback?.destroy();params?.destroy();entities?.destroy();aux?.destroy();}}if(stamp!==e.sceneEpoch)throw new Error('The drawing changed during GPU explode.');e.metrics.blockExplodeReadbackBytes=bytes;return output;}finally{e.queryBusy=false;}});}
+
+Object.assign(exports,{EDIT_BINDINGS,normalizeRanges,selectRanges,snapPoint,explodeGeometry});
+},
+"packages/gpu/block-tools.js":function(module,exports,require){
+const { split64 }=require("packages/model/index.js");
+function equalBuffer(a,b){if(a===b)return true;if(!a||!b||a.byteLength!==b.byteLength)return false;const x=new Uint32Array(a),y=new Uint32Array(b);for(let i=0;i<x.length;i++)if(x[i]!==y[i])return false;return true;}
+function samePackedPage(a,b,originA,originB){return a.count===b.count&&a.idBase===b.idBase&&a.runCount===b.runCount&&a.runTable===b.runTable&&originA[0]===originB[0]&&originA[1]===originB[1]&&equalBuffer(a.entities,b.entities)&&equalBuffer(a.aux,b.aux);}
+/** Transactional page reconciliation. CPU parsing is still explicit, but unchanged
+ * entity/auxiliary arenas are NOT uploaded or prepared again. Old scene remains
+ * valid until all candidate allocations, GPU preparation and readbacks succeed. */
+async function reconcileBlockModel(e,model,indexBindings){
+ if(!e.model||e.model.synthetic)return e.setModel(model);
+ if(e.preparing||e.benchmarking||e.disposed)throw new Error('The GPU drawing is busy.');
+ if(!model.spaces||model.count>0x00ff0000)throw new RangeError('Invalid block drawing capacity.');
+ if(e.selectionRanges?.length)e.selectEntities([]);
+ const old={model:e.model,pages:e.pages,layers:e.layers,layerBuffer:e.layerBuffer,styleBuffer:e.styleBuffer},camera={...e.camera},spaceId=e.activeSpace?.id||'model';
+ const byBase=new Map(e.pages.map(p=>[p.idBase,p])),keep=new Set(),changed=[],candidates=model.pages.map(source=>{
+  const previous=byBase.get(source.idBase),origin=source.origin||model.origin;
+  if(previous&&samePackedPage(source,previous.source,origin,previous.source.origin||e.model.origin)){keep.add(previous);return {source,page:previous};}
+  changed.push(source);return {source,page:null};
+ });
+ const layers=[...model.layers.map(l=>({...l})),{name:'Annotations',color:0xff5cb0ff,visible:true},{name:'Measurements',color:0xffd2f27d,visible:true}],styleSize=(model.count+65536)*8,paletteSize=Math.max(16,layers.length*16);
+ const newPageBytes=changed.reduce((n,p)=>n+p.count*152+p.aux.byteLength+Math.ceil(p.count/128)*32+176,0),scratch=changed.length?Math.max(...changed.map(p=>p.count))*8+2048+changed.length*16:0;
+ const peak=newPageBytes+styleSize+paletteSize+scratch;e.trimPaperCaches(peak);
+ if(e.allocatedBytes()+peak>e.options.memoryBudget)throw new Error('Block edit exceeds the GPU budget including transactional old/new resources. The current drawing was kept.');
+ const limit=e.device.limits.maxStorageBufferBindingSize;if(styleSize>limit||model.pages.some(p=>p.count*128>limit||p.aux.byteLength>limit))throw new Error('Block edit exceeds this adapter’s storage-buffer limit.');
+ let newStyle,newPalette,ranks,buckets,readback;const created=[];let scopes=0,committed=false;e.preparing=true;
+ try{
+  await e.queryTail.catch(()=>{});
+  e.device.pushErrorScope('out-of-memory');e.device.pushErrorScope('validation');scopes=2;
+  newStyle=e.buffer('Block edit style table',styleSize,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_SRC|GPUBufferUsage.COPY_DST);
+  const palette=new Uint32Array(paletteSize/4);layers.forEach((l,i)=>palette.set([l.color>>>0,Number(l.visible!==false),Number(!!l.locked),0],i*4));
+  newPalette=e.buffer('Block edit layer table',paletteSize,GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST,palette);
+  e.styleBuffer=newStyle;e.layerBuffer=newPalette;
+  for(const item of candidates)if(!item.page){item.page=e.makePage(item.source,item.source.origin||model.origin);created.push(item.page);}
+  const encoder=e.device.createCommandEncoder({label:'Transactional block page reconciliation'});
+  encoder.copyBufferToBuffer(old.styleBuffer,0,newStyle,0,Math.min(old.styleBuffer.size,newStyle.size));
+  if(created.length){
+   ranks=e.buffer('Block edit ranks',Math.max(...created.map(p=>p.count))*8,GPUBufferUsage.STORAGE);buckets=e.buffer('Block edit buckets',2048,GPUBufferUsage.STORAGE);readback=e.buffer('Block edit page bounds',created.length*16,GPUBufferUsage.COPY_DST|GPUBufferUsage.MAP_READ);
+   const pass=encoder.beginComputePass({label:'Changed block pages only'});
+   for(const p of created){
+    if(p.source.runCount){pass.setPipeline(e.pipelines.layoutText);pass.setBindGroup(0,p.groups.layoutText);pass.dispatchWorkgroups(Math.ceil(p.source.runCount/64));}
+    for(const entry of ['prepare','reduceBounds']){pass.setPipeline(e.pipelines[entry]);pass.setBindGroup(0,p.groups[entry]);pass.dispatchWorkgroups(entry==='prepare'?p.leaves:1);}
+    const resources={0:p.header,1:p.bounds,2:p.order,3:ranks,4:buckets};for(const [entry,bindings] of Object.entries(indexBindings)){pass.setPipeline(e.pipelines[entry]);pass.setBindGroup(0,e.group(entry,resources,bindings));pass.dispatchWorkgroups(entry==='spatialClear'||entry==='spatialScan'?1:p.leaves);}
+   }pass.end();created.forEach((p,i)=>encoder.copyBufferToBuffer(p.bounds,(p.count+p.leaves)*16,readback,i*16,16));
+  }
+  e.device.queue.submit([encoder.finish()]);
+  if(readback){await readback.mapAsync(GPUMapMode.READ);const values=new Float32Array(readback.getMappedRange());created.forEach((p,i)=>p.finiteBounds=Array.from(values.subarray(i*4,i*4+4)));readback.unmap();e.metrics.bytesReadback+=created.length*16;}
+  const validation=await e.device.popErrorScope();scopes--;const memory=await e.device.popErrorScope();scopes--;if(validation||memory)throw new Error((validation||memory).message);
+  // Commit after preparation. Bind-group creation cannot touch the old GPU buffers.
+  e.pages=candidates.map(x=>{x.page.source=x.source;return x.page;});e.model=model;e.layers=layers;e.annotationLayer=model.layers.length;
+  for(const p of [...e.annotationPages,...e.previewPages])p.destroy();e.annotationPages=[];e.previewPages=[];
+  e.viewPages=null;for(const p of e.pages)e.bindPage(p);e.bindPixels();e.setSpace(model.spaces.some(s=>s.id===spaceId)?spaceId:'model',{fit:false});e.camera=camera;e.layerRevision++;e.overlayRevision++;e.planner.invalidate();
+  for(const p of old.pages)if(!keep.has(p))p.destroy();old.styleBuffer.destroy();old.layerBuffer.destroy();committed=true;
+  Object.assign(e.metrics,{blockPagesReused:keep.size,blockPagesPrepared:created.length,blockEntityUploadBytes:changed.reduce((n,p)=>n+p.entities.byteLength+p.aux.byteLength,0)});
+  e.gpuBytes=e.allocatedBytes();e.emit('model',model);return e;
+ }catch(error){if(!committed){e.model=old.model;e.pages=old.pages;e.layers=old.layers;e.styleBuffer=old.styleBuffer;e.layerBuffer=old.layerBuffer;for(const p of created)p.destroy();newStyle?.destroy();newPalette?.destroy();}throw error;}
+ finally{while(scopes>0){await e.device.popErrorScope();scopes--;}ranks?.destroy();buckets?.destroy();readback?.destroy();e.preparing=false;e.requestFrame();}
+}
+/** Queues a root transform, consumed once by the next compute frame. */
+function queuePlacement(e,{x=0,y=0,angle=0,scale=1}={}){
+ if(![x,y,angle,scale].every(Number.isFinite)||Math.abs(scale)<1e-12)throw new RangeError('Invalid preview placement.');
+ for(const p of e.previewPages)if(p.source.placementNode!==undefined){
+  const n=p.source.placementNode,data=p.placementData??=new Float32Array(8),[xh,xl]=split64(x),[yh,yl]=split64(y);data.set([scale,scale,angle,0,xh,yh,xl,yl]);
+  p.pendingPlacement=true;e.planner.windows.delete(p);p.textSampleValid=false;
+ }
+ e.overlayRevision++;e.requestFrame();
+}
+/** One prepare dispatch per changed preview page; no glyph layout, root readback,
+ * spatial rebuild, GPU allocation, or full-scene upload during pointer movement. */
+function encodePlacement(e,pass){let count=0;for(const p of e.previewPages)if(p.pendingPlacement){p.pendingPlacement=false;pass.setPipeline(e.pipelines.prepare);pass.setBindGroup(0,p.groups.prepare);pass.dispatchWorkgroups(p.leaves);count++;}return count;}
+function uploadPlacement(e){let bytes=0;for(const p of e.previewPages)if(p.pendingPlacement){e.device.queue.writeBuffer(p.aux,p.source.placementNode*4,p.placementData);bytes+=32;}e.metrics.bytesUploaded+=bytes;e.metrics.blockPreviewUploadBytes=bytes;return bytes;}
+
+Object.assign(exports,{samePackedPage,reconcileBlockModel,queuePlacement,encodePlacement,uploadPlacement});
+},
+"packages/performance/timing.js":function(module,exports,require){
+/** Timestamp values are nanoseconds, NOT a duration until both endpoints are validated.
+ * Never turn an unwritten (zero) endpoint into uptime, clamp an invalid duration, or
+ * substitute CPU wall time. Subtract in uint64/BigInt space before converting.
+ */
+function decodeGpuInterval(begin, end, { wallUpperBoundMs = Infinity, maxDurationMs = 60000 } = {}) {
+    const invalid = reason => ({ gpuMs: null, gpuTimingStatus: reason });
+    if (typeof begin !== 'bigint' || typeof end !== 'bigint' || begin < 0n || end < 0n || begin > 0xffffffffffffffffn || end > 0xffffffffffffffffn) return invalid('invalid-endpoint');
+    if (begin === 0n || end === 0n) return invalid('unwritten-timestamp');
+    if (end < begin) return invalid('nonmonotonic-timestamp');
+    if (!(maxDurationMs > 0) || !Number.isFinite(maxDurationMs)) return invalid('invalid-bound');
+    const delta = end - begin;
+    if (delta > BigInt(Math.floor(maxDurationMs * 1e6))) return invalid('implausible-interval');
+    const gpuMs = Number(delta) / 1e6;
+    // CPU submission-to-map time is only an upper-bound sanity check, never the metric.
+    // Permit clock quantization / scheduling uncertainty without accepting GPU uptime.
+    if (Number.isFinite(wallUpperBoundMs) && gpuMs > Math.max(0, wallUpperBoundMs) + 250) return invalid('inconsistent-clock');
+    return { gpuMs, gpuTimingStatus: delta === 0n ? 'below-resolution' : 'valid' };
+}
+function formatGpuTiming(metrics) {
+    const value = metrics?.gpuMs;
+    if (!Number.isFinite(value) || value < 0 || !['valid','below-resolution'].includes(metrics?.gpuTimingStatus)) return '—';
+    return value < .01 ? '<0.01' : value.toFixed(2);
+}
+
+Object.assign(exports,{decodeGpuInterval,formatGpuTiming});
+},
+"packages/performance/index.js":function(module,exports,require){
+/** Camera-only invalidation. No entity inspection, CPU culling, or geometry readback. */
+class FramePlanner {
+    constructor({ guardBand = 0.25, cache = true, batch = true } = {}) {
+        if (!Number.isFinite(guardBand) || guardBand < 0 || guardBand > 1) throw new RangeError('guardBand must be between 0 and 1.');
+        this.guardBand = guardBand; this.cache = cache; this.batch = batch;
+        this.revision = 0; this.windows = new WeakMap(); this.baseKey = ''; this.overlayKey = '';
+    }
+    invalidate() { this.revision++; this.baseKey = ''; this.overlayKey = ''; this.windows = new WeakMap(); }
+    invalidatePages(pages) { this.baseKey = ''; this.overlayKey = ''; for (const page of pages) this.windows.delete(page); }
+    key(frame) {
+        const { camera: c, width, height, settings: s, flags, ratio, fontRevision = 0 } = frame;
+        return [this.revision, c.x, c.y, c.zoom, c.angle || 0, width, height, ratio, s.textLOD, s.curveTolerance,
+            s.strokeWidth, flags & 2, fontRevision, this.batch].join('|');
+    }
+    plan(frame, { overlayRevision = 0, exact = false } = {}) {
+        const baseKey = this.key(frame), overlayKey = baseKey + ':' + overlayRevision;
+        const base = exact || !this.cache || baseKey !== this.baseKey;
+        const overlay = exact || !this.cache || overlayKey !== this.overlayKey;
+        return { base, overlay, baseKey, overlayKey, exact };
+    }
+    commit(plan) { this.baseKey = plan.baseKey; this.overlayKey = plan.overlayKey; }
+    visibility(page, frame) {
+        const { camera: c, width, height, ratio } = frame;
+        const x = width / (2 * c.zoom * ratio), y = height / (2 * c.zoom * ratio), co = Math.abs(Math.cos(c.angle || 0)), si = Math.abs(Math.sin(c.angle || 0));
+        const hx = co*x+si*y, hy = si*x+co*y;
+        const old = this.windows.get(page);
+        const stroke = frame.settings.strokeWidth, textLOD = frame.settings.textLOD, textMode = frame.flags & 2, font = frame.fontRevision || 0;
+        // Queue classification is view dependent: changed zoom always rebuilds both queues.
+        if (this.cache && old && old.revision === this.revision && old.zoom === c.zoom && old.angle === (c.angle || 0) && old.ratio === ratio &&
+            old.stroke === stroke && old.textLOD === textLOD && old.textMode === textMode && old.font === font && old.batch === this.batch &&
+            c.x - hx >= old.x0 && c.x + hx <= old.x1 && c.y - hy >= old.y0 && c.y + hy <= old.y1)
+            return false;
+        const guard = 1 + 2 * this.guardBand;
+        this.windows.set(page, { x0: c.x - hx * guard, x1: c.x + hx * guard,
+            y0: c.y - hy * guard, y1: c.y + hy * guard, zoom: c.zoom, angle: c.angle || 0, revision: this.revision, ratio, stroke, textLOD, textMode, font, batch: this.batch });
+        return true;
+    }
+}
+/** Wall time is not GPU time. Report each sample series with its own definition. */
+function summarizeSamples(values) {
+    if (!Array.isArray(values) || values.some(v => !Number.isFinite(v) || v < 0))
+        throw new TypeError('Timing samples must be finite non-negative numbers.');
+    if (!values.length) return { count: 0, min: null, median: null, p95: null, p99: null, max: null, mean: null };
+    const a = [...values].sort((x, y) => x - y), percentile = p => a[Math.max(0, Math.ceil(p * a.length) - 1)];
+    return { count: a.length, min: a[0], median: percentile(.5), p95: percentile(.95), p99: percentile(.99),
+        max: a.at(-1), mean: a.reduce((s, v) => s + v, 0) / a.length };
+}
+/** Opt-in governor; never conflates adaptive-resolution samples with exact-quality samples. */
+class ResolutionGovernor {
+    constructor({ targetMs = 12, minScale = .5, maxScale = 1, interval = 24 } = {}) {
+        if (![targetMs, minScale, maxScale].every(Number.isFinite) || !(targetMs > 0) || !(minScale > 0) || minScale > maxScale || maxScale > 1 || !Number.isInteger(interval) || interval < 1)
+            throw new RangeError('Invalid resolution governor options.');
+        this.targetMs = targetMs; this.minScale = minScale; this.maxScale = maxScale;
+        this.interval = interval; this.scale = maxScale; this.samples = []; this.cooldown = 0;
+    }
+    sample(gpuMs) {
+        if (!(gpuMs > 0) || !Number.isFinite(gpuMs)) return null;
+        this.samples.push(gpuMs); if (this.samples.length < this.interval) return null;
+        const { p95 } = summarizeSamples(this.samples); this.samples.length = 0;
+        if (this.cooldown-- > 0) return null;
+        const factor = Math.sqrt(this.targetMs / p95);
+        if (factor >= .94 && factor <= 1.12) return null;
+        const next = Math.max(this.minScale, Math.min(this.maxScale, this.scale * Math.max(.8, Math.min(1.1, factor))));
+        if (Math.abs(next - this.scale) < .025) return null;
+        this.scale = Math.round(next * 100) / 100; this.cooldown = 1; return this.scale;
+    }
+}
+
+Object.assign(exports,{FramePlanner,summarizeSamples,ResolutionGovernor});
+},
+"packages/gpu/shaders.js":function(module,exports,require){
+// Generated; edit shaders/*.wgsl and run npm run build.
+const SHADERS={"font":"@group(0) @binding(0) var<storage,read> fontData:array<u32>;\n@group(0) @binding(1) var<uniform> fontInfo:FontInfo;\n@group(0) @binding(2) var atlasOut:texture_storage_2d<rgba8unorm,write>;\nstruct FontInfo { atlas: vec4<u32>, metrics: vec4<f32>, digits0:vec4<u32>,digits1:vec4<u32>,digits2:vec4<u32>,ink:vec4<f32> }\nstruct Glyph { range:vec4<u32>, box:vec4<f32>, metrics:vec4<f32> }\nfn fontFloat(i:u32)->f32{return bitcast<f32>(fontData[i]);}\nfn glyphAt(id:u32)->Glyph {let i=min(id,fontInfo.atlas.z-1u)*12u;return Glyph(vec4<u32>(fontData[i],fontData[i+1u],fontData[i+2u],fontData[i+3u]),vec4<f32>(fontFloat(i+4u),fontFloat(i+5u),fontFloat(i+6u),fontFloat(i+7u)),vec4<f32>(fontFloat(i+8u),fontFloat(i+9u),0.,0.));}\nfn segmentDistance(p:vec2<f32>,a:vec2<f32>,b:vec2<f32>)->f32 {let d=b-a;let t=clamp(dot(p-a,d)/max(dot(d,d),1e-24),0.,1.);return length(p-a-t*d);}\nfn windingEdge(p:vec2<f32>,a:vec2<f32>,b:vec2<f32>)->i32 {if((a.y<=p.y&&b.y>p.y)||(a.y>p.y&&b.y<=p.y)){let x=a.x+(p.y-a.y)*(b.x-a.x)/(b.y-a.y);if(x>p.x){return select(-1,1,b.y>a.y);}}return 0;}\n// Closed-form closest-point roots remove the old 4..128-segment glyph approximation.\n// Coefficients are normalized before Cardano; nearly linear quadratics use a segment.\nfn signedCubeRoot(x:f32)->f32 {return sign(x)*pow(abs(x),1./3.);}\nfn quadraticAt(a:vec2<f32>,u:vec2<f32>,v:vec2<f32>,t:f32)->vec2<f32>{return a+t*(u+t*v);}\nfn quadraticDistance(p:vec2<f32>,a:vec2<f32>,b:vec2<f32>,c:vec2<f32>)->f32 {\n let u=2.*(c-a);let v=a-2.*c+b;let w=a-p;let vv=dot(v,v);\n if(vv<1e-12*max(dot(u,u),1e-12)){return segmentDistance(p,a,b);}\n let aa=1.5*dot(u,v)/vv;let bb=(dot(u,u)+2.*dot(w,v))/(2.*vv);let cc=dot(w,u)/(2.*vv);\n let pp=bb-aa*aa/3.;let qq=2.*aa*aa*aa/27.-aa*bb/3.+cc;let halfQ=qq*.5;\n let disc=halfQ*halfQ+pp*pp*pp/27.;var roots:array<f32,3>;var rootCount=1u;\n if(disc>=0.){let h=sqrt(disc);let z=-halfQ-select(-h,h,halfQ>=0.);let first=signedCubeRoot(z);var second=0.;if(abs(first)>1e-20){second=-pp/(3.*first);}roots[0]=first+second-aa/3.;}\n else {let radius=2.*sqrt(max(0.,-pp/3.));let theta=acos(clamp(-halfQ/max(sqrt(max(0.,-pp*pp*pp/27.)),1e-30),-1.,1.))/3.;rootCount=3u;\n  for(var i=0u;i<3u;i++){roots[i]=radius*cos(theta-f32(i)*2.0943951023931953)-aa/3.;}}\n var answer=min(dot(w,w),dot(b-p,b-p));\n for(var i=0u;i<rootCount;i++){var t=clamp(roots[i],0.,1.);\n  // Two guarded Newton corrections recover precision lost in depressed-cubic cancellation.\n  for(var j=0u;j<2u;j++){let q=quadraticAt(a,u,v,t)-p;let d=u+2.*t*v;let denominator=dot(d,d)+2.*dot(q,v);if(abs(denominator)>1e-18){t=clamp(t-dot(q,d)/denominator,0.,1.);}}\n  let q=quadraticAt(a,u,v,t)-p;answer=min(answer,dot(q,q));}\n return sqrt(max(0.,answer));\n}\nfn quadraticWindingRoot(p:vec2<f32>,a:vec2<f32>,u:vec2<f32>,v:vec2<f32>,t:f32)->i32 {\n if(t<0.||t>1.){return 0;}let dy=u.y+2.*t*v.y;\n if(dy==0.||(t==0.&&dy<0.)||(t==1.&&dy>0.)){return 0;}\n if(quadraticAt(a,u,v,t).x>p.x){return select(-1,1,dy>0.);}return 0;\n}\nfn quadraticWinding(p:vec2<f32>,a:vec2<f32>,b:vec2<f32>,c:vec2<f32>)->i32 {\n let u=2.*(c-a);let v=a-2.*c+b;let y=a.y-p.y;\n if(abs(v.y)<1e-12){if(abs(u.y)<1e-20){return 0;}return quadraticWindingRoot(p,a,u,v,-y/u.y);}\n let disc=u.y*u.y-4.*v.y*y;if(disc<=0.){return 0;}\n let q=-.5*(u.y+select(-sqrt(disc),sqrt(disc),u.y>=0.));\n if(abs(q)<1e-25){return quadraticWindingRoot(p,a,u,v,-u.y/(2.*v.y));}\n return quadraticWindingRoot(p,a,u,v,q/v.y)+quadraticWindingRoot(p,a,u,v,y/q);\n}\nfn glyphDistance(g:Glyph,p:vec2<f32>,pixelsPerEm:f32)->f32 {\n var distance=1e10;var winding=0;\n for(var i=0u;i<g.range.y;i++){let o=fontInfo.atlas.w+(g.range.x+i)*8u;let a=vec2<f32>(fontFloat(o),fontFloat(o+1u));let b=vec2<f32>(fontFloat(o+2u),fontFloat(o+3u));let control=vec2<f32>(fontFloat(o+4u),fontFloat(o+5u));\n  if(fontFloat(o+6u)>1.5){let radius=b.x;let begin=b.y;let sweep=control.x;var delta=atan2(p.y-a.y,p.x-a.x)-begin;if(sweep<0.){delta=-delta;}delta-=floor(delta/6.283185307179586)*6.283185307179586;\n    let p0=a+vec2<f32>(cos(begin),sin(begin))*radius;let p1=a+vec2<f32>(cos(begin+sweep),sin(begin+sweep))*radius;\n    var d=min(length(p-p0),length(p-p1));if(delta<=abs(sweep)){d=min(d,abs(length(p-a)-abs(radius)));}distance=min(distance,d);\n   }else if(fontFloat(o+6u)<.5){distance=min(distance,segmentDistance(p,a,b));winding+=windingEdge(p,a,b);}else{\n   distance=min(distance,quadraticDistance(p,a,b,control));winding+=quadraticWinding(p,a,b,control);\n  }\n }\n if(g.range.z==0u){return g.metrics.y-distance;}return select(-distance,distance,winding!=0);\n}\nfn digitGlyph(digit:u32)->u32 {if(digit<4u){return fontInfo.digits0[digit];}if(digit<8u){return fontInfo.digits1[digit-4u];}return fontInfo.digits2[digit-8u];}\n\n@compute @workgroup_size(8,8)\nfn bake(@builtin(global_invocation_id) id:vec3<u32>){if(id.x>=fontInfo.atlas.x||id.y>=fontInfo.atlas.y){return;}let cell=u32(fontInfo.metrics.y);let columns=u32(fontInfo.metrics.z);let gid=(id.y/cell)*columns+id.x/cell;if(gid>=fontInfo.atlas.z){textureStore(atlasOut,vec2<i32>(id.xy),vec4<f32>(0.));return;}\n let g=glyphAt(gid);let uv=(vec2<f32>(id.xy%cell)+.5)/f32(cell);let p=mix(g.box.xy,g.box.zw,vec2<f32>(uv.x,1.-uv.y));let scale=f32(cell)/max(g.box.z-g.box.x,g.box.w-g.box.y);let d=glyphDistance(g,p,scale);let v=clamp(.5+d*4.,0.,1.);textureStore(atlasOut,vec2<i32>(id.xy),vec4<f32>(v,v,v,1.));}\n","scene":"// Entity ABI: 128 bytes. Only GPU preprocessing writes basis and world.\nstruct Entity {anchor:vec4<f32>,p:vec4<f32>,q:vec4<f32>,r:vec4<f32>,tag:vec4<u32>,data:vec4<u32>,basis:vec4<f32>,world:vec4<f32>}\nstruct Frame {camera:vec4<f32>,viewport:vec4<f32>,settings:vec4<f32>,state:vec4<u32>,background:vec4<f32>,grid:vec4<f32>,pointer:vec4<f32>,reserved:vec4<f32>}\nstruct Header {origin:vec4<f32>,counts:vec4<u32>,extra:vec4<u32>}\nstruct Layer {color:u32,visible:u32,flags:u32,pad:u32}\nstruct DS {hi:vec2<f32>,lo:vec2<f32>}\n@group(0) @binding(0) var<uniform> frame:Frame;\n@group(0) @binding(1) var<uniform> header:Header;\n@group(0) @binding(2) var<storage,read_write> entities:array<Entity>;\n@group(0) @binding(3) var<storage,read_write> aux:array<u32>;\n@group(0) @binding(4) var<storage,read_write> bounds:array<vec4<f32>>;\n@group(0) @binding(5) var<storage,read_write> visible:array<u32>;\n@group(0) @binding(6) var<storage,read_write> stats:array<atomic<u32>>;\n@group(0) @binding(7) var<storage,read> layers:array<Layer>;\n@group(0) @binding(8) var<storage,read> fontData:array<u32>;\n@group(0) @binding(9) var<storage,read_write> pixels:array<atomic<u32>>;\n@group(0) @binding(10) var atlas:texture_2d<f32>;\n@group(0) @binding(11) var<storage,read_write> entityStyles:array<vec2<u32>>;\n@group(0) @binding(12) var<uniform> fontInfo:FontInfo;\n// Dedicated indirect buffer avoids a writable-storage/indirect usage conflict.\n@group(0) @binding(13) var<storage,read_write> dispatchArgs:array<u32>;\n@group(0) @binding(14) var<storage,read_write> order:array<u32>;\n@group(0) @binding(15) var<storage,read_write> fragments:array<atomic<u32>>;\n@group(0) @binding(16) var atlasSampler:sampler;\n@group(0) @binding(17) var<storage,read_write> sheetStats:array<atomic<u32>>;\nstruct FontInfo { atlas: vec4<u32>, metrics: vec4<f32>, digits0:vec4<u32>,digits1:vec4<u32>,digits2:vec4<u32>,ink:vec4<f32> }\nstruct Glyph { range:vec4<u32>, box:vec4<f32>, metrics:vec4<f32> }\nfn fontFloat(i:u32)->f32{return bitcast<f32>(fontData[i]);}\nfn glyphAt(id:u32)->Glyph {let i=min(id,fontInfo.atlas.z-1u)*12u;return Glyph(vec4<u32>(fontData[i],fontData[i+1u],fontData[i+2u],fontData[i+3u]),vec4<f32>(fontFloat(i+4u),fontFloat(i+5u),fontFloat(i+6u),fontFloat(i+7u)),vec4<f32>(fontFloat(i+8u),fontFloat(i+9u),0.,0.));}\nfn segmentDistance(p:vec2<f32>,a:vec2<f32>,b:vec2<f32>)->f32 {let d=b-a;let t=clamp(dot(p-a,d)/max(dot(d,d),1e-24),0.,1.);return length(p-a-t*d);}\nfn windingEdge(p:vec2<f32>,a:vec2<f32>,b:vec2<f32>)->i32 {if((a.y<=p.y&&b.y>p.y)||(a.y>p.y&&b.y<=p.y)){let x=a.x+(p.y-a.y)*(b.x-a.x)/(b.y-a.y);if(x>p.x){return select(-1,1,b.y>a.y);}}return 0;}\n// Closed-form closest-point roots remove the old 4..128-segment glyph approximation.\n// Coefficients are normalized before Cardano; nearly linear quadratics use a segment.\nfn signedCubeRoot(x:f32)->f32 {return sign(x)*pow(abs(x),1./3.);}\nfn quadraticAt(a:vec2<f32>,u:vec2<f32>,v:vec2<f32>,t:f32)->vec2<f32>{return a+t*(u+t*v);}\nfn quadraticDistance(p:vec2<f32>,a:vec2<f32>,b:vec2<f32>,c:vec2<f32>)->f32 {\n let u=2.*(c-a);let v=a-2.*c+b;let w=a-p;let vv=dot(v,v);\n if(vv<1e-12*max(dot(u,u),1e-12)){return segmentDistance(p,a,b);}\n let aa=1.5*dot(u,v)/vv;let bb=(dot(u,u)+2.*dot(w,v))/(2.*vv);let cc=dot(w,u)/(2.*vv);\n let pp=bb-aa*aa/3.;let qq=2.*aa*aa*aa/27.-aa*bb/3.+cc;let halfQ=qq*.5;\n let disc=halfQ*halfQ+pp*pp*pp/27.;var roots:array<f32,3>;var rootCount=1u;\n if(disc>=0.){let h=sqrt(disc);let z=-halfQ-select(-h,h,halfQ>=0.);let first=signedCubeRoot(z);var second=0.;if(abs(first)>1e-20){second=-pp/(3.*first);}roots[0]=first+second-aa/3.;}\n else {let radius=2.*sqrt(max(0.,-pp/3.));let theta=acos(clamp(-halfQ/max(sqrt(max(0.,-pp*pp*pp/27.)),1e-30),-1.,1.))/3.;rootCount=3u;\n  for(var i=0u;i<3u;i++){roots[i]=radius*cos(theta-f32(i)*2.0943951023931953)-aa/3.;}}\n var answer=min(dot(w,w),dot(b-p,b-p));\n for(var i=0u;i<rootCount;i++){var t=clamp(roots[i],0.,1.);\n  // Two guarded Newton corrections recover precision lost in depressed-cubic cancellation.\n  for(var j=0u;j<2u;j++){let q=quadraticAt(a,u,v,t)-p;let d=u+2.*t*v;let denominator=dot(d,d)+2.*dot(q,v);if(abs(denominator)>1e-18){t=clamp(t-dot(q,d)/denominator,0.,1.);}}\n  let q=quadraticAt(a,u,v,t)-p;answer=min(answer,dot(q,q));}\n return sqrt(max(0.,answer));\n}\nfn quadraticWindingRoot(p:vec2<f32>,a:vec2<f32>,u:vec2<f32>,v:vec2<f32>,t:f32)->i32 {\n if(t<0.||t>1.){return 0;}let dy=u.y+2.*t*v.y;\n if(dy==0.||(t==0.&&dy<0.)||(t==1.&&dy>0.)){return 0;}\n if(quadraticAt(a,u,v,t).x>p.x){return select(-1,1,dy>0.);}return 0;\n}\nfn quadraticWinding(p:vec2<f32>,a:vec2<f32>,b:vec2<f32>,c:vec2<f32>)->i32 {\n let u=2.*(c-a);let v=a-2.*c+b;let y=a.y-p.y;\n if(abs(v.y)<1e-12){if(abs(u.y)<1e-20){return 0;}return quadraticWindingRoot(p,a,u,v,-y/u.y);}\n let disc=u.y*u.y-4.*v.y*y;if(disc<=0.){return 0;}\n let q=-.5*(u.y+select(-sqrt(disc),sqrt(disc),u.y>=0.));\n if(abs(q)<1e-25){return quadraticWindingRoot(p,a,u,v,-u.y/(2.*v.y));}\n return quadraticWindingRoot(p,a,u,v,q/v.y)+quadraticWindingRoot(p,a,u,v,y/q);\n}\nfn glyphDistance(g:Glyph,p:vec2<f32>,pixelsPerEm:f32)->f32 {\n var distance=1e10;var winding=0;\n for(var i=0u;i<g.range.y;i++){let o=fontInfo.atlas.w+(g.range.x+i)*8u;let a=vec2<f32>(fontFloat(o),fontFloat(o+1u));let b=vec2<f32>(fontFloat(o+2u),fontFloat(o+3u));let control=vec2<f32>(fontFloat(o+4u),fontFloat(o+5u));\n  if(fontFloat(o+6u)>1.5){let radius=b.x;let begin=b.y;let sweep=control.x;var delta=atan2(p.y-a.y,p.x-a.x)-begin;if(sweep<0.){delta=-delta;}delta-=floor(delta/6.283185307179586)*6.283185307179586;\n    let p0=a+vec2<f32>(cos(begin),sin(begin))*radius;let p1=a+vec2<f32>(cos(begin+sweep),sin(begin+sweep))*radius;\n    var d=min(length(p-p0),length(p-p1));if(delta<=abs(sweep)){d=min(d,abs(length(p-a)-abs(radius)));}distance=min(distance,d);\n   }else if(fontFloat(o+6u)<.5){distance=min(distance,segmentDistance(p,a,b));winding+=windingEdge(p,a,b);}else{\n   distance=min(distance,quadraticDistance(p,a,b,control));winding+=quadraticWinding(p,a,b,control);\n  }\n }\n if(g.range.z==0u){return g.metrics.y-distance;}return select(-distance,distance,winding!=0);\n}\nfn digitGlyph(digit:u32)->u32 {if(digit<4u){return fontInfo.digits0[digit];}if(digit<8u){return fontInfo.digits1[digit-4u];}return fontInfo.digits2[digit-8u];}\n\n// Programs are font-global. Text is shaped once per unique run during GPU preparation.\nconst CONSUMED_GLYPH=0xfffffffeu;\nfn layoutWord(base:u32,offset:u32)->u32{return fontData[base+offset];}\nfn shapeRun(o:u32){let n=aux[o];let source=o+4u+n*4u;for(var i=0u;i<n;i++){aux[o+4u+i*4u]=aux[source+i];}\n let base=fontInfo.digits2.z;if(base==0u){return;}let count=layoutWord(base,1u);let tables=layoutWord(base,2u);\n for(var k=0u;k<count;k++){let lookup=tables+k*4u;let entries=layoutWord(base,lookup+1u);let entryCount=layoutWord(base,lookup);\n  for(var i=0u;i<n;i++){let first=aux[o+4u+i*4u];if(first>=CONSUMED_GLYPH){continue;}var low=0u;var high=entryCount;\n   loop{if(low>=high){break;}let middle=(low+high)/2u;if(layoutWord(base,entries+middle*4u)<first){low=middle+1u;}else{high=middle;}}\n   if(low>=entryCount||layoutWord(base,entries+low*4u)!=first){continue;}let entry=entries+low*4u;let ruleCount=layoutWord(base,entry+1u);let rules=layoutWord(base,entry+2u);\n   for(var r=0u;r<ruleCount;r++){let rule=rules+r*4u;let length=layoutWord(base,rule+1u);let components=layoutWord(base,rule+2u);var matched=true;var at=i;var matchedIndices:array<u32,32>;\n    for(var c=1u;c<length;c++){at++;loop{if(at>=n||aux[o+4u+at*4u]!=CONSUMED_GLYPH){break;}at++;}if(at>=n||aux[o+4u+at*4u]!=layoutWord(base,components+c-1u)){matched=false;break;}matchedIndices[c]=at;}\n    if(matched){aux[o+4u+i*4u]=layoutWord(base,rule);for(var c=1u;c<length;c++){aux[o+4u+matchedIndices[c]*4u]=CONSUMED_GLYPH;}break;}\n   }\n  }\n }\n}\nfn pairAdvance(left:u32,right:u32)->f32{let base=fontInfo.digits2.z;if(base==0u||left>=CONSUMED_GLYPH||right>=CONSUMED_GLYPH){return 0.;}\n let lookupCount=layoutWord(base,3u);let lookupTable=layoutWord(base,4u);let glyphCount=layoutWord(base,5u);var advance=0.;\n for(var li=0u;li<lookupCount;li++){let lookup=lookupTable+li*4u;let n=layoutWord(base,lookup);let tables=layoutWord(base,lookup+1u);let overrideValue=layoutWord(base,lookup+2u)!=0u;var matched=false;var adjustment=0.;\n  for(var i=0u;i<n;i++){let o=tables+i*4u;let kind=layoutWord(base,o);if(kind==1u){let count=layoutWord(base,o+1u);let entries=layoutWord(base,o+2u);let key=left*glyphCount+right;var low=0u;var high=count;\n    loop{if(low>=high){break;}let mid=(low+high)/2u;if(layoutWord(base,entries+mid*2u)<key){low=mid+1u;}else{high=mid;}}\n    if(low<count&&layoutWord(base,entries+low*2u)==key){adjustment=bitcast<f32>(layoutWord(base,entries+low*2u+1u));matched=true;}\n   }else{let classes=layoutWord(base,o+1u);let c1=layoutWord(base,classes+left*2u);if(c1>0u){let c2=layoutWord(base,classes+right*2u+1u);let columns=layoutWord(base,o+2u);let matrix=layoutWord(base,o+3u);adjustment=bitcast<f32>(layoutWord(base,matrix+(c1-1u)*columns+c2));matched=true;}}\n   if(matched){break;}\n  }if(matched){advance=select(advance+adjustment,adjustment,overrideValue);}\n }return advance;\n}\n\n// Analytic line / bulge / conic boundaries and rational B-spline edge evaluation.\nstruct HatchArc { center:vec2<f32>,major:vec2<f32>,minor:vec2<f32>,start:f32,sweep:f32 }\nfn hatchArc(o:u32)->HatchArc {\n if(aux[o]==3u){let a=av(o+6u);return HatchArc(av(o+4u),a,vec2<f32>(-a.y,a.x)*af(o+8u),af(o+9u),af(o+10u));}\n let a=av(o+4u);let b=av(o+6u);let v=af(o+8u);let d=b-a;let center=(a+b)*.5+vec2<f32>(-d.y,d.x)*(1.-v*v)/(4.*v);let r=length(a-center);\n return HatchArc(center,vec2<f32>(r,0.),vec2<f32>(0.,r),atan2(a.y-center.y,a.x-center.x),4.*atan(v));\n}\nfn hatchBounds(e:Entity)->vec4<f32>{let origin=e.world.xy+e.world.zw;let m=entityMatrix(e);let o=e.data.x;var lo=vec2<f32>(1e30);var hi=vec2<f32>(-1e30);\n for(var i=0u;i<aux[o+1u];i++){let row=aux[o+5u]+i*8u;var period=0.;for(var j=0u;j<aux[row+5u];j++){period+=abs(af(aux[row+6u]+j));}aux[row+7u]=bitcast<u32>(period);}\n for(var i=0u;i<aux[o];i++){let edge=aux[o+4u]+i*16u;let kind=aux[edge];\n  if(kind==1u||(kind==2u&&abs(af(edge+8u))<1e-7)){let a=origin+m*av(edge+4u);let b=origin+m*av(edge+6u);lo=min(lo,min(a,b));hi=max(hi,max(a,b));}\n  else if(kind==2u||kind==3u){let arc=hatchArc(edge);let c=origin+m*arc.center;let r=ellipseExtent(m,arc.major,arc.minor);lo=min(lo,c-r);hi=max(hi,c+r);}\n  else if(kind==4u){let so=aux[edge+3u];let points=so+4u+aux[so+1u];var localLo=vec2<f32>(1e30);var localHi=vec2<f32>(-1e30);\n   for(var j=0u;j<aux[so+2u];j++){let raw=av(points+j*4u);localLo=min(localLo,raw);localHi=max(localHi,raw);let p=origin+m*raw;lo=min(lo,p);hi=max(hi,p);}\n   aux[edge+11u]=bitcast<u32>(localLo.x);aux[edge+12u]=bitcast<u32>(localLo.y);aux[edge+13u]=bitcast<u32>(localHi.x);aux[edge+14u]=bitcast<u32>(localHi.y);}\n }\n return vec4<f32>(lo,hi);\n}\nfn rayCrossing(p:vec2<f32>,a:vec2<f32>,b:vec2<f32>)->u32{if((a.y>p.y)!=(b.y>p.y)){return u32(a.x+(p.y-a.y)*(b.x-a.x)/(b.y-a.y)>p.x);}return 0u;}\nfn conicCrossings(p:vec2<f32>,arc:HatchArc)->u32 {\n let ry=length(vec2<f32>(arc.major.y,arc.minor.y));if(ry<1e-20){return 0u;}let z=(p.y-arc.center.y)/ry;if(abs(z)>=1.){return 0u;}\n let phi=atan2(arc.minor.y,arc.major.y);let theta=acos(z);var count=0u;\n for(var i=0u;i<2u;i++){let t=phi+select(-theta,theta,i==1u);let x=arc.center.x+arc.major.x*cos(t)+arc.minor.x*sin(t);\n  if(x>p.x&&angleInArc(t,arc.start,arc.sweep)){count++;}}\n return count;\n}\nfn hatchInside(e:Entity,p:vec2<f32>,scale:f32)->bool {let o=e.data.x;var crossings=0u;\n for(var i=0u;i<aux[o];i++){let edge=aux[o+4u]+i*16u;let flags=aux[edge+2u];let style=aux[o+2u];\n  if(style==2u&&(flags&1u)==0u){continue;}if(style==1u&&(flags&17u)==0u){continue;}\n  let kind=aux[edge];if(kind==1u||(kind==2u&&abs(af(edge+8u))<1e-7)){crossings+=rayCrossing(p,av(edge+4u),av(edge+6u));}\n  else if(kind==2u||kind==3u){crossings+=conicCrossings(p,hatchArc(edge));}\n  else if(kind==4u){let so=aux[edge+3u];let degree=aux[so];let nk=aux[so+1u];let low=af(so+4u+degree);let high=af(so+4u+nk-degree-1u);\n   let lo=av(edge+11u);let hi=av(edge+13u);if(p.y<lo.y||p.y>=hi.y||p.x>=hi.x){continue;}\n   let steps=u32(clamp(max(f32(aux[so+2u])*12.,sqrt(max(1.,length(hi-lo)*scale)/max(frame.settings.y,.03))*4.),8.,16384.));var a=nurbsPoint(so,low);\n   for(var j=1u;j<=steps;j++){let b=nurbsPoint(so,mix(low,high,f32(j)/f32(steps)));crossings+=rayCrossing(p,a,b);a=b;}\n  }\n }\n return (crossings&1u)!=0u;\n}\nfn hatchPattern(e:Entity,p:vec2<f32>,inverse:mat2x2<f32>)->f32 {\n let o=e.data.x;if(aux[o+3u]!=0u){return 1.;}var coverage=0.;\n for(var i=0u;i<aux[o+1u];i++){let row=aux[o+5u]+i*8u;let a=af(row);let tangent=vec2<f32>(cos(a),sin(a));let normal=vec2<f32>(-tangent.y,tangent.x);\n  let base=av(row+1u);let shift=av(row+3u);let spacing=dot(shift,normal);if(abs(spacing)<1e-20){continue;}\n  let normalPerPixel=length(vec2<f32>(dot(inverse[0],normal),dot(inverse[1],normal)));let tangentPerPixel=length(vec2<f32>(dot(inverse[0],tangent),dot(inverse[1],tangent)));\n  let nearest=round(dot(p-base,normal)/spacing);let y=abs(dot(p-base-nearest*shift,normal))/max(normalPerPixel,1e-20);\n  let lineCoverage=clamp(.5+frame.settings.z*frame.viewport.w*.5-y,0.,1.);if(lineCoverage==0.){continue;}\n  let nd=aux[row+5u];if(nd==0u){coverage=max(coverage,lineCoverage);continue;}\n  let dash=aux[row+6u];let period=af(row+7u);if(period<=1e-20){continue;}\n  let along=dot(p-base-nearest*shift,tangent);let phase=along-floor(along/period)*period;var cursor=0.;var ink=0.;\n  for(var j=0u;j<nd;j++){let size=af(dash+j);let endpoint=cursor+abs(size);\n   if(size>=0.){var distance=0.;if(size==0.){distance=min(abs(phase-cursor),period-abs(phase-cursor));}else{distance=max(cursor-phase,phase-endpoint);}\n    ink=max(ink,clamp(.5-distance/max(tangentPerPixel,1e-20),0.,1.));}cursor=endpoint;}\n  coverage=max(coverage,min(lineCoverage,ink));\n }\n return coverage;\n}\n\n// Parametric dimensions are never expanded into CPU line/text entities.\nstruct DimensionGeometry {a:vec2<f32>,b:vec2<f32>,ea:vec2<f32>,eb:vec2<f32>,center:vec2<f32>,label:vec2<f32>,value:f32,radius:f32,start:f32,sweep:f32,angle:f32,kind:u32}\nfn cross2(a:vec2<f32>,b:vec2<f32>)->f32{return a.x*b.y-a.y*b.x;}\nfn safeUnit(v:vec2<f32>)->vec2<f32>{return v/max(length(v),1e-20);}\nfn dimensionGeometry(e:Entity)->DimensionGeometry {\n let o=e.data.x;let kind=aux[o];let location=av(o+4u);let p1=av(o+10u);let p2=av(o+12u);let p3=av(o+14u);let p4=av(o+16u);\n var d=DimensionGeometry(vec2<f32>(0.),vec2<f32>(0.),p1,p2,vec2<f32>(0.),vec2<f32>(0.),0.,0.,0.,0.,0.,kind);\n if(kind<=1u){d.angle=select(af(o+18u),atan2(p2.y-p1.y,p2.x-p1.x),kind==1u);let t=vec2<f32>(cos(d.angle),sin(d.angle));let n=vec2<f32>(-t.y,t.x);\n  d.a=p1+n*dot(location-p1,n);d.b=p2+n*dot(location-p2,n);d.value=abs(dot(p2-p1,t));d.label=(d.a+d.b)*.5+n*(af(o+19u)*.35+af(o+23u));\n }else if(kind==3u||kind==4u){d.a=location;d.b=p3;d.value=length(d.b-d.a);d.angle=atan2(d.b.y-d.a.y,d.b.x-d.a.x);let n=vec2<f32>(-sin(d.angle),cos(d.angle));d.label=(d.a+d.b)*.5+n*(af(o+19u)*.35+af(o+23u));\n }else if(kind==2u||kind==5u){var center=p3;var da=p1-center;var db=p2-center;var arcLocation=location;\n  if(kind==2u){let u=p2-p1;let v=location-p3;let den=cross2(u,v);if(abs(den)>1e-20){center=p1+u*(cross2(p3-p1,v)/den);}else{center=p1;}\n   da=p2-center;db=location-center;arcLocation=p4;}\n  d.center=center;d.radius=length(arcLocation-center);d.start=atan2(da.y,da.x);let end=atan2(db.y,db.x);var sweep=end-d.start;sweep-=floor(sweep/TAU)*TAU;\n  let at=atan2(arcLocation.y-center.y,arcLocation.x-center.x);if(!angleInArc(at,d.start,sweep)){sweep-=TAU;}\n  d.sweep=sweep;d.value=abs(sweep)*180./PI;d.a=center+safeUnit(da)*d.radius;d.b=center+safeUnit(db)*d.radius;\n  let middle=d.start+sweep*.5;d.label=center+vec2<f32>(cos(middle),sin(middle))*(d.radius+af(o+19u)*.35+af(o+23u));d.angle=middle+PI*.5;\n }else {d.a=p1;d.b=p2;let xaxis=(aux[o+1u]&64u)!=0u;d.value=select(p1.y-location.y,p1.x-location.x,xaxis);d.label=p2+vec2<f32>(af(o+23u),af(o+23u));d.angle=0.;}\n d.value*=af(o+24u);let rounding=af(o+25u);if(rounding>0.){d.value=round(d.value/rounding)*rounding;}\n if((aux[o+1u]&128u)!=0u){d.label=av(o+6u);}\n if(cos(d.angle)<0.){d.angle+=PI;}\n return d;\n}\nfn dimensionBounds(e:Entity)->vec4<f32>{let d=dimensionGeometry(e);let o=e.data.x;var lo=min(min(d.a,d.b),min(d.ea,d.eb));var hi=max(max(d.a,d.b),max(d.ea,d.eb));\n if(d.kind==2u||d.kind==5u){lo=min(lo,d.center-d.radius);hi=max(hi,d.center+d.radius);}\n let padding=max(af(o+20u)*2.,max(af(o+19u)*48.,af(o+21u)+af(o+22u)));lo=min(lo,d.label)-padding;hi=max(hi,d.label)+padding;\n return transformedBounds(e.world.xy+e.world.zw,entityMatrix(e),vec4<f32>(lo,hi));\n}\nfn dimensionArrow(e:Entity,tip:vec2<f32>,direction:vec2<f32>,lane:u32,stride:u32){let size=af(e.data.x+20u);let t=safeUnit(direction)*size;let n=vec2<f32>(-t.y,t.x)*.16;\n let a=screenPoint(e,tip);let b=screenPoint(e,tip+t+n);let c=screenPoint(e,tip+t-n);let lo=max(vec2<i32>(floor(min(a,min(b,c)))-1.),vec2<i32>(0));let hi=min(vec2<i32>(ceil(max(a,max(b,c)))+1.),vec2<i32>(frame.viewport.xy)-1);\n let width=hi.x-lo.x+1;let height=hi.y-lo.y+1;if(width<=0||height<=0){return;}let area=cross2(b-a,c-a);if(abs(area)<1e-12){return;}let sign=select(-1.,1.,area>=0.);\n for(var i=lane;i<u32(width*height);i+=stride){let pixel=lo+vec2<i32>(i32(i%u32(width)),i32(i/u32(width)));let p=vec2<f32>(pixel)+.5;\n  let distance=min(sign*cross2(b-a,p-a)/max(length(b-a),1e-20),min(sign*cross2(c-b,p-b)/max(length(c-b),1e-20),sign*cross2(a-c,p-c)/max(length(a-c),1e-20)));\n  put(pixel,clamp(.5+distance,0.,1.),e.tag.w);}\n}\nfn dimensionLabel(e:Entity,d:DimensionGeometry,lane:u32,stride:u32) {\n let o=e.data.x;let height=af(o+19u);if(height<=0.){return;}let decimalPlaces=min(aux[o+3u],8u);let factor=pow(10.,f32(decimalPlaces));let value=round(abs(d.value)*factor)/factor;\n let integral=u32(clamp(floor(log(max(1.,value))/log(10.))+1.,1.,32.));let negative=u32(d.value<0.);let symbol=u32(d.kind==3u||d.kind==4u);let degree=u32(d.kind==2u||d.kind==5u);\n var count=negative+symbol+integral+select(0u,decimalPlaces+1u,decimalPlaces>0u)+degree;var width=f32(count)*fontInfo.metrics.x;\n var label=e;label.data=vec4<u32>(aux[o+2u],0u,0xffffffffu,0u);if(aux[o+26u]!=0u){count=aux[label.data.x];width=af(label.data.x+1u);}\n let c=cos(d.angle);let s=sin(d.angle);let basis=entityMatrix(e)*mat2x2<f32>(vec2<f32>(c,s)*height,vec2<f32>(-s,c)*height);\n let sm=mat2x2<f32>(screenVector(basis[0]),screenVector(basis[1]));if(abs(cross2(sm[0],sm[1]))<1e-12){return;}\n let origin=screenPoint(e,d.label)-sm[0]*width*.5;let inverse=inverse2(sm);let scale=min(length(sm[0]),length(sm[1]));\n let box=transformedBounds(origin,sm,vec4<f32>(fontInfo.ink.x,fontInfo.ink.z-select(0.,af(label.data.x+2u),aux[o+26u]!=0u),width+fontInfo.ink.y,fontInfo.ink.w));\n let lo=max(vec2<i32>(floor(box.xy)),vec2<i32>(0));let hi=min(vec2<i32>(ceil(box.zw)),vec2<i32>(frame.viewport.xy)-1);let sz=hi-lo+1;if(any(sz<=vec2<i32>(0))){return;}\n for(var i=lane;i<u32(sz.x*sz.y);i+=stride){let pixel=lo+vec2<i32>(i32(i%u32(sz.x)),i32(i/u32(sz.x)));let pos=inverse*(vec2<f32>(pixel)+.5-origin);var coverage=0.;\n  if(aux[o+26u]!=0u){coverage=shadeText(label,pos,scale);}else {\n   let middle=i32(floor(pos.x/fontInfo.metrics.x));for(var ci=middle-1;ci<=middle+1;ci++){if(ci<0||ci>=i32(count)){continue;}var glyph=0u;var col=u32(ci);\n    if(negative!=0u&&col==0u){glyph=aux[o+28u];}\n    else if(symbol!=0u&&col==negative){glyph=select(aux[o+30u],aux[o+29u],d.kind==4u);}\n    else if(degree!=0u&&col==count-1u){glyph=aux[o+31u];}\n    else {col-=negative+symbol;if(decimalPlaces>0u&&col==integral){glyph=aux[o+27u];}\n     else {let exponent=select(i32(integral)-1-i32(col),i32(integral)-i32(col),col>integral);let power=pow(10.,f32(exponent));let q=floor(value/power+.00001);let digit=u32(clamp(q-floor(q/10.)*10.,0.,9.));glyph=digitGlyph(digit);}}\n    coverage=max(coverage,glyphCoverage(glyph,pos-vec2<f32>(f32(ci)*fontInfo.metrics.x,0.),scale));}\n  }\n  put(pixel,coverage,e.tag.w);\n }\n}\nfn rasterDimension(e:Entity,lane:u32,stride:u32){let d=dimensionGeometry(e);let o=e.data.x;let width=frame.settings.z*frame.viewport.w;\n if(d.kind==2u||d.kind==5u){ellipseStroke(e,d.center,vec2<f32>(d.radius,0.),vec2<f32>(0.,d.radius),d.start,d.sweep,lane,stride);\n  let sign=select(-1.,1.,d.sweep>=0.);dimensionArrow(e,d.a,vec2<f32>(-sin(d.start),cos(d.start))*sign,lane,stride);let end=d.start+d.sweep;dimensionArrow(e,d.b,vec2<f32>(sin(end),-cos(end))*sign,lane,stride);\n }else if(d.kind==6u){let elbow=select(vec2<f32>(d.a.x,d.b.y),vec2<f32>(d.b.x,d.a.y),(aux[o+1u]&64u)!=0u);stroke(screenPoint(e,d.a),screenPoint(e,elbow),width,e.tag.w,lane,stride,vec2<f32>(0.));stroke(screenPoint(e,elbow),screenPoint(e,d.b),width,e.tag.w,lane,stride,vec2<f32>(0.));}\n else{stroke(screenPoint(e,d.a),screenPoint(e,d.b),width,e.tag.w,lane,stride,vec2<f32>(0.));let t=safeUnit(d.b-d.a);if(d.kind!=4u){dimensionArrow(e,d.a,t,lane,stride);}dimensionArrow(e,d.b,-t,lane,stride);\n  if(d.kind<=1u){let na=safeUnit(d.a-d.ea);let nb=safeUnit(d.b-d.eb);stroke(screenPoint(e,d.ea+na*af(o+21u)),screenPoint(e,d.a+na*af(o+22u)),width,e.tag.w,lane,stride,vec2<f32>(0.));stroke(screenPoint(e,d.eb+nb*af(o+21u)),screenPoint(e,d.b+nb*af(o+22u)),width,e.tag.w,lane,stride,vec2<f32>(0.));}}\n dimensionLabel(e,d,lane,stride);\n}\n\nconst PI=3.141592653589793;\nconst TAU=6.283185307179586;\nfn af(o:u32)->f32{return bitcast<f32>(aux[o]);}\nfn av(o:u32)->vec2<f32>{return vec2<f32>(af(o),af(o+1u));}\nfn dsAdd(a:DS,b:DS)->DS{let s=a.hi+b.hi;let v=s-a.hi;let e=(a.hi-(s-v))+(b.hi-v)+a.lo+b.lo;let hi=s+e;return DS(hi,e-(hi-s));}\nfn dsSub(a:DS,b:DS)->DS{return dsAdd(a,DS(-b.hi,-b.lo));}\nfn dsMatrix(m:mat2x2<f32>,a:DS)->DS{let h0=m[0]*a.hi.x;let l0=fma(m[0],vec2<f32>(a.hi.x),-h0)+m[0]*a.lo.x;let h1=m[1]*a.hi.y;let l1=fma(m[1],vec2<f32>(a.hi.y),-h1)+m[1]*a.lo.y;return dsAdd(DS(h0,l0),DS(h1,l1));}\nfn entityMatrix(e:Entity)->mat2x2<f32>{return mat2x2<f32>(e.basis.xy,e.basis.zw);}\nfn transformEntity(sourceEntity:Entity)->Entity{var e=sourceEntity;var a=DS(e.anchor.xy,e.anchor.zw);var m=mat2x2<f32>(vec2<f32>(1.,0.),vec2<f32>(0.,1.));var n=e.data.z;\n for(var depth=0u;depth<192u&&n!=0xffffffffu;depth++){\n  var nm:mat2x2<f32>;var t=DS(vec2<f32>(af(n+4u),af(n+5u)),vec2<f32>(af(n+6u),af(n+7u)));\n  if(aux[n+13u]==2u){let normal=normalize(vec3<f32>(af(n),af(n+1u),af(n+2u)));var axis:vec3<f32>;if(abs(normal.x)<.015625&&abs(normal.y)<.015625){axis=normalize(cross(vec3<f32>(0.,1.,0.),normal));}else{axis=normalize(cross(vec3<f32>(0.,0.,1.),normal));}let yaxis=cross(normal,axis);nm=mat2x2<f32>(axis.xy,yaxis.xy);t=dsAdd(t,DS(normal.xy*af(n+3u),vec2<f32>(0.)));}\n  else{let c=cos(af(n+2u));let s=sin(af(n+2u));nm=mat2x2<f32>(vec2<f32>(c,s)*af(n),vec2<f32>(-s,c)*af(n+1u));}\n  let base=DS(vec2<f32>(af(n+8u),af(n+9u)),vec2<f32>(af(n+10u),af(n+11u)));a=dsAdd(dsMatrix(nm,dsSub(a,base)),t);m=nm*m;n=aux[n+12u];\n }\n a=dsSub(a,DS(header.origin.xy,header.origin.zw));e.world=vec4<f32>(a.hi,a.lo);e.basis=vec4<f32>(m[0],m[1]);return e;\n}\nfn runWidth(e:Entity)->f32{return af(e.data.x+1u)+select(0.,8.*fontInfo.metrics.x,(e.data.w&256u)!=0u);}\nfn calculateTextBasis(e:Entity)->mat2x2<f32>{var height=e.p.x;var width=e.p.y;var angle=e.p.z;\n if((e.data.w&28u)!=0u){angle=atan2(e.q.y,e.q.x);if((e.data.w&12u)!=0u){let fitWidth=length(e.q.xy)/max(runWidth(e),1e-12);if((e.data.w&8u)!=0u){height=fitWidth/max(width,1e-12);}else{width=fitWidth/max(height,1e-12);}}}\n let c=cos(angle);let s=sin(angle);return entityMatrix(e)*mat2x2<f32>(vec2<f32>(c,s)*height*width*select(1.,-1.,(e.data.w&32u)!=0u),vec2<f32>(c*tan(e.p.w)-s,s*tan(e.p.w)+c)*height*select(1.,-1.,(e.data.w&64u)!=0u));\n}\n// TEXT reserves r for the GPU-prepared text basis; source p/q stay intact for edits.\nfn textBasis(e:Entity)->mat2x2<f32>{return mat2x2<f32>(e.r.xy,e.r.zw);}\nfn textShift(e:Entity)->vec2<f32>{let width=runWidth(e);var x=0.;var y=0.;if(e.q.z==1.){x=-width*.5;}else if(e.q.z==2.){x=-width;}let bottom=-af(e.data.x+2u)+fontInfo.ink.z;let top=fontInfo.ink.w;if(e.q.w==1.){y=-bottom;}else if(e.q.w==2.){y=-(top+bottom)*.5;}else if(e.q.w==3.){y=-top;}return vec2<f32>(x,y);}\nfn transformedBounds(origin:vec2<f32>,m:mat2x2<f32>,box:vec4<f32>)->vec4<f32>{let p0=origin+m*box.xy;let p1=origin+m*vec2<f32>(box.z,box.y);let p2=origin+m*box.zw;let p3=origin+m*vec2<f32>(box.x,box.w);return vec4<f32>(min(min(p0,p1),min(p2,p3)),max(max(p0,p1),max(p2,p3)));}\nfn ellipseExtent(m:mat2x2<f32>,a:vec2<f32>,b:vec2<f32>)->vec2<f32>{let x=m*a;let y=m*b;return sqrt(x*x+y*y);}\nfn calculateBounds(e:Entity)->vec4<f32>{let origin=e.world.xy+e.world.zw;let m=entityMatrix(e);var lo=origin;var hi=origin;let kind=e.tag.x;\n if(kind==1u){let p=origin+m*e.p.xy;let halfWidth=max(0.,e.p.z)*.5;lo=min(lo,p)-halfWidth;hi=max(hi,p)+halfWidth;}else if(kind==2u){let extent=ellipseExtent(m,e.p.xy,vec2<f32>(-e.p.y,e.p.x)*e.p.z);lo-=extent;hi+=extent;}\n else if(kind==3u||kind==8u){for(var i=0u;i<e.data.y;i++){let p=av(e.data.x+i*4u);let world=origin+m*p;lo=min(lo,world);hi=max(hi,world);let bulge=af(e.data.x+i*4u+2u);if(abs(bulge)>1e-7&&(i+1u<e.data.y||(e.data.w&1u)!=0u)){\n   let next=av(e.data.x+((i+1u)%e.data.y)*4u);let delta=next-p;let c=(p+next)*.5+vec2<f32>(-delta.y,delta.x)*(1.-bulge*bulge)/(4.*bulge);let radius=length(p-c);let center=origin+m*c;let extent=ellipseExtent(m,vec2<f32>(radius,0.),vec2<f32>(0.,radius));lo=min(lo,center-extent);hi=max(hi,center+extent);}}\n }else if(kind==4u){let shift=textShift(e);return transformedBounds(origin,textBasis(e),vec4<f32>(vec2<f32>(fontInfo.ink.x,-af(e.data.x+2u)+fontInfo.ink.z)+shift,vec2<f32>(runWidth(e)+fontInfo.ink.y,fontInfo.ink.w)+shift));}\n else if(kind==5u){let a=origin+m*e.p.xy;let b=origin+m*e.p.zw;lo=min(lo,min(a,b));hi=max(hi,max(a,b));}\n else if(kind==6u){let o=e.data.x+4u+aux[e.data.x+1u];for(var i=0u;i<e.data.y;i++){let v=origin+m*av(o+i*4u);lo=min(lo,v);hi=max(hi,v);}}\n else if(kind==11u){let padding=max(e.q.x,.01)*.3;return transformedBounds(origin,m,vec4<f32>(-padding,-padding,e.p.x+padding,e.p.y+padding));}\n else if(kind==12u){return hatchBounds(e);}\n else if(kind==13u){return dimensionBounds(e);}\n else if(kind==9u||kind==10u){lo=vec2<f32>(-1e25);hi=vec2<f32>(1e25);}\n return vec4<f32>(lo,hi);\n}\nvar<workgroup> mins:array<vec4<f32>,256>;\nvar<workgroup> maxs:array<vec4<f32>,256>;\nvar<workgroup> preparedText:array<u32,128>;\n@compute @workgroup_size(128)\nfn prepare(@builtin(global_invocation_id) gid:vec3<u32>,@builtin(local_invocation_index) lane:u32,@builtin(workgroup_id) group:vec3<u32>){let i=gid.x;var box=vec4<f32>(1e30,1e30,-1e30,-1e30);var textPresent=0u;\n if(i<header.counts.x){var e=transformEntity(entities[i]);if(e.tag.x==4u){textPresent=1u;let text=calculateTextBasis(e);e.r=vec4<f32>(text[0],text[1]);}entities[i]=e;box=calculateBounds(e);let padding=max(max(abs(box.x),abs(box.z)),max(abs(box.y),abs(box.w)))*.00000048+1e-5;box=vec4<f32>(box.xy-padding,box.zw+padding);bounds[i]=box;entityStyles[e.tag.w]=vec2<u32>(e.tag.y,e.tag.z);}\n preparedText[lane]=textPresent;let finite=all(abs(box)<vec4<f32>(1e20));mins[lane]=vec4<f32>(box.xy,select(vec2<f32>(1e30),box.xy,finite));maxs[lane]=vec4<f32>(box.zw,select(vec2<f32>(-1e30),box.zw,finite));workgroupBarrier();for(var stride=64u;stride>0u;stride/=2u){if(lane<stride){mins[lane]=min(mins[lane],mins[lane+stride]);maxs[lane]=max(maxs[lane],maxs[lane+stride]);preparedText[lane]|=preparedText[lane+stride];}workgroupBarrier();}\n if(lane==0u){if(preparedText[0]!=0u){atomicOr(&stats[8],1u);}bounds[header.counts.x+group.x]=vec4<f32>(mins[0].xy,maxs[0].xy);bounds[header.counts.x+header.counts.y+1u+group.x]=vec4<f32>(mins[0].zw,maxs[0].zw);}\n}\n@compute @workgroup_size(256)\nfn reduceBounds(@builtin(local_invocation_index) lane:u32){var lo=vec2<f32>(1e30);var hi=vec2<f32>(-1e30);for(var i=lane;i<header.counts.y;i+=256u){let b=bounds[header.counts.x+header.counts.y+1u+i];lo=min(lo,b.xy);hi=max(hi,b.zw);}mins[lane]=vec4<f32>(lo,0.,0.);maxs[lane]=vec4<f32>(hi,0.,0.);workgroupBarrier();for(var stride=128u;stride>0u;stride/=2u){if(lane<stride){mins[lane]=min(mins[lane],mins[lane+stride]);maxs[lane]=max(maxs[lane],maxs[lane+stride]);}workgroupBarrier();}if(lane==0u){bounds[header.counts.x+header.counts.y]=vec4<f32>(mins[0].xy,maxs[0].xy);}}\n@compute @workgroup_size(64)\nfn layoutText(@builtin(global_invocation_id) id:vec3<u32>){if(id.x>=header.counts.w){return;}let o=aux[header.extra.x+id.x];shapeRun(o);let n=aux[o];let wrap=af(o+3u);var x=0.;var y=0.;var maxWidth=0.;\n for(var i=0u;i<n;i++){let g=aux[o+4u+i*4u];var advance=0.;if(g<CONSUMED_GLYPH){var next=i+1u;loop{if(next>=n||aux[o+4u+next*4u]!=CONSUMED_GLYPH){break;}next++;}var adjustment=0.;if(next<n){adjustment=pairAdvance(g,aux[o+4u+next*4u]);}advance=max(0.,glyphAt(g).metrics.x+adjustment);if(wrap>0.&&x>0.&&x+advance>wrap){x=0.;y+=1.35;}}\n  aux[o+5u+i*4u]=bitcast<u32>(x);aux[o+6u+i*4u]=bitcast<u32>(y);aux[o+7u+i*4u]=bitcast<u32>(advance);if(g==0xffffffffu){maxWidth=max(maxWidth,x);x=0.;y+=1.35;}else{x+=advance;maxWidth=max(maxWidth,x);}}\n aux[o+1u]=bitcast<u32>(maxWidth);aux[o+2u]=bitcast<u32>(y);\n}\n@compute @workgroup_size(128)\nfn generate(@builtin(global_invocation_id) id:vec3<u32>){if(id.x>=header.counts.x){return;}let global=header.counts.z+id.x;let columns=u32(ceil(sqrt(f32(header.extra.z))));let x=f32(global%columns)*48.;let y=f32(global/columns)*28.;var kind=1u;var layer=0u;\n if(header.extra.y==2u||global%10u>=6u){kind=4u;layer=2u;}if(header.extra.y!=2u&&global%10u==9u){kind=2u;layer=1u;}\n var e=Entity(vec4<f32>(x,y,0.,0.),vec4<f32>(36.,0.,0.,0.),vec4<f32>(0.),vec4<f32>(0.),vec4<u32>(kind,0u,layer,global+1u),vec4<u32>(0u,0u,0xffffffffu,0u),vec4<f32>(1.,0.,0.,1.),vec4<f32>(0.));\n if(kind==1u&&global%3u==0u){e.p=vec4<f32>(0.,22.,0.,0.);}if(kind==2u){e.p=vec4<f32>(5.,0.,1.,0.);e.q=vec4<f32>(0.,TAU,0.,0.);}if(kind==4u){e.p=vec4<f32>(2.7,1.,0.,0.);e.data=vec4<u32>(header.extra.w,global+1u,0xffffffffu,256u);}entities[id.x]=e;\n}\n@compute @workgroup_size(64)\nfn reset(@builtin(local_invocation_index) lane:u32){if(lane<8u){atomicStore(&stats[lane],0u);}}\nfn boxOnScreen(b:vec4<f32>)->bool{let center=frame.camera.xy+frame.camera.zw;let h=frame.viewport.xy*(.5+frame.grid.x)/frame.viewport.z;let co=abs(frame.pointer.x);let si=abs(frame.pointer.y);let half=vec2<f32>(co*h.x+si*h.y,si*h.x+co*h.y)+max(4.*frame.viewport.w,(3.+.5*frame.settings.z)*frame.viewport.w+1.)/frame.viewport.z;return all(b.zw>=center-half)&&all(b.xy<=center+half);}\nvar<workgroup> clusterActive:u32;\nvar<workgroup> prefix:array<vec2<u32>,128>;\nvar<workgroup> baseOffset:vec2<u32>;\nfn batchCandidate(index:u32,kind:u32,b:vec4<f32>)->bool {\n if(frame.grid.y<.5){return false;}\n let size=max(vec2<f32>(0.),b.zw-b.xy)*frame.viewport.z;\n if(kind==1u){return max(size.x,size.y)+frame.settings.z*frame.viewport.w<=32.;}\n if(kind==7u){return (6.+frame.settings.z)*frame.viewport.w<=32.;}\n if(kind==4u){\n  if(max(size.x,size.y)<=24.){return true;}\n  if((frame.state.y&2u)==0u||max(size.x,size.y)>96.){return false;}\n  let basis=entities[index].r;\n  return min(length(basis.xy),length(basis.zw))*frame.viewport.z<frame.settings.x;\n }\n return false;\n}\n@compute @workgroup_size(128)\nfn cullScan(@builtin(global_invocation_id) gid:vec3<u32>,@builtin(local_invocation_index) lane:u32,@builtin(workgroup_id) group:vec3<u32>){\n if(lane==0u){clusterActive=u32(boxOnScreen(bounds[header.counts.x+group.x]));}\n let enabled=workgroupUniformLoad(&clusterActive);if(enabled==0u){return;}\n let slot=gid.x;let i=order[min(slot,header.counts.x-1u)];var live=false;var small=false;\n if(slot<header.counts.x){let box=bounds[i];if(boxOnScreen(box)){let tag=entities[i].tag;live=layers[tag.z].visible!=0u;small=live&&batchCandidate(i,tag.x,box);}}\n prefix[lane]=vec2<u32>(u32(small),u32(live&&!small));workgroupBarrier();\n for(var offset=1u;offset<128u;offset*=2u){var v=vec2<u32>(0);if(lane>=offset){v=prefix[lane-offset];}workgroupBarrier();prefix[lane]+=v;workgroupBarrier();}\n if(lane==127u){baseOffset=vec2<u32>(atomicAdd(&stats[4],prefix[127].x),atomicAdd(&stats[5],prefix[127].y));atomicAdd(&stats[0],prefix[127].x+prefix[127].y);}\n workgroupBarrier();if(small){visible[baseOffset.x+prefix[lane].x-1u]=i;}else if(live){visible[header.counts.x-baseOffset.y-prefix[lane].y]=i;}\n}\n// Portable 128-lane ballot implemented with eight workgroup-local atomic masks.\n// Three synchronization phases replace the 128-lane Hillis-Steele prefix scan.\n// Tail lanes participate in barriers but never reserve or emit an entity.\nvar<workgroup> smallMasks:array<atomic<u32>,4>;\nvar<workgroup> largeMasks:array<atomic<u32>,4>;\n@compute @workgroup_size(128)\nfn cull(@builtin(global_invocation_id) gid:vec3<u32>,@builtin(local_invocation_index) lane:u32,@builtin(workgroup_id) group:vec3<u32>){\n if(lane<4u){atomicStore(&smallMasks[lane],0u);atomicStore(&largeMasks[lane],0u);}\n if(lane==0u){clusterActive=u32(boxOnScreen(bounds[header.counts.x+group.x]));}\n if(workgroupUniformLoad(&clusterActive)==0u){return;}\n var index=0u;var live=false;var small=false;\n if(gid.x<header.counts.x){index=order[gid.x];let box=bounds[index];\n  if(boxOnScreen(box)){let tag=entities[index].tag;live=layers[tag.z].visible!=0u;small=live&&batchCandidate(index,tag.x,box);}}\n let word=lane>>5u;let bit=1u<<(lane&31u);\n if(small){atomicOr(&smallMasks[word],bit);}else if(live){atomicOr(&largeMasks[word],bit);}\n workgroupBarrier();\n if(lane==0u){var totals=vec2<u32>(0u);for(var j=0u;j<4u;j++){totals+=vec2<u32>(countOneBits(atomicLoad(&smallMasks[j])),countOneBits(atomicLoad(&largeMasks[j])));}\n  baseOffset=vec2<u32>(atomicAdd(&stats[4],totals.x),atomicAdd(&stats[5],totals.y));}\n let base=workgroupUniformLoad(&baseOffset);\n if(live){var rank=0u;for(var j=0u;j<word;j++){\n   if(small){rank+=countOneBits(atomicLoad(&smallMasks[j]));}else{rank+=countOneBits(atomicLoad(&largeMasks[j]));}}\n  let inclusive=bit|(bit-1u);\n  if(small){rank+=countOneBits(atomicLoad(&smallMasks[word])&inclusive);visible[base.x+rank-1u]=index;}\n  else{rank+=countOneBits(atomicLoad(&largeMasks[word])&inclusive);visible[header.counts.x-base.y-rank]=index;}}\n}\n@compute @workgroup_size(1)\nfn indirect(){let batchCount=atomicLoad(&stats[4]);let large=atomicLoad(&stats[5]);atomicStore(&stats[0],batchCount+large);let small=(batchCount+63u)/64u;\n dispatchArgs[0]=min(large,65535u);dispatchArgs[1]=max(1u,(large+65534u)/65535u);dispatchArgs[2]=1u;\n dispatchArgs[4]=min(small,65535u);dispatchArgs[5]=max(1u,(small+65534u)/65535u);dispatchArgs[6]=1u;let sampleCount=select(0u,(batchCount+large+511u)/512u,atomicLoad(&stats[8])!=0u);dispatchArgs[8]=min(sampleCount,65535u);dispatchArgs[9]=max(1u,(sampleCount+65534u)/65535u);dispatchArgs[10]=1u;}\nfn viewRotate(p:vec2<f32>)->vec2<f32>{return vec2<f32>(p.x*frame.pointer.x+p.y*frame.pointer.y,-p.x*frame.pointer.y+p.y*frame.pointer.x);}\nfn screenOrigin(e:Entity)->vec2<f32>{let delta=viewRotate((e.world.xy-frame.camera.xy)+(e.world.zw-frame.camera.zw));return vec2<f32>(delta.x,-delta.y)*frame.viewport.z+frame.viewport.xy*.5;}\nfn screenVector(p:vec2<f32>)->vec2<f32>{let q=viewRotate(p);return vec2<f32>(q.x,-q.y)*frame.viewport.z;}\nfn screenPoint(e:Entity,p:vec2<f32>)->vec2<f32>{return screenOrigin(e)+screenVector(entityMatrix(e)*p);}\nfn put(pixel:vec2<i32>,coverage:f32,id:u32){\n if(any(pixel<vec2<i32>(0))||any(pixel>=vec2<i32>(frame.viewport.xy))||coverage<=0.){return;}\n let c=u32(clamp(coverage*255.+.5,0.,255.));if(c==0u){return;}\n let address=u32(pixel.y)*u32(frame.viewport.x)+u32(pixel.x);let key=(id<<8u)|c;\n atomicMax(&pixels[address],key);\n // Exact quality mode retains every coverage contributor. No alpha approximation is hidden.\n if((frame.state.y&8u)!=0u){let slot=atomicAdd(&fragments[0],1u);let capacity=u32(frame.reserved.x);\n  if(slot>=capacity){atomicStore(&fragments[1],1u);return;}\n  let node=4u+u32(frame.viewport.x)*u32(frame.viewport.y)+slot*2u;\n  atomicStore(&fragments[node+1u],key);let old=atomicExchange(&fragments[4u+address],slot+1u);atomicStore(&fragments[node],old);\n }\n}\n// Major-axis traversal touches O(projected length * stroke width), not the diagonal bounding rectangle.\nfn stroke(a0:vec2<f32>,b0:vec2<f32>,width:f32,id:u32,lane:u32,stride:u32,dash:vec2<f32>){let d0=b0-a0;let radius=max(width*.5,.35);let pad=radius+1.;var t0=0.;var t1=1.;let low=vec2<f32>(-pad);let high=frame.viewport.xy+pad;\n for(var axis=0u;axis<2u;axis++){if(abs(d0[axis])<1e-12){if(a0[axis]<low[axis]||a0[axis]>high[axis]){return;}}else{let u=(low[axis]-a0[axis])/d0[axis];let v=(high[axis]-a0[axis])/d0[axis];t0=max(t0,min(u,v));t1=min(t1,max(u,v));}}\n if(t0>t1){return;}let a=a0+d0*t0;let b=a0+d0*t1;let d=b-a;let major=select(1u,0u,abs(d.x)>=abs(d.y));let minor=1u-major;let start=i32(floor(min(a[major],b[major])-pad));let end=i32(ceil(max(a[major],b[major])+pad));let count=u32(max(0,end-start+1));let extra=i32(ceil(pad));let norm=max(dot(d0,d0),1e-20);let fullLength=sqrt(norm);\n for(var k=lane;k<count;k+=stride){let majorPixel=start+i32(k);let pos=f32(majorPixel)+.5;var t=.5;if(abs(d[major])>1e-12){t=clamp((pos-a[major])/d[major],0.,1.);}let center=i32(floor(a[minor]+t*d[minor]));\n  for(var off=-extra;off<=extra;off++){var pixel=vec2<i32>(0);pixel[major]=majorPixel;pixel[minor]=center+off;let p=vec2<f32>(pixel)+.5;let parameter=clamp(dot(p-a0,d0)/norm,0.,1.);let dist=length(p-(a0+parameter*d0));var cov=clamp(radius+.5-dist,0.,1.);\n   if(dash.x>0.&&dash.y>0.){let phase=parameter*fullLength;let period=dash.x+dash.y;if(phase-floor(phase/period)*period>dash.x){cov=0.;}}put(pixel,cov,id);}}\n}\nfn curveSteps(a:vec2<f32>,b:vec2<f32>,sweep:f32)->u32{let radius=length(a)+length(b);return u32(clamp(ceil(abs(sweep)*sqrt(max(radius,1.)/(8.*max(frame.settings.y,.03)))),1.,32768.));}\n// Split only at analytic viewport intersections before sampling a deeply zoomed conic.\n// The radius bound |r''| <= |a|+|b| gives a chord error <= R * deltaAngle^2 / 8.\nfn ellipseStroke(e:Entity,center:vec2<f32>,major:vec2<f32>,minor:vec2<f32>,start:f32,sweep:f32,lane:u32,stride:u32){\n let o=screenPoint(e,center);let a=screenVector(entityMatrix(e)*major);let b=screenVector(entityMatrix(e)*minor);let width=frame.settings.z*frame.viewport.w;\n let pad=width*.5+2.;let low=vec2<f32>(-pad);let high=frame.viewport.xy+pad;\n var cuts:array<f32,10>;cuts[0]=0.;cuts[1]=1.;var count=2u;\n if(length(a)+length(b)>max(frame.viewport.x,frame.viewport.y)*2.&&abs(sweep)>1e-12){\n  for(var axis=0u;axis<2u;axis++){let r=length(vec2<f32>(a[axis],b[axis]));if(r<1e-12){continue;}let phase=atan2(b[axis],a[axis]);\n   for(var side=0u;side<2u;side++){let value=(select(low[axis],high[axis],side==1u)-o[axis])/r;if(abs(value)>1.){continue;}let angle=acos(clamp(value,-1.,1.));\n    for(var sign=0u;sign<2u;sign++){let theta=phase+select(-angle,angle,sign==1u);var delta=select(start-theta,theta-start,sweep>=0.);delta-=floor(delta/TAU)*TAU;let t=delta/abs(sweep);\n     if(t>0.&&t<1.&&count<10u){cuts[count]=t;count++;}}}}\n  for(var i=1u;i<count;i++){var j=i;let v=cuts[i];loop{if(j==0u){break;}if(cuts[j-1u]<=v){break;}cuts[j]=cuts[j-1u];j--;}cuts[j]=v;}\n }\n for(var part=0u;part+1u<count;part++){let begin=cuts[part];let to=cuts[part+1u];if(to-begin<1e-12){continue;}let middle=start+sweep*(begin+to)*.5;let p=o+a*cos(middle)+b*sin(middle);\n  if(count>2u&&(any(p<low)||any(p>high))){continue;}\n  let segmentSweep=sweep*(to-begin);let raw=ceil(abs(segmentSweep)*sqrt(max(length(a)+length(b),1.)/(8.*max(frame.settings.y,.03))));\n  if(raw>32768.&&lane==0u){atomicAdd(&stats[6],1u);}let n=u32(clamp(raw,1.,32768.));\n  for(var i=lane;i<n;i+=stride){let t=start+sweep*begin+segmentSweep*f32(i)/f32(n);let t1=start+sweep*begin+segmentSweep*f32(i+1u)/f32(n);\n   stroke(o+a*cos(t)+b*sin(t),o+a*cos(t1)+b*sin(t1),width,e.tag.w,0u,1u,vec2<f32>(0.));}\n }\n}\nfn pathEdge(e:Entity,i:u32){let o=e.data.x+i*4u;let a=av(o);let b=av(e.data.x+((i+1u)%e.data.y)*4u);let bulge=af(o+2u);if(abs(bulge)<1e-7){stroke(screenPoint(e,a),screenPoint(e,b),frame.settings.z*frame.viewport.w,e.tag.w,0u,1u,e.r.xy*frame.viewport.z);}else{let delta=b-a;let c=(a+b)*.5+vec2<f32>(-delta.y,delta.x)*(1.-bulge*bulge)/(4.*bulge);let radius=length(a-c);ellipseStroke(e,c,vec2<f32>(radius,0.),vec2<f32>(0.,radius),atan2(a.y-c.y,a.x-c.x),4.*atan(bulge),0u,1u);}}\nfn splinePoint(e:Entity,t:f32)->vec2<f32>{return nurbsPoint(e.data.x,t);}\nfn nurbsPoint(o:u32,t:f32)->vec2<f32>{let degree=aux[o];let nk=aux[o+1u];let n=aux[o+2u];let knot=o+4u;let points=knot+nk;var lo=degree;var hi=n;for(var iter=0u;iter<32u&&lo+1u<hi;iter++){let mid=(lo+hi)/2u;if(t<af(knot+mid)){hi=mid;}else{lo=mid;}}let span=min(lo,n-1u);var work:array<vec3<f32>,32>;\n for(var j=0u;j<=degree;j++){let p=points+(span-degree+j)*4u;let w=af(p+2u);work[j]=vec3<f32>(av(p)*w,w);}\n for(var r=1u;r<=degree;r++){for(var jj=0u;jj<=degree-r;jj++){let j=degree-jj;let i=span-degree+j;let den=af(knot+i+degree-r+1u)-af(knot+i);var alpha=0.;if(abs(den)>1e-20){alpha=(t-af(knot+i))/den;}work[j]=mix(work[j-1u],work[j],alpha);}}\n return work[degree].xy/max(work[degree].z,1e-20);\n}\nfn angleInArc(angle:f32,start:f32,sweep:f32)->bool{var delta=angle-start;if(sweep<0.){delta=-delta;}delta=delta-floor(delta/TAU)*TAU;return delta<abs(sweep);}\n// Even-odd fill evaluates circular bulge crossings analytically in object space.\nfn insidePath(e:Entity,p:vec2<f32>)->bool{var crossings=0u;for(var i=0u;i+1u<e.data.y;i++){let o=e.data.x+i*4u;if(af(o+3u)>.5){continue;}let a=av(o);let b=av(o+4u);let bulge=af(o+2u);\n if(abs(bulge)<1e-7){if((a.y>p.y)!=(b.y>p.y)){let x=a.x+(p.y-a.y)*(b.x-a.x)/(b.y-a.y);if(x>p.x){crossings++;}}}else{let delta=b-a;let c=(a+b)*.5+vec2<f32>(-delta.y,delta.x)*(1.-bulge*bulge)/(4.*bulge);let r=length(a-c);let disc=r*r-(p.y-c.y)*(p.y-c.y);if(disc>1e-12){let root=sqrt(disc);let start=atan2(a.y-c.y,a.x-c.x);let sweep=4.*atan(bulge);for(var s=0u;s<2u;s++){let x=c.x+select(-root,root,s==1u);if(x>p.x&&angleInArc(atan2(p.y-c.y,x-c.x),start,sweep)){crossings++;}}}}}\n return (crossings&1u)!=0u;\n}\nfn atlasDistance(gid:u32,g:Glyph,p:vec2<f32>)->f32{let uv=(p-g.box.xy)/(g.box.zw-g.box.xy);\n if(any(uv<vec2<f32>(0.))||any(uv>vec2<f32>(1.))){return -.25;}\n let cell=fontInfo.metrics.y;let columns=u32(fontInfo.metrics.z);\n let origin=vec2<f32>(f32(gid%columns),f32(gid/columns))*cell;\n let tc=clamp(vec2<f32>(uv.x,1.-uv.y)*cell,vec2<f32>(.5),vec2<f32>(cell-.5));\n return (textureSampleLevel(atlas,atlasSampler,(origin+tc)/vec2<f32>(fontInfo.atlas.xy),0.).r-.5)*.25;\n}\nfn glyphCoverage(gid:u32,p:vec2<f32>,scale:f32)->f32{let g=glyphAt(gid);if(any(p<g.box.xy)||any(p>g.box.zw)){return 0.;}var dist=0.;if(scale>384.){dist=glyphDistance(g,p,scale);}else{dist=atlasDistance(gid,g,p);}return clamp(.5+dist*scale,0.,1.);}\nconst DIGIT_DIVISORS=array<u32,8>(10000000u,1000000u,100000u,10000u,1000u,100u,10u,1u);\nfn shadeText(e:Entity,p:vec2<f32>,scale:f32)->f32{let o=e.data.x;let n=aux[o];var coverage=0.;let firstRow=u32(max(0.,floor((fontInfo.ink.z-p.y)/1.35)));let lastRow=u32(max(0.,min(ceil((fontInfo.ink.w-p.y)/1.35),ceil(af(o+2u)/1.35))));\n for(var row=firstRow;row<=lastRow;row++){let targetRow=f32(row)*1.35;var lo=0u;var hi=n;for(var iter=0u;iter<32u&&lo<hi;iter++){let mid=(lo+hi)/2u;let pos=vec2<f32>(af(o+5u+mid*4u),af(o+6u+mid*4u));let less=pos.y<targetRow-.01||(abs(pos.y-targetRow)<.01&&pos.x<p.x-fontInfo.ink.y);if(less){lo=mid+1u;}else{hi=mid;}}\n  for(var index=i32(lo);index<i32(n);index++){let px=af(o+5u+u32(index)*4u);let py=af(o+6u+u32(index)*4u);if(py>targetRow+.01||px>p.x-fontInfo.ink.x){break;}if(abs(py-targetRow)>.01){continue;}let g=aux[o+4u+u32(index)*4u];if(g>=CONSUMED_GLYPH){continue;}let x=af(o+5u+u32(index)*4u);let y=af(o+6u+u32(index)*4u);coverage=max(coverage,glyphCoverage(g,vec2<f32>(p.x-x,p.y+y),scale));}}\n if((e.data.w&256u)!=0u){let start=af(o+1u);let column=i32(floor((p.x-start)/fontInfo.metrics.x));for(var offset=-1;offset<=1;offset++){let digitIndex=column+offset;if(digitIndex<0||digitIndex>=8){continue;}let digit=(e.data.y/DIGIT_DIVISORS[u32(digitIndex)])%10u;coverage=max(coverage,glyphCoverage(digitGlyph(digit),vec2<f32>(p.x-start-f32(digitIndex)*fontInfo.metrics.x,p.y),scale));}}\n return coverage;\n}\nfn inverse2(m:mat2x2<f32>)->mat2x2<f32>{let determinant=m[0].x*m[1].y-m[1].x*m[0].y;return mat2x2<f32>(vec2<f32>(m[1].y,-m[0].y),vec2<f32>(-m[1].x,m[0].x))*(1./determinant);}\nfn screenBox(b:vec4<f32>)->vec4<i32>{let center=frame.camera.xy+frame.camera.zw;let m=mat2x2<f32>(screenVector(vec2<f32>(1.,0.)),screenVector(vec2<f32>(0.,1.)));let box=transformedBounds(frame.viewport.xy*.5,m,vec4<f32>(b.xy-center,b.zw-center));return vec4<i32>(max(vec2<i32>(floor(box.xy-2.)),vec2<i32>(0)),min(vec2<i32>(ceil(box.zw+2.)),vec2<i32>(frame.viewport.xy)-1));}\n// The lane-batched pipeline can only reach these three small-entity kernels.\n// In particular it cannot reach NURBS local arrays, hatch loops or dimension work.\nfn rasterLine(e:Entity,lane:u32,stride:u32){let width=frame.settings.z*frame.viewport.w;stroke(screenOrigin(e),screenPoint(e,e.p.xy),max(width,e.p.z*frame.viewport.z),e.tag.w,lane,stride,e.r.xy*frame.viewport.z);}\nfn rasterPoint(e:Entity,lane:u32,stride:u32){let width=frame.settings.z*frame.viewport.w;let o=screenOrigin(e);stroke(o-vec2<f32>(3.,0.)*frame.viewport.w,o+vec2<f32>(3.,0.)*frame.viewport.w,width,e.tag.w,lane,stride,vec2<f32>(0.));stroke(o-vec2<f32>(0.,3.)*frame.viewport.w,o+vec2<f32>(0.,3.)*frame.viewport.w,width,e.tag.w,lane,stride,vec2<f32>(0.));}\n// Rasterization has no per-text telemetry atomics. Explicit sampling uses sampleText.\nfn rasterText(e:Entity,index:u32,lane:u32,stride:u32){\n let box=screenBox(bounds[index]);let size=box.zw-box.xy+1;if(any(size<=vec2<i32>(0))){return;}let pixelCount=u32(size.x)*u32(size.y);\n let basis=textBasis(e);let screenBasis=mat2x2<f32>(screenVector(basis[0]),screenVector(basis[1]));let determinant=screenBasis[0].x*screenBasis[1].y-screenBasis[1].x*screenBasis[0].y;\n if(abs(determinant)<1e-10){return;}let scale=min(length(screenBasis[0]),length(screenBasis[1]));let shift=textShift(e);let origin=screenOrigin(e)+screenBasis*shift;\n if((frame.state.y&2u)!=0u&&scale<frame.settings.x){stroke(origin,origin+screenBasis*vec2<f32>(runWidth(e),0.),max(.35,min(scale*.35,1.)),e.tag.w,lane,stride,vec2<f32>(0.));return;}\n let inverse=inverse2(screenBasis);for(var i=lane;i<pixelCount;i+=stride){let pixel=box.xy+vec2<i32>(i32(i%u32(size.x)),i32(i/u32(size.x)));let p=inverse*(vec2<f32>(pixel)+.5-origin);put(pixel,shadeText(e,p,scale),e.tag.w);}\n}\nfn rasterEntity(index:u32,lane:u32,stride:u32){let e=entities[index];let kind=e.tag.x;\n if(kind==13u){rasterDimension(e,lane,stride);return;}let width=frame.settings.z*frame.viewport.w;\n if(kind==1u){rasterLine(e,lane,stride);return;}\n if(kind==9u||kind==10u){let o=screenOrigin(e);var direction=screenVector(entityMatrix(e)*e.p.xy);if(length(direction)<1e-10){return;}direction=normalize(direction);let middle=frame.viewport.xy*.5;let along=dot(middle-o,direction);let extent=length(frame.viewport.xy)*2.;let begin=select(along-extent,max(0.,along-extent),kind==10u);stroke(o+direction*begin,o+direction*(along+extent),width,e.tag.w,lane,stride,vec2<f32>(0.));return;}\n if(kind==11u){let nx=u32(clamp(ceil(abs(e.p.x)/max(e.q.x,.01)),1.,256.));let ny=u32(clamp(ceil(abs(e.p.y)/max(e.q.x,.01)),1.,256.));let count=2u*(nx+ny);for(var i=lane;i<count;i+=stride){var a:vec2<f32>;var b:vec2<f32>;if(i<nx){a=vec2<f32>(e.p.x*f32(i)/f32(nx),0.);b=vec2<f32>(e.p.x*f32(i+1u)/f32(nx),0.);}else if(i<nx+ny){let j=i-nx;a=vec2<f32>(e.p.x,e.p.y*f32(j)/f32(ny));b=vec2<f32>(e.p.x,e.p.y*f32(j+1u)/f32(ny));}else if(i<2u*nx+ny){let j=i-nx-ny;a=vec2<f32>(e.p.x*(1.-f32(j)/f32(nx)),e.p.y);b=vec2<f32>(e.p.x*(1.-f32(j+1u)/f32(nx)),e.p.y);}else{let j=i-2u*nx-ny;a=vec2<f32>(0.,e.p.y*(1.-f32(j)/f32(ny)));b=vec2<f32>(0.,e.p.y*(1.-f32(j+1u)/f32(ny)));}let delta=b-a;let center=(a+b)*.5+vec2<f32>(-delta.y,delta.x)*(1.-.45*.45)/(4.*.45);let radius=length(a-center);ellipseStroke(e,center,vec2<f32>(radius,0.),vec2<f32>(0.,radius),atan2(a.y-center.y,a.x-center.x),4.*atan(.45),0u,1u);}return;}\n if(kind==2u){ellipseStroke(e,vec2<f32>(0.),e.p.xy,vec2<f32>(-e.p.y,e.p.x)*e.p.z,e.q.x,e.q.y,lane,stride);return;}\n if(kind==3u){if(e.data.y<2u){return;}let count=e.data.y-select(1u,0u,(e.data.w&1u)!=0u);for(var i=lane;i<count;i+=stride){pathEdge(e,i);}return;}\n if(kind==6u){let b=bounds[index];let diagonal=length(b.zw-b.xy)*frame.viewport.z;let requested=max(f32(e.data.y)*12.,sqrt(max(diagonal,1.)/max(frame.settings.y,.03))*4.);let n=u32(clamp(requested,8.,16384.));if(lane==0u&&requested>16384.){atomicAdd(&stats[6],1u);}let degree=aux[e.data.x];let nk=aux[e.data.x+1u];let low=af(e.data.x+4u+degree);let high=af(e.data.x+4u+nk-degree-1u);\n  for(var i=lane;i<n;i+=stride){let a=splinePoint(e,mix(low,high,f32(i)/f32(n)));let z=splinePoint(e,mix(low,high,f32(i+1u)/f32(n)));stroke(screenPoint(e,a),screenPoint(e,z),width,e.tag.w,0u,1u,vec2<f32>(0.));}return;}\n if(kind==7u){rasterPoint(e,lane,stride);return;}\n if(kind==4u){rasterText(e,index,lane,stride);return;}\n let box=screenBox(bounds[index]);let size=box.zw-box.xy+1;if(any(size<=vec2<i32>(0))){return;}let pixelCount=u32(size.x)*u32(size.y);\n\n if(kind==5u){let a=screenOrigin(e);let b=screenPoint(e,e.p.xy);let c=screenPoint(e,e.p.zw);let area=(b.x-a.x)*(c.y-a.y)-(b.y-a.y)*(c.x-a.x);if(abs(area)<1e-10){return;}let sign=select(-1.,1.,area>=0.);let ab=b-a;let bc=c-b;let ca=a-c;\n  for(var i=lane;i<pixelCount;i+=stride){let pixel=box.xy+vec2<i32>(i32(i%u32(size.x)),i32(i/u32(size.x)));let p=vec2<f32>(pixel)+.5;let d0=sign*(ab.x*(p.y-a.y)-ab.y*(p.x-a.x))/max(length(ab),1e-12);let d1=sign*(bc.x*(p.y-b.y)-bc.y*(p.x-b.x))/max(length(bc),1e-12);let d2=sign*(ca.x*(p.y-c.y)-ca.y*(p.x-c.x))/max(length(ca),1e-12);put(pixel,clamp(.5+min(d0,min(d1,d2)),0.,1.),e.tag.w);}return;\n }\n if(kind==12u){let m=entityMatrix(e);let sm=mat2x2<f32>(screenVector(m[0]),screenVector(m[1]));if(abs(cross2(sm[0],sm[1]))<1e-12){return;}let inverse=inverse2(sm);let origin=screenOrigin(e);let scale=max(length(sm[0]),length(sm[1]));\n  for(var i=lane;i<pixelCount;i+=stride){let pixel=box.xy+vec2<i32>(i32(i%u32(size.x)),i32(i/u32(size.x)));var coverage=0.;\n   for(var j=0u;j<4u;j++){let offset=vec2<f32>(select(.25,.75,(j&1u)!=0u),select(.25,.75,(j&2u)!=0u));let p=inverse*(vec2<f32>(pixel)+offset-origin);if(hatchInside(e,p,scale)){coverage+=hatchPattern(e,p,inverse)*.25;}}\n   put(pixel,coverage,e.tag.w);}return;\n }\n if(kind==8u){let m=entityMatrix(e);let sm=mat2x2<f32>(screenVector(m[0]),screenVector(m[1]));if(abs(sm[0].x*sm[1].y-sm[1].x*sm[0].y)<1e-10){return;}let inverse=inverse2(sm);let origin=screenOrigin(e);\n  for(var i=lane;i<pixelCount;i+=stride){let pixel=box.xy+vec2<i32>(i32(i%u32(size.x)),i32(i/u32(size.x)));var coverage=0.;for(var j=0u;j<4u;j++){let offset=vec2<f32>(select(.25,.75,(j&1u)!=0u),select(.25,.75,(j&2u)!=0u));coverage+=f32(insidePath(e,inverse*(vec2<f32>(pixel)+offset-origin)))*.25;}put(pixel,coverage,e.tag.w);}return;\n }\n}\n\n\n@compute @workgroup_size(64)\nfn raster(@builtin(workgroup_id) group:vec3<u32>,@builtin(local_invocation_index) lane:u32){\n let slot=group.x+group.y*65535u;if(slot>=atomicLoad(&stats[5])){return;}\n rasterEntity(visible[header.counts.x-1u-slot],lane,64u);\n}\n@compute @workgroup_size(64)\nfn rasterBatch(@builtin(global_invocation_id) gid:vec3<u32>){\n let slot=gid.x+gid.y*65535u*64u;if(slot>=atomicLoad(&stats[4])){return;}let index=visible[slot];let e=entities[index];\n if(e.tag.x==1u){rasterLine(e,0u,1u);}else if(e.tag.x==7u){rasterPoint(e,0u,1u);}else if(e.tag.x==4u){rasterText(e,index,0u,1u);}\n}\n// Optional diagnostics traverse the resident queues, never download geometry.\n// Same viewport / determinant / proxy predicates as rasterText, but no glyph rasterization.\nvar<workgroup> sampledText:array<vec3<u32>,64>;\n@compute @workgroup_size(64)\nfn sampleText(@builtin(global_invocation_id) gid:vec3<u32>,@builtin(local_invocation_index) lane:u32){\n let group=(gid.x/64u)+gid.y*65535u;let base=group*512u+lane;\n let small=atomicLoad(&stats[4]);let total=atomicLoad(&stats[0]);var counts=vec3<u32>(0u);\n for(var tile=0u;tile<8u;tile++){\n  let slot=base+tile*64u;if(slot>=total){break;}\n  var index=0u;if(slot<small){index=visible[slot];}else{index=visible[header.counts.x-1u-(slot-small)];}\n  let e=entities[index];if(e.tag.x!=4u){continue;}\n  let box=screenBox(bounds[index]);if(any(box.zw<box.xy)){continue;}\n  counts.x++;counts.z+=aux[e.data.x]+select(0u,8u,(e.data.w&256u)!=0u);\n  let basis=textBasis(e);let sm=mat2x2<f32>(screenVector(basis[0]),screenVector(basis[1]));let determinant=sm[0].x*sm[1].y-sm[1].x*sm[0].y;\n  if(abs(determinant)>=1e-10&&(frame.state.y&2u)!=0u){counts.y+=u32(min(length(sm[0]),length(sm[1]))<frame.settings.x);}\n }\n sampledText[lane]=counts;workgroupBarrier();\n for(var stride=32u;stride>0u;stride/=2u){if(lane<stride){sampledText[lane]+=sampledText[lane+stride];}workgroupBarrier();}\n if(lane==0u){let total=sampledText[0];if(total.x!=0u){atomicAdd(&stats[1],total.x);}if(total.y!=0u){atomicAdd(&stats[2],total.y);}if(total.z!=0u){atomicAdd(&stats[3],total.z);}}\n}\n// Small sparse annotation pages keep insertion order; no host index upload.\n@compute @workgroup_size(128)\nfn identity(@builtin(global_invocation_id) id:vec3<u32>){if(id.x<header.counts.x){order[id.x]=id.x;}}\n\n// Summed candidate instances across reused model queues in paper-space viewports.\n@compute @workgroup_size(1)\nfn sumViewport(){let small=atomicLoad(&stats[4]);let large=atomicLoad(&stats[5]);atomicAdd(&sheetStats[0],small+large);atomicAdd(&sheetStats[4],small);atomicAdd(&sheetStats[5],large);atomicAdd(&sheetStats[6],atomicLoad(&stats[6]));atomicAdd(&sheetStats[7],large+(small+63u)/64u);}\n\n// Reused coverage still contributes candidate counts, but executes no raster workgroups.\n@compute @workgroup_size(1)\nfn sumViewportCached(){let small=atomicLoad(&stats[4]);let large=atomicLoad(&stats[5]);atomicAdd(&sheetStats[0],small+large);atomicAdd(&sheetStats[4],small);atomicAdd(&sheetStats[5],large);atomicAdd(&sheetStats[6],atomicLoad(&stats[6]));}\n","pixels":"struct Frame {camera:vec4<f32>,viewport:vec4<f32>,settings:vec4<f32>,state:vec4<u32>,background:vec4<f32>,grid:vec4<f32>,pointer:vec4<f32>,reserved:vec4<f32>}\nstruct Layer {color:u32,visible:u32,flags:u32,pad:u32}\n@group(0) @binding(0) var<uniform> frame:Frame;\n@group(0) @binding(1) var<storage,read_write> pixels:array<atomic<u32>>;\n@group(0) @binding(2) var<storage,read> entityStyles:array<vec2<u32>>;\n@group(0) @binding(3) var<storage,read> layers:array<Layer>;\n@group(0) @binding(4) var output:texture_storage_2d<rgba8unorm,write>;\n@group(0) @binding(5) var<storage,read_write> pickResult:array<u32>;\n@group(0) @binding(6) var<uniform> pickParams:vec4<u32>;\nstruct MeasureParams {a:vec4<f32>,b:vec4<f32>}\n@group(0) @binding(7) var<uniform> measureParams:MeasureParams;\n@group(0) @binding(8) var<storage,read_write> fragments:array<atomic<u32>>;\n@group(0) @binding(9) var<storage,read_write> basePixels:array<atomic<u32>>;\n@compute @workgroup_size(256)\nfn clear(@builtin(global_invocation_id) id:vec3<u32>){let i=id.x+id.y*65535u*256u;if(i<u32(frame.viewport.x)*u32(frame.viewport.y)){atomicStore(&pixels[i],0u);}}\n@compute @workgroup_size(256)\nfn clearFragments(@builtin(global_invocation_id) id:vec3<u32>){let i=id.x+id.y*65535u*256u;\n if(i<u32(frame.viewport.x)*u32(frame.viewport.y)){atomicStore(&fragments[4u+i],0u);}if(i<4u){atomicStore(&fragments[i],0u);}}\nfn entityColor(entity:u32)->vec4<f32>{let style=entityStyles[entity];let packed=select(style.x,layers[style.y&0x7fffffffu].color,style.x==0u);\n var ink=unpackColor(packed);if((frame.state.y&4u)!=0u){ink=vec3<f32>(dot(ink,vec3<f32>(.2126,.7152,.0722)));}\n if(entity==frame.state.x||(style.y&0x80000000u)!=0u){ink=vec3<f32>(1.,.74,.33);}if(entity==frame.state.z){ink=mix(ink,vec3<f32>(1.),.35);}\n return vec4<f32>(ink,f32(packed>>24u)/255.);}\n// Front-to-back source-over in declared drawing/entity order; duplicate coverage samples\n// from one entity are unioned with max coverage, never blended repeatedly.\nfn composite(address:u32,bg:vec3<f32>)->vec3<f32>{\n let head=atomicLoad(&fragments[4u+address]);let count=u32(frame.viewport.x)*u32(frame.viewport.y);\n var previous=0xffffffffu;var transmission=1.;var result=vec3<f32>(0.);\n loop {var node=head;var next=0u;var coverage=0u;\n  loop{if(node==0u){break;}let offset=4u+count+(node-1u)*2u;let key=atomicLoad(&fragments[offset+1u]);let entity=key>>8u;\n   if(entity<previous){if(entity>next){next=entity;coverage=key&255u;}else if(entity==next){coverage=max(coverage,key&255u);}}\n   node=atomicLoad(&fragments[offset]);}\n  if(next==0u){break;}let ink=entityColor(next);let alpha=ink.a*f32(coverage)/255.;result+=transmission*alpha*ink.rgb;transmission*=1.-alpha;previous=next;\n  if(transmission==0.){break;}\n }\n return result+transmission*bg;\n}\nfn unpackColor(c:u32)->vec3<f32>{return vec3<f32>(f32(c&255u),f32((c>>8u)&255u),f32((c>>16u)&255u))/255.;}\nfn backgroundAt(id:vec2<u32>)->vec3<f32>{let p=vec2<f32>(id)+.5;var bg=frame.background.rgb;\n if((frame.state.y&1u)!=0u){let localPoint=vec2<f32>(p.x-frame.viewport.x*.5,frame.viewport.y*.5-p.y)/frame.viewport.z;let world=vec2<f32>(frame.pointer.x*localPoint.x-frame.pointer.y*localPoint.y,frame.pointer.y*localPoint.x+frame.pointer.x*localPoint.y)+frame.camera.xy+frame.camera.zw;\n  let step=frame.grid.z;let local=world/step;let distance=abs(local-round(local))*step*frame.viewport.z;let major=abs(local/5.-round(local/5.))*step*5.*frame.viewport.z;\n  bg+=vec3<f32>(.025,.033,.043)*clamp(1.-min(distance.x,distance.y),0.,1.)+vec3<f32>(.016,.022,.03)*clamp(1.-min(major.x,major.y),0.,1.);}\n return bg;\n}\nfn coverageAt(address:u32)->u32{let base=atomicLoad(&basePixels[address]);if(frame.reserved.y==0.){return base;}return max(base,atomicLoad(&pixels[address]));}\n@compute @workgroup_size(8,8)\nfn resolve(@builtin(global_invocation_id) id:vec3<u32>){if(any(id.xy>=vec2<u32>(frame.viewport.xy))){return;}\n var color=backgroundAt(id.xy);let key=coverageAt(id.y*u32(frame.viewport.x)+id.x);let entity=key>>8u;\n if(entity!=0u){let ink=entityColor(entity);color=mix(color,ink.rgb,f32(key&255u)/255.*ink.a);}\n textureStore(output,vec2<i32>(id.xy),vec4<f32>(color,1.));\n}\n@compute @workgroup_size(8,8)\nfn resolveExact(@builtin(global_invocation_id) id:vec3<u32>){if(any(id.xy>=vec2<u32>(frame.viewport.xy))){return;}\n var color=composite(id.y*u32(frame.viewport.x)+id.x,backgroundAt(id.xy));\n if(atomicLoad(&fragments[1])!=0u&&id.y<12u){color=select(vec3<f32>(1.,0.,.7),vec3<f32>(0.),((id.x/12u)&1u)!=0u);}\n textureStore(output,vec2<i32>(id.xy),vec4<f32>(color,1.));\n}\nvar<workgroup> distances:array<u32,64>;\nvar<workgroup> ids:array<u32,64>;\n@compute @workgroup_size(64)\nfn pick(@builtin(local_invocation_index) lane:u32){let r=min(pickParams.z,24u);let size=2u*r+1u;var best=0xffffffffu;var entity=0u;\n for(var i=lane;i<size*size;i+=64u){let offset=vec2<i32>(i32(i%size)-i32(r),i32(i/size)-i32(r));let p=vec2<i32>(pickParams.xy)+offset;if(any(p<vec2<i32>(0))||any(p>=vec2<i32>(frame.viewport.xy))){continue;}let address=u32(p.y)*u32(frame.viewport.x)+u32(p.x);let key=select(coverageAt(address),atomicLoad(&basePixels[address]),pickParams.w!=0u);if((key&255u)<40u){continue;}let id=key>>8u;let distance=u32(offset.x*offset.x+offset.y*offset.y);if(distance<best||(distance==best&&id>entity)){best=distance;entity=id;}}\n distances[lane]=best;ids[lane]=entity;workgroupBarrier();for(var stride=32u;stride>0u;stride/=2u){if(lane<stride){let d=distances[lane+stride];let id=ids[lane+stride];if(d<distances[lane]||(d==distances[lane]&&id>ids[lane])){distances[lane]=d;ids[lane]=id;}}workgroupBarrier();}if(lane==0u){pickResult[0]=ids[0];pickResult[1]=distances[0];}}\n@compute @workgroup_size(1)\nfn measure(){let delta=(measureParams.b.xy-measureParams.a.xy)+(measureParams.b.zw-measureParams.a.zw);pickResult[0]=bitcast<u32>(length(delta));pickResult[1]=bitcast<u32>(abs(delta.x));pickResult[2]=bitcast<u32>(abs(delta.y));pickResult[3]=bitcast<u32>(atan2(delta.y,delta.x));}\n\n// Exact integer coverage copy. The source rectangle is cropped before allocation.\n@compute @workgroup_size(8,8)\nfn copyViewport(@builtin(global_invocation_id) id:vec3<u32>){if(any(id.xy>=vec2<u32>(frame.viewport.xy))){return;}let destination=id.xy+vec2<u32>(frame.pointer.zw);if(any(destination>=vec2<u32>(frame.reserved.zw))){return;}let key=atomicLoad(&pixels[id.y*u32(frame.viewport.x)+id.x]);atomicStore(&basePixels[destination.y*u32(frame.reserved.z)+destination.x],key);}\n","index":"// Page-local GPU spatial indexing. 256 Morton buckets, no CPU key readback.\n// Rank reservation is unordered, but painter order is the immutable entity ID.\nstruct Header {origin:vec4<f32>,counts:vec4<u32>,extra:vec4<u32>}\n@group(0) @binding(0) var<uniform> header:Header;\n@group(0) @binding(1) var<storage,read_write> bounds:array<vec4<f32>>;\n@group(0) @binding(2) var<storage,read_write> order:array<u32>;\n@group(0) @binding(3) var<storage,read_write> ranks:array<vec2<u32>>;\n@group(0) @binding(4) var<storage,read_write> buckets:array<atomic<u32>>;\n@compute @workgroup_size(256)\nfn spatialClear(@builtin(local_invocation_index) lane:u32){atomicStore(&buckets[lane],0u);atomicStore(&buckets[256u+lane],0u);}\nfn spread4(v:u32)->u32{var x=v&15u;x=(x|(x<<2u))&51u;x=(x|(x<<1u))&85u;return x;}\n@compute @workgroup_size(128)\nfn spatialAssign(@builtin(global_invocation_id) id:vec3<u32>){let i=id.x;if(i>=header.counts.x){return;}let root=bounds[header.counts.x+header.counts.y];let b=bounds[i];let center=(b.xy+b.zw)*.5;let unit=clamp((center-root.xy)/max(root.zw-root.xy,vec2<f32>(1e-12)),vec2<f32>(0.),vec2<f32>(.999999));let xy=vec2<u32>(unit*16.);let bucket=spread4(xy.x)|(spread4(xy.y)<<1u);let rank=atomicAdd(&buckets[bucket],1u);ranks[i]=vec2<u32>(bucket,rank);}\nvar<workgroup> scan:array<u32,256>;\n@compute @workgroup_size(256)\nfn spatialScan(@builtin(local_invocation_index) lane:u32){let own=atomicLoad(&buckets[lane]);scan[lane]=own;workgroupBarrier();for(var offset=1u;offset<256u;offset*=2u){var v=0u;if(lane>=offset){v=scan[lane-offset];}workgroupBarrier();scan[lane]+=v;workgroupBarrier();}atomicStore(&buckets[256u+lane],scan[lane]-own);}\n@compute @workgroup_size(128)\nfn spatialScatter(@builtin(global_invocation_id) id:vec3<u32>){let i=id.x;if(i>=header.counts.x){return;}let rank=ranks[i];order[atomicLoad(&buckets[256u+rank.x])+rank.y]=i;}\nvar<workgroup> lo:array<vec2<f32>,128>;\nvar<workgroup> hi:array<vec2<f32>,128>;\n@compute @workgroup_size(128)\nfn spatialBounds(@builtin(global_invocation_id) id:vec3<u32>,@builtin(local_invocation_index) lane:u32,@builtin(workgroup_id) group:vec3<u32>){var b=vec4<f32>(1e30,1e30,-1e30,-1e30);if(id.x<header.counts.x){b=bounds[order[id.x]];}lo[lane]=b.xy;hi[lane]=b.zw;workgroupBarrier();for(var stride=64u;stride>0u;stride/=2u){if(lane<stride){lo[lane]=min(lo[lane],lo[lane+stride]);hi[lane]=max(hi[lane],hi[lane+stride]);}workgroupBarrier();}if(lane==0u){bounds[header.counts.x+group.x]=vec4<f32>(lo[0],hi[0]);}}\n","stroke":"@group(0) @binding(0) var<storage,read_write> fontData:array<u32>;\n@group(0) @binding(1) var<uniform> fontInfo:FontInfo;\n@group(0) @binding(2) var<storage,read> programs:array<u32>;\nstruct FontInfo { atlas: vec4<u32>, metrics: vec4<f32>, digits0:vec4<u32>,digits1:vec4<u32>,digits2:vec4<u32>,ink:vec4<f32> }\nstruct Glyph { range:vec4<u32>, box:vec4<f32>, metrics:vec4<f32> }\nfn fontFloat(i:u32)->f32{return bitcast<f32>(fontData[i]);}\nfn glyphAt(id:u32)->Glyph {let i=min(id,fontInfo.atlas.z-1u)*12u;return Glyph(vec4<u32>(fontData[i],fontData[i+1u],fontData[i+2u],fontData[i+3u]),vec4<f32>(fontFloat(i+4u),fontFloat(i+5u),fontFloat(i+6u),fontFloat(i+7u)),vec4<f32>(fontFloat(i+8u),fontFloat(i+9u),0.,0.));}\nfn segmentDistance(p:vec2<f32>,a:vec2<f32>,b:vec2<f32>)->f32 {let d=b-a;let t=clamp(dot(p-a,d)/max(dot(d,d),1e-24),0.,1.);return length(p-a-t*d);}\nfn windingEdge(p:vec2<f32>,a:vec2<f32>,b:vec2<f32>)->i32 {if((a.y<=p.y&&b.y>p.y)||(a.y>p.y&&b.y<=p.y)){let x=a.x+(p.y-a.y)*(b.x-a.x)/(b.y-a.y);if(x>p.x){return select(-1,1,b.y>a.y);}}return 0;}\n// Closed-form closest-point roots remove the old 4..128-segment glyph approximation.\n// Coefficients are normalized before Cardano; nearly linear quadratics use a segment.\nfn signedCubeRoot(x:f32)->f32 {return sign(x)*pow(abs(x),1./3.);}\nfn quadraticAt(a:vec2<f32>,u:vec2<f32>,v:vec2<f32>,t:f32)->vec2<f32>{return a+t*(u+t*v);}\nfn quadraticDistance(p:vec2<f32>,a:vec2<f32>,b:vec2<f32>,c:vec2<f32>)->f32 {\n let u=2.*(c-a);let v=a-2.*c+b;let w=a-p;let vv=dot(v,v);\n if(vv<1e-12*max(dot(u,u),1e-12)){return segmentDistance(p,a,b);}\n let aa=1.5*dot(u,v)/vv;let bb=(dot(u,u)+2.*dot(w,v))/(2.*vv);let cc=dot(w,u)/(2.*vv);\n let pp=bb-aa*aa/3.;let qq=2.*aa*aa*aa/27.-aa*bb/3.+cc;let halfQ=qq*.5;\n let disc=halfQ*halfQ+pp*pp*pp/27.;var roots:array<f32,3>;var rootCount=1u;\n if(disc>=0.){let h=sqrt(disc);let z=-halfQ-select(-h,h,halfQ>=0.);let first=signedCubeRoot(z);var second=0.;if(abs(first)>1e-20){second=-pp/(3.*first);}roots[0]=first+second-aa/3.;}\n else {let radius=2.*sqrt(max(0.,-pp/3.));let theta=acos(clamp(-halfQ/max(sqrt(max(0.,-pp*pp*pp/27.)),1e-30),-1.,1.))/3.;rootCount=3u;\n  for(var i=0u;i<3u;i++){roots[i]=radius*cos(theta-f32(i)*2.0943951023931953)-aa/3.;}}\n var answer=min(dot(w,w),dot(b-p,b-p));\n for(var i=0u;i<rootCount;i++){var t=clamp(roots[i],0.,1.);\n  // Two guarded Newton corrections recover precision lost in depressed-cubic cancellation.\n  for(var j=0u;j<2u;j++){let q=quadraticAt(a,u,v,t)-p;let d=u+2.*t*v;let denominator=dot(d,d)+2.*dot(q,v);if(abs(denominator)>1e-18){t=clamp(t-dot(q,d)/denominator,0.,1.);}}\n  let q=quadraticAt(a,u,v,t)-p;answer=min(answer,dot(q,q));}\n return sqrt(max(0.,answer));\n}\nfn quadraticWindingRoot(p:vec2<f32>,a:vec2<f32>,u:vec2<f32>,v:vec2<f32>,t:f32)->i32 {\n if(t<0.||t>1.){return 0;}let dy=u.y+2.*t*v.y;\n if(dy==0.||(t==0.&&dy<0.)||(t==1.&&dy>0.)){return 0;}\n if(quadraticAt(a,u,v,t).x>p.x){return select(-1,1,dy>0.);}return 0;\n}\nfn quadraticWinding(p:vec2<f32>,a:vec2<f32>,b:vec2<f32>,c:vec2<f32>)->i32 {\n let u=2.*(c-a);let v=a-2.*c+b;let y=a.y-p.y;\n if(abs(v.y)<1e-12){if(abs(u.y)<1e-20){return 0;}return quadraticWindingRoot(p,a,u,v,-y/u.y);}\n let disc=u.y*u.y-4.*v.y*y;if(disc<=0.){return 0;}\n let q=-.5*(u.y+select(-sqrt(disc),sqrt(disc),u.y>=0.));\n if(abs(q)<1e-25){return quadraticWindingRoot(p,a,u,v,-u.y/(2.*v.y));}\n return quadraticWindingRoot(p,a,u,v,q/v.y)+quadraticWindingRoot(p,a,u,v,y/q);\n}\nfn glyphDistance(g:Glyph,p:vec2<f32>,pixelsPerEm:f32)->f32 {\n var distance=1e10;var winding=0;\n for(var i=0u;i<g.range.y;i++){let o=fontInfo.atlas.w+(g.range.x+i)*8u;let a=vec2<f32>(fontFloat(o),fontFloat(o+1u));let b=vec2<f32>(fontFloat(o+2u),fontFloat(o+3u));let control=vec2<f32>(fontFloat(o+4u),fontFloat(o+5u));\n  if(fontFloat(o+6u)>1.5){let radius=b.x;let begin=b.y;let sweep=control.x;var delta=atan2(p.y-a.y,p.x-a.x)-begin;if(sweep<0.){delta=-delta;}delta-=floor(delta/6.283185307179586)*6.283185307179586;\n    let p0=a+vec2<f32>(cos(begin),sin(begin))*radius;let p1=a+vec2<f32>(cos(begin+sweep),sin(begin+sweep))*radius;\n    var d=min(length(p-p0),length(p-p1));if(delta<=abs(sweep)){d=min(d,abs(length(p-a)-abs(radius)));}distance=min(distance,d);\n   }else if(fontFloat(o+6u)<.5){distance=min(distance,segmentDistance(p,a,b));winding+=windingEdge(p,a,b);}else{\n   distance=min(distance,quadraticDistance(p,a,b,control));winding+=quadraticWinding(p,a,b,control);\n  }\n }\n if(g.range.z==0u){return g.metrics.y-distance;}return select(-distance,distance,winding!=0);\n}\nfn digitGlyph(digit:u32)->u32 {if(digit<4u){return fontInfo.digits0[digit];}if(digit<8u){return fontInfo.digits1[digit-4u];}return fontInfo.digits2[digit-8u];}\n\nconst ST_PI=3.141592653589793;\nconst VX=array<f32,16>(1.,1.,1.,.5,0.,-.5,-1.,-1.,-1.,-1.,-1.,-.5,0.,.5,1.,1.);\nconst VY=array<f32,16>(0.,.5,1.,1.,1.,1.,1.,.5,0.,-.5,-1.,-1.,-1.,-1.,-1.,-.5);\nfn operand(i:u32)->f32{return f32(bitcast<i32>(programs[i]));}\nfn writeStrokeEdge(slot:u32,a:vec2<f32>,b:vec2<f32>,control:vec2<f32>,kind:f32){let o=fontInfo.atlas.w+slot*8u;\n fontData[o]=bitcast<u32>(a.x);fontData[o+1u]=bitcast<u32>(a.y);fontData[o+2u]=bitcast<u32>(b.x);fontData[o+3u]=bitcast<u32>(b.y);\n fontData[o+4u]=bitcast<u32>(control.x);fontData[o+5u]=bitcast<u32>(control.y);fontData[o+6u]=bitcast<u32>(kind);fontData[o+7u]=0u;}\n@compute @workgroup_size(1)\nfn compileStroke(@builtin(global_invocation_id) id:vec3<u32>){let gid=id.x;if(gid>=fontInfo.atlas.z){return;}\n let glyphRecord=gid*12u;let edgeBase=fontData[glyphRecord];let capacity=programs[gid*4u+2u];var position=vec2<f32>(0.);var scale=fontInfo.metrics.w;var down=true;\n var lo=vec2<f32>(1e20);var hi=vec2<f32>(-1e20);var count=0u;var error=0u;\n var locationStack:array<vec2<f32>,64>;var depth=0u;var calls:array<vec2<u32>,32>;var callDepth=0u;\n var pc=programs[gid*4u];var end=pc+programs[gid*4u+1u]*8u;var executed=0u;\n loop {if(pc>=end){error=1u;break;}if(executed>=2000000u){error=2u;break;}executed++;\n  let op=programs[pc];let base=pc;pc+=8u;if(programs[base+7u]!=0u&&fontInfo.digits2.w==0u){continue;}\n  if(op==0u){if(callDepth==0u){break;}callDepth--;pc=calls[callDepth].x;end=calls[callDepth].y;continue;}\n  if(op==1u){down=true;continue;}if(op==2u){down=false;continue;}\n  if(op==3u){scale/=operand(base+1u);continue;}if(op==4u){scale*=operand(base+1u);continue;}\n  if(op==5u){if(depth>=64u){error=3u;break;}locationStack[depth]=position;depth++;continue;}\n  if(op==6u){if(depth==0u){error=4u;break;}depth--;position=locationStack[depth];continue;}\n  if(op==7u){if(callDepth>=32u){error=5u;break;}calls[callDepth]=vec2<u32>(pc,end);callDepth++;let sub=programs[base+1u];pc=programs[sub*4u];end=pc+programs[sub*4u+1u]*8u;down=true;continue;}\n  var next=position;var center=vec2<f32>(0.);var radius=0.;var angle=0.;var sweep=0.;var arc=false;\n  if(op==8u||op==12u){next+=vec2<f32>(operand(base+1u),operand(base+2u))*scale;\n   let bulge=operand(base+3u)/127.;if(op==12u&&abs(bulge)>1e-10&&length(next-position)>1e-12){let delta=next-position;center=(position+next)*.5+vec2<f32>(-delta.y,delta.x)*(1.-bulge*bulge)/(4.*bulge);radius=length(position-center);angle=atan2(position.y-center.y,position.x-center.x);sweep=4.*atan(bulge);arc=true;}\n  }else if(op==16u){let direction=programs[base+2u]&15u;next+=vec2<f32>(VX[direction],VY[direction])*operand(base+1u)*scale;}\n  else if(op==10u||op==11u){let spec=bitcast<i32>(programs[base+select(2u,5u,op==11u)]);let v=u32(abs(spec));let sign=select(-1.,1.,spec>=0);let octant=(v>>4u)&15u;var span=v&15u;if(span==0u){span=8u;}\n   angle=f32(octant)*ST_PI*.25;sweep=sign*f32(span)*ST_PI*.25;radius=operand(base+1u)*scale;\n   if(op==11u){let begin=operand(base+1u)/256.;var finish=operand(base+2u)/256.;if(finish==0.){finish=1.;}\n    radius=(operand(base+3u)*256.+operand(base+4u))*scale;angle+=sign*begin*ST_PI*.25;sweep=sign*(f32(span)-1.+finish-begin)*ST_PI*.25;}\n   center=position-vec2<f32>(cos(angle),sin(angle))*radius;next=center+vec2<f32>(cos(angle+sweep),sin(angle+sweep))*radius;arc=true;\n  }else {error=6u;break;}\n  if(down){if(count>=capacity){error=7u;break;}if(arc){writeStrokeEdge(edgeBase+count,center,vec2<f32>(radius,angle),vec2<f32>(sweep,0.),2.);lo=min(lo,center-abs(radius));hi=max(hi,center+abs(radius));}\n   else{writeStrokeEdge(edgeBase+count,position,next,vec2<f32>(0.),0.);lo=min(lo,min(position,next));hi=max(hi,max(position,next));}count++;}\n  position=next;\n }\n if(count==0u){lo=vec2<f32>(0.);hi=vec2<f32>(max(position.x,.2),1.);}let pad=.08;\n fontData[glyphRecord+1u]=count;fontData[glyphRecord+3u]=error;fontData[glyphRecord+4u]=bitcast<u32>(lo.x-pad);fontData[glyphRecord+5u]=bitcast<u32>(lo.y-pad);\n fontData[glyphRecord+6u]=bitcast<u32>(hi.x+pad);fontData[glyphRecord+7u]=bitcast<u32>(hi.y+pad);fontData[glyphRecord+8u]=bitcast<u32>(position.x);\n}\n","edit":"// On-demand CAD editing kernels. Not reachable from per-frame raster pipelines.\nstruct Entity {anchor:vec4<f32>,p:vec4<f32>,q:vec4<f32>,r:vec4<f32>,tag:vec4<u32>,data:vec4<u32>,basis:vec4<f32>,world:vec4<f32>}\nstruct ToolParams {origin:vec4<f32>,point:vec4<f32>,control:vec4<u32>,extra:vec4<u32>}\nstruct DS {hi:vec2<f32>,lo:vec2<f32>}\n@group(0) @binding(0) var<uniform> tool:ToolParams;\n@group(0) @binding(1) var<storage,read_write> toolEntities:array<Entity>;\n@group(0) @binding(2) var<storage,read_write> toolAux:array<u32>;\n@group(0) @binding(3) var<storage,read_write> toolResult:array<vec4<u32>>;\n@group(0) @binding(4) var<storage,read> toolRanges:array<vec4<u32>>;\n@group(0) @binding(5) var<storage,read_write> toolStyles:array<vec2<u32>>;\nconst TAU=6.283185307179586;\nfn af(o:u32)->f32{return bitcast<f32>(toolAux[o]);}\nfn av(o:u32)->vec2<f32>{return vec2<f32>(af(o),af(o+1u));}\nfn setAv(o:u32,v:vec2<f32>){toolAux[o]=bitcast<u32>(v.x);toolAux[o+1u]=bitcast<u32>(v.y);}\nfn dsAdd(a:DS,b:DS)->DS{let s=a.hi+b.hi;let v=s-a.hi;let e=(a.hi-(s-v))+(b.hi-v)+a.lo+b.lo;let hi=s+e;return DS(hi,e-(hi-s));}\nfn matrix(e:Entity)->mat2x2<f32>{return mat2x2<f32>(e.basis.xy,e.basis.zw);}\nfn selectionIndex(index:u32,start:u32,count:u32)->u32{var low=start;var high=start+count;loop{if(low>=high){break;}let mid=(low+high)/2u;let row=toolRanges[mid];if(index<row.z){high=mid;}else if(index>=row.z+row.y){low=mid+1u;}else{return row.x+index-row.z;}}return 0u;}\n@compute @workgroup_size(256)\nfn clearSelection(@builtin(global_invocation_id) gid:vec3<u32>){let i=gid.x+gid.y*65535u*256u;if(i>=tool.control.z){return;}let id=selectionIndex(i,0u,tool.control.x);if(id>0u&&id<arrayLength(&toolStyles)){toolStyles[id].y&=0x7fffffffu;}}\n@compute @workgroup_size(256)\nfn markSelection(@builtin(global_invocation_id) gid:vec3<u32>){let i=gid.x+gid.y*65535u*256u;if(i>=tool.control.w){return;}let id=selectionIndex(i,tool.control.x,tool.control.y);if(id>0u&&id<arrayLength(&toolStyles)){toolStyles[id].y|=0x80000000u;}}\n// Snap candidates stay GPU-resident. Exactly one 32-byte winning point is read back.\nvar<workgroup> snapDistance:array<f32,64>;\nvar<workgroup> snapPoint:array<vec4<f32>,64>;\nvar<workgroup> snapKind:array<u32,64>;\nfn snapCandidate(e:Entity,index:u32)->vec3<f32>{let kind=e.tag.x;let modes=tool.control.y;\n if((modes&1u)!=0u){if(kind==1u&&index<3u){return vec3<f32>(e.p.xy*select(select(.5,1.,index==1u),0.,index==0u),select(2.,1.,index<2u));}\n  if((kind==3u||kind==8u)&&index<e.data.y*2u){let vertex=index/2u;let a=av(e.data.x+vertex*4u);let next=(vertex+1u)%e.data.y;if(index%2u==0u){return vec3<f32>(a,1.);}if(next==0u&&(e.data.w&1u)==0u){return vec3<f32>(0.);}let b=av(e.data.x+next*4u);let bulge=af(e.data.x+vertex*4u+2u);if(abs(bulge)<1e-7){return vec3<f32>((a+b)*.5,2.);}let delta=b-a;let center=(a+b)*.5+vec2<f32>(-delta.y,delta.x)*(1.-bulge*bulge)/(4.*bulge);let angle=atan2(a.y-center.y,a.x-center.x)+2.*atan(bulge);return vec3<f32>(center+length(a-center)*vec2<f32>(cos(angle),sin(angle)),2.);}\n }\n if(kind==2u){if(index==0u&&(modes&2u)!=0u){return vec3<f32>(0.,0.,3.);}var t=0.;if(index==1u){t=e.q.x;}else if(index==2u){t=e.q.x+e.q.y;}else if(index>=3u&&index<=6u){t=f32(index-3u)*TAU*.25;}else{return vec3<f32>(0.);}let delta=((t-e.q.x)%TAU+TAU)%TAU;if(index>=3u&&abs(e.q.y)<TAU-1e-5&&delta>e.q.y){return vec3<f32>(0.);}if(index<=2u&&(modes&1u)==0u){return vec3<f32>(0.);}if(index>=3u&&(modes&4u)==0u){return vec3<f32>(0.);}return vec3<f32>(e.p.xy*cos(t)+vec2<f32>(-e.p.y,e.p.x)*e.p.z*sin(t),select(4.,1.,index<=2u));}\n if(index==0u&&(kind==4u||kind==7u||kind==9u||kind==10u)&&(modes&8u)!=0u){return vec3<f32>(0.,0.,5.);}return vec3<f32>(0.);\n}\n@compute @workgroup_size(64)\nfn snapEntity(@builtin(local_invocation_index) lane:u32){let e=toolEntities[tool.control.x];var total=7u;if(e.tag.x==3u||e.tag.x==8u){total=e.data.y*2u;}var best=bitcast<f32>(tool.extra.x);best*=best;var pos=vec4<f32>(0.);var chosen=0u;\n for(var i=lane;i<total;i+=64u){let candidate=snapCandidate(e,i);if(candidate.z==0.){continue;}let world=dsAdd(DS(e.world.xy,e.world.zw),DS(matrix(e)*candidate.xy,vec2<f32>(0.)));let d=dsAdd(world,DS(-tool.point.xy,-tool.point.zw));let distance=dot(d.hi+d.lo,d.hi+d.lo);if(distance<best||(distance==best&&u32(candidate.z)<chosen)){best=distance;pos=vec4<f32>(world.hi,world.lo);chosen=u32(candidate.z);}}\n snapDistance[lane]=best;snapPoint[lane]=pos;snapKind[lane]=chosen;workgroupBarrier();for(var stride=32u;stride>0u;stride/=2u){if(lane<stride){let a=snapDistance[lane];let b=snapDistance[lane+stride];if(b<a||(b==a&&snapKind[lane+stride]>0u&&(snapKind[lane]==0u||snapKind[lane+stride]<snapKind[lane]))){snapDistance[lane]=b;snapPoint[lane]=snapPoint[lane+stride];snapKind[lane]=snapKind[lane+stride];}}workgroupBarrier();}\n if(lane==0u){toolResult[0]=bitcast<vec4<u32>>(snapPoint[0]);toolResult[1]=vec4<u32>(snapKind[0],e.tag.w,bitcast<u32>(snapDistance[0]),u32(snapKind[0]!=0u));}}\n// Explicit export geometry must not inherit a driver's low-accuracy atan2\n// approximation. Range reduction bounds the alternating series by tan(pi/8).\nfn bakeAtan2(y:f32,x:f32)->f32 {\n let ax=abs(x);let ay=abs(y);if(max(ax,ay)<1e-30){return 0.;}\n var z=min(ax,ay)/max(ax,ay);var bias=0.;\n if(z>0.41421356237){z=(z-1.)/(z+1.);bias=0.785398163397;}\n let z2=z*z;var poly=1./21.;\n for(var k=9i;k>=0i;k--){let coefficient=select(1.,-1.,(k&1i)!=0i)/f32(2i*k+1i);poly=coefficient+z2*poly;}\n var angle=bias+z*poly;if(ay>ax){angle=1.570796326795-angle;}if(x<0.){angle=3.14159265359-angle;}return select(angle,-angle,y<0.);\n}\n// Bake a transactional COPY of prepared geometry for explicit EXPLODE/BURST export.\n// A zero type means the affine result is outside this exact 2D conversion profile.\n@compute @workgroup_size(64)\nfn bakeExplode(@builtin(global_invocation_id) gid:vec3<u32>){let i=gid.x+gid.y*65535u*64u;if(i>=tool.control.x){return;}var e=toolEntities[i];let kind=e.tag.x;let m=matrix(e);let absolute=dsAdd(DS(e.world.xy,e.world.zw),DS(tool.origin.xy,tool.origin.zw));e.anchor=vec4<f32>(absolute.hi,absolute.lo);var valid=true;\n if(kind==1u||kind==9u||kind==10u){e.p=vec4<f32>(m*e.p.xy,e.p.zw);}\n else if(kind==5u){e.p=vec4<f32>(m*e.p.xy,m*e.p.zw);}\n else if(kind==7u){}\n else if(kind==3u||kind==8u){let sx=length(m[0]);let sy=length(m[1]);let similarity=abs(sx-sy)<max(sx,sy)*1e-5&&abs(dot(m[0],m[1]))<max(sx*sy,1e-20)*1e-5;for(var j=0u;j<e.data.y;j++){let o=e.data.x+j*4u;let bulge=af(o+2u);if(abs(bulge)>1e-7&&!similarity){valid=false;}setAv(o,m*av(o));toolAux[o+2u]=bitcast<u32>(bulge*select(1.,-1.,determinant(m)<0.));}}\n else if(kind==6u){let o=e.data.x;let points=o+4u+toolAux[o+1u];for(var j=0u;j<toolAux[o+2u];j++){setAv(points+j*4u,m*av(points+j*4u));}}\n else if(kind==2u){let a=m*e.p.xy;let b=m*(vec2<f32>(-e.p.y,e.p.x)*e.p.z);let xx=a.x*a.x+b.x*b.x;let yy=a.y*a.y+b.y*b.y;let xy=a.x*a.y+b.x*b.y;let gap=length(vec2<f32>((xx-yy)*.5,xy));let eigenvalue=(xx+yy)*.5+gap;var axis=select(vec2<f32>(xy,eigenvalue-xx),vec2<f32>(eigenvalue-yy,xy),xx>=yy);if(dot(axis,axis)<1e-30){axis=vec2<f32>(1.,0.);}let u=normalize(axis);let v=vec2<f32>(-u.y,u.x);let major=sqrt(max(0.,eigenvalue));let minor=abs(a.x*b.y-a.y*b.x)/max(major,1e-20);if(major<1e-12||minor<1e-12){valid=false;}else{let phase=bakeAtan2(dot(v,a)/minor,dot(u,a)/major);let direction=select(1.,-1.,determinant(mat2x2<f32>(a,b))<0.);let start=phase+direction*e.q.x;let sweep=direction*e.q.y;e.p=vec4<f32>(u*major,minor/major,0.);e.q=vec4<f32>(select(start,start+sweep,sweep<0.),abs(sweep),e.q.zw);}}\n else if(kind==4u){if((e.data.w&256u)!=0u||abs(af(e.data.x+2u))>1e-7){valid=false;}let x=e.r.xy;let y=e.r.zw;let w=length(x);let dir=x/max(w,1e-20);let vertical=dir.x*y.y-dir.y*y.x;let height=abs(vertical);if(height<1e-12||w<1e-12){valid=false;}else{e.p=vec4<f32>(height,w/height,bakeAtan2(dir.y,dir.x),bakeAtan2(dot(dir,y)*sign(vertical),height));e.data.w=(e.data.w&~124u)|select(0u,64u,vertical<0.);}}\n else{valid=false;}\n e.data.z=0xffffffffu;e.basis=vec4<f32>(1.,0.,0.,1.);if(!valid){e.tag.x=0u;}toolEntities[i]=e;\n}\nstruct SnapLayer {color:u32,visible:u32,flags:u32,pad:u32}\n@group(0) @binding(7) var<storage,read> snapLayers:array<SnapLayer>;\n@group(0) @binding(6) var<storage,read> snapBounds:array<vec4<f32>>;\n// One workgroup per existing 128-entity cluster. Conservative bounds reject whole\n// groups without a CPU visible list or readback. Centers remain snappable even\n// when there is no raster coverage under the pointer.\n@compute @workgroup_size(64)\nfn snapCandidates(@builtin(local_invocation_index) lane:u32,@builtin(workgroup_id) wid:vec3<u32>){let cluster=wid.x;let cursor=tool.point.xy+tool.point.zw;let radius=bitcast<f32>(tool.extra.x);let bbox=snapBounds[tool.control.x+cluster];var best=radius*radius;var chosen=0u;var chosenId=0u;var pos=vec4<f32>(0.);\n if(all(bbox.zw>=cursor-vec2<f32>(radius))&&all(bbox.xy<=cursor+vec2<f32>(radius))){for(var index=cluster*128u+lane;index<min(tool.control.x,(cluster+1u)*128u);index+=64u){let box=snapBounds[index];if(any(box.xy>cursor+vec2<f32>(radius))||any(box.zw<cursor-vec2<f32>(radius))){continue;}let e=toolEntities[index];if(snapLayers[e.tag.z].visible==0u){continue;}var total=7u;if(e.tag.x==3u||e.tag.x==8u){total=e.data.y*2u;}for(var i=0u;i<total;i++){let candidate=snapCandidate(e,i);if(candidate.z==0.){continue;}let local=dsAdd(DS(e.world.xy,e.world.zw),DS(matrix(e)*candidate.xy,vec2<f32>(0.)));let delta=dsAdd(local,DS(-tool.point.xy,-tool.point.zw));let distance=dot(delta.hi+delta.lo,delta.hi+delta.lo);if(distance<best||(distance==best&&u32(candidate.z)<chosen)){let absolute=dsAdd(local,DS(tool.origin.xy,tool.origin.zw));best=distance;pos=vec4<f32>(absolute.hi,absolute.lo);chosen=u32(candidate.z);chosenId=e.tag.w;}}}}\n snapDistance[lane]=best;snapPoint[lane]=pos;snapKind[lane]=chosen;var ids=chosenId; // id stored alongside candidate in a dedicated workgroup array\n snapIds[lane]=ids;workgroupBarrier();for(var stride=32u;stride>0u;stride/=2u){if(lane<stride){let a=snapDistance[lane];let b=snapDistance[lane+stride];if(b<a||(b==a&&snapKind[lane+stride]>0u&&(snapKind[lane]==0u||snapIds[lane+stride]<snapIds[lane]))){snapDistance[lane]=b;snapPoint[lane]=snapPoint[lane+stride];snapKind[lane]=snapKind[lane+stride];snapIds[lane]=snapIds[lane+stride];}}workgroupBarrier();}if(lane==0u){let out=(tool.control.z+cluster)*2u;toolResult[out]=bitcast<vec4<u32>>(snapPoint[0]);toolResult[out+1u]=vec4<u32>(snapKind[0],snapIds[0],bitcast<u32>(snapDistance[0]),u32(snapKind[0]!=0u));}}\nvar<workgroup> snapIds:array<u32,64>;\n@compute @workgroup_size(64)\nfn reduceSnap(@builtin(local_invocation_index) lane:u32){var best=1e30;var pos=vec4<f32>(0.);var kind=0u;var entity=0u;for(var i=lane+1u;i<=tool.control.x;i+=64u){let info=toolResult[i*2u+1u];let distance=bitcast<f32>(info.z);if(info.w==0u){continue;}if(distance<best||(distance==best&&info.y<entity)){best=distance;kind=info.x;entity=info.y;pos=bitcast<vec4<f32>>(toolResult[i*2u]);}}snapDistance[lane]=best;snapPoint[lane]=pos;snapKind[lane]=kind;snapIds[lane]=entity;workgroupBarrier();for(var stride=32u;stride>0u;stride/=2u){if(lane<stride){let a=snapDistance[lane];let b=snapDistance[lane+stride];if(b<a||(b==a&&snapIds[lane+stride]>0u&&(snapIds[lane]==0u||snapIds[lane+stride]<snapIds[lane]))){snapDistance[lane]=b;snapPoint[lane]=snapPoint[lane+stride];snapKind[lane]=snapKind[lane+stride];snapIds[lane]=snapIds[lane+stride];}}workgroupBarrier();}if(lane==0u){toolResult[0]=bitcast<vec4<u32>>(snapPoint[0]);toolResult[1]=vec4<u32>(snapKind[0],snapIds[0],bitcast<u32>(snapDistance[0]),u32(snapKind[0]!=0u));}}\n"};
+const SHADER_MAPS={"font":[{"generatedLine":1,"sourceLine":1,"count":3,"file":"packages/gpu/shaders/font.wgsl"},{"generatedLine":4,"sourceLine":1,"count":53,"file":"packages/gpu/shaders/font-common.wgsl"},{"generatedLine":57,"sourceLine":5,"count":4,"file":"packages/gpu/shaders/font.wgsl"}],"scene":[{"generatedLine":1,"sourceLine":1,"count":25,"file":"packages/gpu/shaders/scene.wgsl"},{"generatedLine":26,"sourceLine":1,"count":53,"file":"packages/gpu/shaders/font-common.wgsl"},{"generatedLine":79,"sourceLine":1,"count":28,"file":"packages/gpu/shaders/layout-common.wgsl"},{"generatedLine":107,"sourceLine":1,"count":57,"file":"packages/gpu/shaders/hatch-common.wgsl"},{"generatedLine":164,"sourceLine":1,"count":67,"file":"packages/gpu/shaders/dimension-common.wgsl"},{"generatedLine":231,"sourceLine":30,"count":279,"file":"packages/gpu/shaders/scene.wgsl"}],"pixels":[{"generatedLine":1,"sourceLine":1,"count":69,"file":"packages/gpu/shaders/pixels.wgsl"}],"index":[{"generatedLine":1,"sourceLine":1,"count":23,"file":"packages/gpu/shaders/index.wgsl"}],"stroke":[{"generatedLine":1,"sourceLine":1,"count":3,"file":"packages/gpu/shaders/stroke.wgsl"},{"generatedLine":4,"sourceLine":1,"count":53,"file":"packages/gpu/shaders/font-common.wgsl"},{"generatedLine":57,"sourceLine":5,"count":40,"file":"packages/gpu/shaders/stroke.wgsl"}],"edit":[{"generatedLine":1,"sourceLine":1,"count":76,"file":"packages/gpu/shaders/edit.wgsl"}]};
+const SHADER_HASHES={"font":"c822fcca45947de4bfe81859edfd36583299747a1d01949daadb100c3e95dfc1","scene":"8b1875e8e7107ac2d633fe82d1317968f1d57d3c97d33f36713fecb1879a2aad","pixels":"4b82b0c4782d1d55cf5d0207ab5c7b083aa54c54e362d39b6a9a315f719b1181","index":"b4cb48219738e12ac585e6a0f8b5e24e970b6b4bd6c3bc92bc59ae23cedace66","stroke":"62e12d849a01163392f70429041a4367369ab9f6fcdffea7ffdcfab22f052035","edit":"f57da0baf3584b91155b6771e388b7b57906f3d4b7c4503408798cf54169f6c7"};
+
+Object.assign(exports,{SHADERS,SHADER_MAPS,SHADER_HASHES});
+},
+"packages/gpu/compiler.js":function(module,exports,require){
+/** Actual WebGPU compiler validation shared by browser startup and native CI. */
+class ShaderBuildError extends Error {
+    constructor(message, details, report) {
+        super(message); this.name = 'ShaderBuildError'; this.details = details; this.report = report;
+    }
+}
+function sourceLocation(map, generatedLine, column = 1) {
+    const range = map?.find(r => generatedLine >= r.generatedLine && generatedLine < r.generatedLine + r.count);
+    return range ? { file: range.file, line: range.sourceLine + generatedLine - range.generatedLine, column }
+        : { file: null, line: generatedLine, column };
+}
+function formatShaderMessage(name, code, map, message) {
+    const loc = sourceLocation(map, message.lineNum || 0, message.linePos || 1);
+    const header = `${loc.file || name}:${loc.line}:${loc.column} ${message.message}`;
+    if (!message.lineNum) return header;
+    const lines = code.split('\n'), start = Math.max(0, message.lineNum - 2), end = Math.min(lines.length, message.lineNum + 1);
+    const excerpt = [];
+    for (let i = start; i < end; i++) {
+        excerpt.push(`${i + 1 === message.lineNum ? '>' : ' '} ${String(i + 1).padStart(4)} | ${lines[i]}`);
+        if (i + 1 === message.lineNum) excerpt.push('       | ' + ' '.repeat(Math.min(500, Math.max(0, (message.linePos || 1) - 1))) + '^');
+    }
+    return `${header}\nAssembled module ${name}:${message.lineNum}:${message.linePos}\n${excerpt.join('\n')}`;
+}
+async function mapConcurrent(items, concurrency, callback) {
+    let next = 0; const output = new Array(items.length);
+    await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, async () => {
+        while (next < items.length) { const index = next++; output[index] = await callback(items[index], index); }
+    }));
+    return output;
+}
+async function compileKernels(device, sources, maps, contracts, { concurrency = 4 } = {}) {
+    if (!Number.isInteger(concurrency) || concurrency < 1 || concurrency > 32) throw new RangeError('Compiler concurrency must be 1–32.');
+    const report = { kind: 'webgpu-compiler', modules: [], pipelines: [], status: 'running', elapsedMs: 0 };
+    const start = performance.now(), modules = {}, pipelines = {};
+    // Scopes are pushed and popped before yielding: concurrent async compilation cannot
+    // accidentally consume a sibling module's validation scope.
+    const pending = Object.entries(sources).map(([name, code]) => {
+        device.pushErrorScope('validation');
+        let module, thrown;
+        try { module = device.createShaderModule({ label: 'Aperture / ' + name, code }); }
+        catch (error) { thrown = error; }
+        const scope = device.popErrorScope();
+        return { name, code, module, thrown, scope };
+    });
+    const moduleFailures = [];
+    for (const { name, code, module, thrown, scope } of pending) {
+        const validation = await scope;
+        let info;
+        try { info = module ? await module.getCompilationInfo() : { messages: [] }; }
+        catch (error) { info = { messages: [{ type: 'error', message: error.message }] }; }
+        const messages = info.messages.map(m => ({ type: m.type, message: m.message,
+            lineNum: m.lineNum || 0, linePos: m.linePos || 0, offset: m.offset || 0, length: m.length || 0 }));
+        if ((thrown || validation) && !messages.some(m => m.type === 'error'))
+            messages.push({ type: 'error', message: (thrown || validation).message, lineNum: 0, linePos: 0 });
+        const errors = messages.filter(m => m.type === 'error');
+        report.modules.push({ name, status: errors.length ? 'failed' : 'passed', messages });
+        if (errors.length) moduleFailures.push(...errors.map(m => formatShaderMessage(name, code, maps?.[name], m)));
+        else modules[name] = module;
+    }
+    if (moduleFailures.length) {
+        report.status = 'failed'; report.elapsedMs = performance.now() - start;
+        throw new ShaderBuildError('WGSL compilation failed: ' + report.modules.filter(m => m.status === 'failed').map(m => m.name).join(', '), moduleFailures.join('\n\n'), report);
+    }
+    const jobs = Object.entries(contracts).flatMap(([name, entries]) => Object.keys(entries).map(entryPoint => ({ name, entryPoint })));
+    const results = await mapConcurrent(jobs, concurrency, async ({ name, entryPoint }) => {
+        const began = performance.now();
+        try {
+            if (!modules[name]) throw new Error('Missing shader module ' + name);
+            const pipeline = await device.createComputePipelineAsync({ label: `${name}.${entryPoint}`, layout: 'auto', compute: { module: modules[name], entryPoint } });
+            pipelines[entryPoint] = pipeline;
+            return { module: name, entryPoint, status: 'passed', elapsedMs: performance.now() - began };
+        } catch (error) { return { module: name, entryPoint, status: 'failed', error: error.message, elapsedMs: performance.now() - began }; }
+    });
+    report.pipelines = results; report.elapsedMs = performance.now() - start;
+    const failures = results.filter(r => r.status === 'failed'); report.status = failures.length ? 'failed' : 'passed';
+    if (failures.length) throw new ShaderBuildError('WebGPU pipeline creation failed', failures.map(f => `${f.module}.${f.entryPoint}: ${f.error}`).join('\n\n'), report);
+    return { modules, pipelines, report };
+}
+
+Object.assign(exports,{ShaderBuildError,sourceLocation,formatShaderMessage,compileKernels});
+},
+"packages/gpu/transfer.js":function(module,exports,require){
+/** Bounded, reusable MAP_READ buffers. Buffers are never reused while mapped or in flight. */
+class ReadbackPool {
+    constructor(create, { maxEntries = 4, maxBytes = 65536 } = {}) {
+        if (typeof create !== 'function' || !Number.isInteger(maxEntries) || maxEntries < 1 || !Number.isInteger(maxBytes) || maxBytes < 16)
+            throw new TypeError('Invalid readback pool configuration.');
+        this.create = create; this.maxEntries = maxEntries; this.maxBytes = maxBytes;
+        this.entries = []; this.bytes = 0; this.allocations = 0; this.reuses = 0; this.disposed = false;
+    }
+    acquire(size) {
+        if (this.disposed) throw new Error('Readback pool is disposed.');
+        if (!Number.isSafeInteger(size) || size < 4 || size % 4) throw new RangeError('Readback size must be a positive multiple of four.');
+        const capacity = 2 ** Math.ceil(Math.log2(Math.max(16, size)));
+        if (capacity > this.maxBytes) throw new RangeError('Readback exceeds the bounded pool budget.');
+        let entry = this.entries.filter(e => !e.busy && e.buffer.size >= capacity).sort((a,b) => a.buffer.size - b.buffer.size)[0];
+        if (entry) this.reuses++;
+        else {
+            // Evict only idle slots, never a pending map/copy owned by another caller.
+            while (this.entries.length >= this.maxEntries || this.bytes + capacity > this.maxBytes) {
+                const index = this.entries.findIndex(e => !e.busy);
+                if (index < 0) throw new Error('All bounded readback slots are busy.');
+                const [old] = this.entries.splice(index, 1); this.bytes -= old.buffer.size; old.buffer.destroy();
+            }
+            const buffer = this.create(capacity); entry = { buffer, busy: false };
+            this.entries.push(entry); this.bytes += buffer.size; this.allocations++;
+        }
+        entry.busy = true; let released = false;
+        return { buffer: entry.buffer, release: () => {
+            if (released) return; released = true;
+            if (!this.disposed && entry.buffer.mapState === 'mapped') entry.buffer.unmap();
+            entry.busy = false;
+        }};
+    }
+    dispose() {
+        if (this.disposed) return; this.disposed = true;
+        for (const entry of this.entries) entry.buffer.destroy();
+        this.entries.length = 0; this.bytes = 0;
+    }
+}
+
+Object.assign(exports,{ReadbackPool});
+},
+"packages/gpu/paper-cache.js":function(module,exports,require){
+/** The optional paper cache stores no duplicate geometry and has a hard byte budget. */
+function paperQueueBytes(count) {
+    if (!Number.isSafeInteger(count) || count < 1 || count > 0x00ff0000) throw new RangeError('Invalid paper queue entity count.');
+    return count * 4 + 64 + 48;
+}
+// Fields consumed by coverage kernels: camera, local extent/scale/DPR, quality,
+// text mode, batching, view rotation. Destination origin and global canvas dimensions
+// are deliberately excluded: copyViewport applies those AFTER exact cached coverage.
+const COVERAGE_WORDS = new Uint8Array([0,1,2,3,4,5,6,7,8,9,10,11,13,21,24,25]);
+class PaperRasterState {
+    constructor() { this.words = new Uint32Array(32); this.valid = false; this.revision = -1; }
+    matches(words, revision) {
+        if (!this.valid || this.revision !== revision) return false;
+        for (const i of COVERAGE_WORDS) if (this.words[i] !== words[i]) return false;
+        return true;
+    }
+    commit(words, revision) { this.words.set(words); this.revision = revision; this.valid = true; }
+    invalidate() { this.valid = false; }
+}
+
+Object.assign(exports,{paperQueueBytes,PaperRasterState});
+},
+"packages/blocks/explode.js":function(module,exports,require){
+/** GPU results -> standard DXF records. This module formats returned coordinates;
+ * it does not evaluate block matrices, tessellate curves or rasterize geometry. */
+const { group,record,readInsert,canonical }=require("packages/blocks/document.js");
+const { decodeDxfText }=require("packages/dxf/index.js");
+const RAD=180/Math.PI;
+function validateExplodable(d,ids){const known=new Set(['LINE','CIRCLE','ARC','ELLIPSE','LWPOLYLINE','POLYLINE','SPLINE','SOLID','TRACE','POINT','XLINE','RAY','TEXT','MTEXT','INSERT','ATTDEF','ATTRIB']);const visit=(items,path=[])=>{for(const r of items){if(!known.has(r.type))throw new Error('GPU explode does not support '+r.type+' in this exact 2D conversion profile.');if(r.groups.some(g=>[30,31,32,33,38,210,220].includes(g.code)&&Number(g.value)!==0))throw new Error('GPU explode is restricted to planar XY source geometry. Nonplanar coordinates are preserved by keeping the INSERT.');if(r.type==='INSERT'){const name=String(group(r,2)),m=d.assertEditable(name);if(!m.allowExplode)throw new Error(name+' disallows explode.');if(path.includes(canonical(name)))throw new Error('Cyclic block reference.');if(m.base[2]!==0)throw new Error('A nonzero block-base Z is outside the planar explode profile.');visit(d.definition(name).records,[...path,canonical(name)]);if(r.attributes)visit(r.attributes,path);}}};const roots=ids.map(id=>d.entityMap.get(id));if(roots.some(r=>r?.type!=='INSERT'))throw new Error('Explode requires root INSERT references.');visit(roots);return roots;}
+function sourceByHandle(d){const map=new Map(),visit=r=>{const h=String(group(r,5,''));if(h)map.set(h,r);r.attributes?.forEach(visit);r.vertices?.forEach(visit);};d.entities.forEach(visit);d.blocks.forEach(b=>b.records.forEach(visit));return map;}
+function explodedRecords(pages,{drawing,layers,space='model',keepAttributes=true}={}){const source=sourceByHandle(drawing),out=[];for(const page of pages){const f=new Float32Array(page.entities),u=new Uint32Array(page.entities),af=new Float32Array(page.aux),au=new Uint32Array(page.aux);for(let i=0;i<page.count;i++){const j=i*32,type=u[j+16],r=source.get(String(page.handles[i]||''));if(r?.type==='ATTRIB'&&!keepAttributes)continue;const x=f[j]+f[j+2],y=f[j+1]+f[j+3],layer=layers[u[j+18]],packed=u[j+17]||layer?.color||0xffffffff,common=[[8,layer?.name||'0'],[420,((packed&255)<<16)|(packed&65280)|((packed>>>16)&255)],[67,space==='model'?0:1],[410,space==='model'?'Model':space.replace(/^layout:/,'')]],point=(code,dx=0,dy=0)=>[[code,x+dx],[code+10,y+dy],[code+20,0]];let result;
+ if(type===1)result=record('LINE',[...common,...point(10),...point(11,f[j+4],f[j+5])]);
+ else if(type===2)result=record('ELLIPSE',[...common,...point(10),[11,f[j+4]],[21,f[j+5]],[31,0],[40,f[j+6]],[41,f[j+8]],[42,f[j+8]+f[j+9]]]);
+ else if(type===3||type===8){const n=u[j+21],o=u[j+20],pairs=[...common,[90,n],[70,(u[j+23]&1)?1:0]];for(let k=0;k<n;k++)pairs.push([10,x+af[o+k*4]],[20,y+af[o+k*4+1]],[42,af[o+k*4+2]]);result=record('LWPOLYLINE',pairs);}
+ else if(type===4){if(!r)throw new Error('Cannot recover the source text for exploded entity #'+u[j+19]);const value=decodeDxfText(r.groups.filter(g=>g.code===3||g.code===1).map(g=>g.value).join(''),r.type==='MTEXT');if(/[\r\n]/.test(value))throw new Error('Multiline text is outside the exact explode text profile.');result=record('TEXT',[...common,...point(10),...point(11),[1,value],[40,f[j+4]],[41,f[j+5]],[50,f[j+6]*RAD],[51,f[j+7]*RAD],[71,(u[j+23]&64)?4:0],[72,f[j+10]],[73,f[j+11]],[7,String(group(r,7,'STANDARD'))]]);}
+ else if(type===5)result=record('SOLID',[...common,...point(10),...point(11,f[j+4],f[j+5]),...point(12,f[j+6],f[j+7]),...point(13,f[j+6],f[j+7])]);
+ else if(type===6){const o=u[j+20],degree=au[o],knots=au[o+1],n=au[o+2],pairs=[...common,[70,4],[71,degree],[72,knots],[73,n],[74,0]];for(let k=0;k<knots;k++)pairs.push([40,af[o+4+k]]);const start=o+4+knots;for(let k=0;k<n;k++)pairs.push([41,af[start+k*4+2]],...point(10,af[start+k*4],af[start+k*4+1]));result=record('SPLINE',pairs);}
+ else if(type===7)result=record('POINT',[...common,...point(10)]);
+ else if(type===9||type===10)result=record(type===9?'XLINE':'RAY',[...common,...point(10),[11,f[j+4]],[21,f[j+5]],[31,0]]);
+ else throw new Error('Unsupported GPU explode result type '+type);out.push(result);
+ }}return out;}
+
+Object.assign(exports,{validateExplodable,sourceByHandle,explodedRecords});
+},
+"packages/blocks/library.js":function(module,exports,require){
+const { BlockDrawing, record, group, setGroup, readInsert, canonical, validateLibrary }=require("packages/blocks/document.js");
+const { LocalWorkspace }=require("packages/annotations/index.js");
+/** Browser-local reusable library. A failed save is surfaced; never claims durability. */
+class BlockShelf extends LocalWorkspace {
+ constructor(){super();this.libraries=[];this.favorites=new Set();this.recent=[];this.serial=0;}
+ key(library,name){return library+'\0'+canonical(name);}
+ add(data){validateLibrary(data);const id='library-'+(++this.serial);this.libraries.push({id,name:data.name||'Block library',data:structuredClone(data)});return id;}
+ remove(id){this.libraries=this.libraries.filter(l=>l.id!==id);this.recent=this.recent.filter(r=>r.library!==id);for(const k of this.favorites)if(k.startsWith(id+'\0'))this.favorites.delete(k);}
+ remember(library,name){this.recent=[{library,name},...this.recent.filter(r=>r.library!==library||canonical(r.name)!==canonical(name))].slice(0,40);}
+ favorite(library,name){const k=this.key(library,name);this.favorites.has(k)?this.favorites.delete(k):this.favorites.add(k);}
+ toJSON(){return {schema:'aperture.block-shelf/1',libraries:this.libraries.map(({id,name,data})=>({id,name,data})),recent:this.recent,favorites:[...this.favorites],serial:this.serial};}
+ async save(){const db=await this.open();try{const data=this.toJSON();await new Promise((resolve,reject)=>{const tx=db.transaction('workspaces','readwrite');tx.objectStore('workspaces').put(data,'block-library');tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);tx.onabort=()=>reject(tx.error||new Error('Block library save aborted.'));});}finally{db.close();}}
+ async load(){const db=await this.open();try{const data=await new Promise((resolve,reject)=>{const r=db.transaction('workspaces').objectStore('workspaces').get('block-library');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});if(!data)return false;if(data.schema!=='aperture.block-shelf/1'||!Array.isArray(data.libraries)||data.libraries.length>100)throw new Error('Invalid saved block shelf.');for(const l of data.libraries)validateLibrary(l.data);this.libraries=data.libraries;this.serial=data.serial||0;this.recent=data.recent||[];this.favorites=new Set(data.favorites||[]);return true;}finally{db.close();}}
+}
+const line=(x,y,a,b)=>record('LINE',[[8,'0'],[62,0],[10,x],[20,y],[11,a],[21,b]]);
+const circle=(x,y,r)=>record('CIRCLE',[[8,'0'],[62,0],[10,x],[20,y],[40,r]]);
+const arc=(x,y,r,a,b)=>record('ARC',[[8,'0'],[62,0],[10,x],[20,y],[40,r],[50,a],[51,b]]);
+const text=(t,x,y,h=2.5)=>record('TEXT',[[8,'0'],[62,0],[1,t],[10,x],[20,y],[40,h]]);
+const poly=(points,closed=true)=>record('LWPOLYLINE',[[8,'0'],[62,0],[90,points.length],[70,closed?1:0],...points.flatMap(p=>[[10,p[0]],[20,p[1]]])]);
+const insert=(name,x,y,rotation=0)=>record('INSERT',[[8,'0'],[62,0],[2,name],[10,x],[20,y],[50,rotation]]);
+const att=(tag,x,y,value='')=>record('ATTDEF',[[8,'0'],[62,0],[2,tag],[3,tag.replaceAll('_',' ')],[1,value],[10,x],[20,y],[40,2.5],[70,0]]);
+function engineeringLibrary(){const d=new BlockDrawing(null,{name:'Aperture Engineering · original symbols'});const add=(name,description,entities,base=[0,0,0])=>{
+  const table=d.blockRecord(name,4);d.blocks.push({header:record('BLOCK',[[5,d.nextHandle()],[330,group(table,5)],[8,'0'],[2,name],[3,name],[70,0],[10,base[0]],[20,base[1]],[30,base[2]],[4,description]]),end:record('ENDBLK',[[5,d.nextHandle()],[330,group(table,5)],[8,'0']]),records:entities.map(r=>r.type==='INSERT'?d.makeInsert(String(group(r,2)),readInsert(r)):setGroup(r,5,d.nextHandle()))});d.refresh();};
+ add('VALVE_GATE','Process / Gate valve',[poly([[-10,-6],[10,6],[10,-6],[-10,6]]),line(-16,0,-10,0),line(10,0,16,0),att('TAG',-5,10,'V-101')]);
+ add('VALVE_CONTROL','Process / Actuated control valve',[insert('VALVE_GATE',0,0),line(0,0,0,15),arc(0,15,6,0,180),line(-6,15,6,15)]);
+ add('PUMP_CENTRIFUGAL','Process / Centrifugal pump',[circle(0,0,9),poly([[-5,-5],[6,0],[-5,5]]),line(-18,0,-9,0),line(0,9,0,16),line(0,16,18,16),att('TAG',-7,-15,'P-101')]);
+ add('FLANGE','Mechanical / Pipe flange',[circle(0,0,12),circle(0,0,6),...[[0,9],[9,0],[0,-9],[-9,0]].map(p=>circle(...p,1.5))]);
+ add('INSTRUMENT','Instrumentation / Field indicator',[circle(0,0,8),line(-8,0,8,0),att('FUNCTION',-4,2,'PI'),att('NUMBER',-3,-5,'101')]);
+ add('TANK_VERTICAL','Process / Storage tank',[line(-12,-15,-12,15),line(12,-15,12,15),arc(0,15,12,0,180),arc(0,-15,12,180,360),att('TAG',-6,0,'TK-101')]);
+ add('DOOR_SINGLE','Architecture / Single leaf door',[line(0,0,0,30),arc(0,0,30,0,90),line(-3,0,3,0),line(27,0,33,0)]);
+ add('DESK','Furniture / Workstation',[poly([[-20,-10],[20,-10],[20,10],[-20,10]]),poly([[-13,-3],[-3,-3],[-3,4],[-13,4]]),circle(8,0,3)]);
+ add('CHAIR','Furniture / Task chair',[poly([[-5,-5],[5,-5],[5,5],[-5,5]]),arc(0,5,6,0,180),line(-8,-5,-8,5),line(8,-5,8,5)]);
+ add('WORKSTATION','Furniture / Nested desk and chair',[insert('DESK',0,0),insert('CHAIR',0,-20),att('ASSET_ID',-18,15,'WS-01')]);
+ add('BOLT_HEX','Mechanical / Hexagonal bolt',[poly([[10,0],[5,8.660254],[-5,8.660254],[-10,0],[-5,-8.660254],[5,-8.660254]]),circle(0,0,5),line(-3,0,3,0),line(0,-3,0,3)]);
+ add('NORTH_ARROW','Drawing / North marker',[poly([[0,16],[-5,-6],[0,-3],[5,-6]]),text('N',-2,20,4)]);
+ add('DATUM_TARGET','Drawing / Datum with attributes',[circle(0,0,5),line(-8,0,8,0),line(0,-8,0,8),att('DATUM',8,0,'A')]);
+ add('PUMP_STATION','Process / Nested pump, valves and instrumentation',[insert('PUMP_CENTRIFUGAL',0,0),insert('VALVE_GATE',-40,0),line(-24,0,-18,0),insert('VALVE_CONTROL',45,16),line(18,16,29,16),insert('INSTRUMENT',20,35),line(20,27,20,16),att('STATION',-35,-25,'STATION 01')]);
+ d.ensureHandles();d.refresh();return d.exportLibrary();}
+function blockSampleDxf(){const d=new BlockDrawing(null,{name:'Block workshop.dxf'});d.importLibrary(engineeringLibrary(),{conflict:'replace'});const names=['PUMP_STATION','WORKSTATION','FLANGE','DOOR_SINGLE','TANK_VERTICAL','NORTH_ARROW'];names.forEach((n,i)=>d.insert(n,{position:[(i%3)*130,Math.floor(i/3)*100,0],layer:'0',scale:[1,1,1]}));return d.write();}
+
+Object.assign(exports,{BlockShelf,engineeringLibrary,blockSampleDxf});
+},
+"packages/annotations/index.js":function(module,exports,require){
+const { ModelBuilder, TYPE, FLAGS, rgba }=require("packages/model/index.js");
+const clone = x => structuredClone(x);
+class AnnotationStore extends EventTarget {
+    constructor({ limit = 100 } = {}) { super(); if (!Number.isInteger(limit) || limit < 1 || limit > 10000) throw new RangeError('Annotation history limit must be 1–10,000.'); this.items = []; this.undoStack = []; this.redoStack = []; this.limit = limit; this.preview = null; }
+    changed(kind = 'items') { this.dispatchEvent(new CustomEvent('change', { detail: { kind } })); }
+    transaction(mutator) { const before = clone(this.items); try { mutator(this.items); } catch (error) { this.items = before; throw error; } this.undoStack.push(before); if (this.undoStack.length > this.limit)
+        this.undoStack.shift(); this.redoStack = []; this.preview = null; this.changed(); }
+    add(entities, { label = 'Annotation', author = 'Local reviewer' } = {}) { const item = { id: crypto.randomUUID(), label, author, createdAt: new Date().toISOString(), entities: entities.map(validateEntity) }; this.transaction(items => items.push(item)); return item.id; }
+    remove(id) { if (!this.items.some(x => x.id === id))
+        return; this.transaction(items => items.splice(items.findIndex(x => x.id === id), 1)); }
+    undo() { if (!this.undoStack.length)
+        return; this.redoStack.push(clone(this.items)); this.items = this.undoStack.pop(); this.preview = null; this.changed(); }
+    redo() { if (!this.redoStack.length)
+        return; this.undoStack.push(clone(this.items)); this.items = this.redoStack.pop(); this.preview = null; this.changed(); }
+    setPreview(entities) { if (!entities && !this.preview)
+        return; this.preview = entities; this.changed('preview'); }
+    clear() { this.transaction(items => items.splice(0)); }
+    build(font, baseModel, layer) {
+        const builder = new ModelBuilder(font, { name: 'Annotations', origin: baseModel.origin, idBase: baseModel.count, pageSize: 2048 });
+        const mapping = [];
+        for (const item of this.items)
+            for (const e of item.entities) {
+                builder.add({ ...e, layer: e.measurement ? layer + 1 : layer, flags: (e.flags || 0) | FLAGS.ANNOTATION });
+                mapping.push(item.id);
+            }
+        this.mapping = mapping;
+        return builder.finish();
+    }
+    buildPreview(font, baseModel, layer) { const count = this.items.reduce((n, item) => n + item.entities.length, 0); const builder = new ModelBuilder(font, { name: 'Transient review preview', origin: baseModel.origin, idBase: baseModel.count + count, pageSize: 64 }); for (const e of this.preview || [])
+        builder.add({ ...e, layer, flags: (e.flags || 0) | FLAGS.ANNOTATION }); return builder.finish(); }
+    itemForEntity(id, baseCount) { return this.items.find(x => x.id === this.mapping?.[id - baseCount - 1]) || null; }
+    toJSON() { return { format: 'aperture-annotations', version: 1, items: clone(this.items) }; }
+    load(value) { if (value?.format !== 'aperture-annotations' || value.version !== 1 || !Array.isArray(value.items))
+        throw new Error('Not an Aperture annotations file.'); if (value.items.length > 8192)
+        throw new Error('Too many annotation groups.'); let count = 0; const items = value.items.map(item => { if (!Array.isArray(item.entities))
+        throw new Error('Invalid annotation group.'); count += item.entities.length; if (count > 65534)
+        throw new Error('Annotation entity limit exceeded.'); return { id: typeof item.id === 'string' ? item.id : crypto.randomUUID(), label: String(item.label || 'Annotation').slice(0, 200), author: String(item.author || '').slice(0, 200), createdAt: String(item.createdAt || ''), entities: item.entities.map(validateEntity) }; }); this.transaction(() => { this.items = items; }); }
+}
+function validateEntity(e) { if (!e || ![TYPE.LINE, TYPE.ELLIPSE, TYPE.POLYLINE, TYPE.TEXT, TYPE.TRIANGLE, TYPE.POINT, TYPE.CLOUD].includes(e.type))
+    throw new Error('Unsupported annotation entity.'); const finite = a => Array.isArray(a) && a.every(x => typeof x === 'number' && Number.isFinite(x) && Number.isFinite(Math.fround(x))); if (!finite(e.anchor) || e.anchor.length !== 2)
+    throw new Error('Annotation anchor must contain two finite coordinates.'); for (const key of ['p', 'q', 'r'])
+    if (e[key] && (!finite(e[key]) || e[key].length !== 4))
+        throw new Error('Invalid annotation parameter ' + key); if (e.points && (!Array.isArray(e.points) || e.points.length > 4096 || e.points.some(p => !finite(p) || p.length < 2 || p.length > 4)))
+    throw new Error('Invalid annotation path.'); if (e.type === TYPE.POLYLINE && (!e.points || e.points.length < 2))
+    throw new Error('An annotation path needs at least two points.'); if (e.type === TYPE.TEXT && String(e.text || '').length > 16384)
+    throw new Error('Annotation text exceeds the GPU run limit.'); return { type: e.type, anchor: clone(e.anchor), p: clone(e.p || [0, 0, 0, 0]), q: clone(e.q || [0, 0, 0, 0]), r: clone(e.r || [0, 0, 0, 0]), points: e.points ? clone(e.points) : undefined, text: e.type === TYPE.TEXT ? String(e.text || '') : undefined, color: e.color === undefined ? rgba('#ffb05c') : Number(e.color) >>> 0, flags: Number(e.flags || 0) >>> 0, measurement: !!e.measurement }; }
+class LocalWorkspace {
+    async open() { return new Promise((resolve, reject) => { const request = indexedDB.open('aperture-cad', 1); request.onupgradeneeded = () => request.result.createObjectStore('workspaces'); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); }); }
+    async save(value) { const db = await this.open(); try {
+        await new Promise((resolve, reject) => { const tx = db.transaction('workspaces', 'readwrite'); tx.objectStore('workspaces').put(value, 'last'); tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); });
+    }
+    finally {
+        db.close();
+    } }
+    async load() { const db = await this.open(); try {
+        return await new Promise((resolve, reject) => { const request = db.transaction('workspaces').objectStore('workspaces').get('last'); request.onsuccess = () => resolve(request.result || null); request.onerror = () => reject(request.error); });
+    }
+    finally {
+        db.close();
+    } }
+}
+
+Object.assign(exports,{AnnotationStore,validateEntity,LocalWorkspace});
+},
+"packages/app/documents.js":function(module,exports,require){
+/** CPU-side document ownership. Only the active document is uploaded to the GPU.
+ * File identity is deliberately independent of display name; two files named a.dxf
+ * must never share annotations, cameras, layers or undo history. */
+class DocumentWorkspace {
+    constructor({ maxDocuments = 32, maxResidentBytes = 1536 * 1024 * 1024 } = {}) {
+        if (!Number.isSafeInteger(maxDocuments) || maxDocuments < 1 || !Number.isSafeInteger(maxResidentBytes) || maxResidentBytes < 1)
+            throw new RangeError('Invalid document residency limits.');
+        this.maxDocuments = maxDocuments; this.maxResidentBytes = maxResidentBytes;
+        this.documents = []; this.activeId = null; this.serial = 0;
+    }
+    get current() { return this.get(this.activeId); }
+    get residentBytes() { return this.documents.reduce((n, d) => n + d.residentBytes, 0); }
+    get(id) { return this.documents.find(d => d.id === id) || null; }
+    static modelBytes(model, sourceFile = null) {
+        return (sourceFile?.size || 0) + (model?.source?.data?.byteLength || model?.source?.byteLength || 0) + (model?.pages || []).reduce((n,p)=>
+            n + (p.entities?.byteLength || 0) + (p.aux?.byteLength || 0) + (p.handles?.byteLength || 0), 0);
+    }
+    add(model, { sourceKind = 'dxf', sourceFile = null, font = null, fontFile = null } = {}) {
+        if (!model || !Array.isArray(model.pages)) throw new TypeError('A packed drawing model is required.');
+        if (this.documents.length >= this.maxDocuments) throw new Error(`Close a drawing before opening more than ${this.maxDocuments} documents.`);
+        const residentBytes = DocumentWorkspace.modelBytes(model, sourceFile);
+        if (this.residentBytes + residentBytes > this.maxResidentBytes) throw new Error('Open-document CPU storage budget exceeded. Close unused drawings first.');
+        const doc = { id: 'document-' + (++this.serial), name: model.name, model, sourceKind, sourceFile, font, fontFile,
+            residentBytes, activeSpace: model.initialSpace || 'model', spaceStates: new Map(), layers: null, display: null, dirty: false };
+        this.documents.push(doc); return doc;
+    }
+    activate(id) { const doc = this.get(id); if (!doc) throw new Error('The requested drawing tab is no longer open.'); this.activeId=id; return doc; }
+    replaceModel(id, model) {
+        const doc=this.get(id); if(!doc) throw new Error('Drawing is closed.');
+        const size=DocumentWorkspace.modelBytes(model,doc.sourceFile);
+        if(this.residentBytes-doc.residentBytes+size>this.maxResidentBytes) throw new Error('Updated drawing exceeds the CPU storage budget.');
+        doc.model=model;doc.name=model.name;doc.residentBytes=size;
+    }
+    close(id) {
+        const index=this.documents.findIndex(d=>d.id===id); if(index<0)return null;
+        this.documents.splice(index,1);
+        if(this.activeId===id)this.activeId=this.documents[Math.min(index,this.documents.length-1)]?.id || null;
+        return this.current;
+    }
+    spaces(doc=this.current) {
+        return doc?.model.spaces || (doc ? [{id:'model',name:'Model',kind:'model',count:doc.model.count,pageIndices:doc.model.pages.map((_,i)=>i),viewports:[]}] : []);
+    }
+    /** Camera and annotation state belong to a space, not to a transient viewport selection. */
+    capture(state, doc=this.current) {
+        if(!doc)return;
+        doc.activeSpace=state.spaceId || doc.activeSpace;
+        doc.spaceStates.set(doc.activeSpace,structuredClone({camera:state.camera,selected:state.selected || 0,
+            items:state.items || [],undo:state.undo || [],redo:state.redo || []}));
+        if(state.layers)doc.layers=structuredClone(state.layers);
+        if(state.display)doc.display=structuredClone(state.display);
+    }
+    restore(spaceId,doc=this.current) {
+        if(!doc)return null;
+        return structuredClone(doc.spaceStates.get(spaceId) || {camera:null,selected:0,items:[],undo:[],redo:[]});
+    }
+}
+
+Object.assign(exports,{DocumentWorkspace});
+},
+"packages/font/stroke.js":function(module,exports,require){
+/** Autodesk SHP/SHX container and instruction decoder. No host glyph geometry is evaluated.
+ * Binary container details cross-checked against ezdxf (Manfred Moitzi, MIT).
+ * Glyph programs execute in stroke.wgsl; supplied font files are never redistributed.
+ */
+const { packFont }=require("packages/font/index.js");
+const decoder = new TextDecoder('windows-1252');
+class StrokeFontError extends Error { constructor(message) { super(message); this.name = 'StrokeFontError'; } }
+function check(value, message) { if (!value) throw new StrokeFontError(message); }
+function number(token) { const t = String(token).trim().replace(/[()]/g, ''); const n = /^-?0/.test(t) ? parseInt(t, 16) : Number(t); check(Number.isInteger(n), 'Invalid SHP integer: ' + token); return n; }
+class Reader {
+    constructor(bytes, offset = 0) { this.bytes = bytes; this.offset = offset; }
+    byte() { check(this.offset < this.bytes.length, 'Truncated SHX data.'); return this.bytes[this.offset++]; }
+    word() { return this.byte() | (this.byte() << 8); }
+    signed() { const n = this.byte(); return n > 127 ? n - 256 : n; }
+    octant() { const n = this.byte(); return n & 128 ? -(n & 127) : n; }
+    string() { const a = []; for (;;) { const n = this.byte(); if (!n) break; a.push(n); check(a.length < 65536, 'Excessive SHX string.'); } return decoder.decode(new Uint8Array(a)); }
+    bytesAt(n) { check(Number.isInteger(n) && n >= 0 && this.offset + n <= this.bytes.length, 'Invalid SHX record length.'); const a = this.bytes.subarray(this.offset, this.offset + n); this.offset += n; return a; }
+}
+function binaryCodes(bytes, unicode) {
+    const r = new Reader(bytes), result = [];
+    for (;;) {
+        const op = r.byte(); result.push(op); if (op === 0) break;
+        if ([1, 2, 5, 6, 14].includes(op) || op > 15) continue;
+        if (op === 3 || op === 4) result.push(r.byte());
+        else if (op === 7) result.push(unicode ? r.word() : r.byte());
+        else if (op === 8) result.push(r.signed(), r.signed());
+        else if (op === 9 || op === 13) { for (;;) { const x = r.signed(), y = r.signed(); result.push(x, y); if (!x && !y) break; if (op === 13) result.push(r.signed()); } }
+        else if (op === 10) result.push(r.byte(), r.octant());
+        else if (op === 11) result.push(r.byte(), r.byte(), r.byte(), r.byte(), r.octant());
+        else if (op === 12) result.push(r.signed(), r.signed(), r.signed());
+        else throw new StrokeFontError('Unsupported SHX opcode: ' + op);
+    }
+    return result;
+}
+function readBinary(bytes) {
+    const signature = new TextDecoder().decode(bytes.subarray(0, 25));
+    check(!signature.startsWith('AutoCAD-86 bigfont'), 'SHX BIGFONT encodings require a separate multibyte font map and are not supported.');
+    const shapes = new Map(); let name = 'Local SHX', above = 0, below = 0, mode = 0, encoding = 0, embedding = 0;
+    if (/^AutoCAD-86 shapes 1\.[01]/.test(signature)) {
+        const r = new Reader(bytes, 0x17); check(r.byte() === 26, 'Invalid SHX signature.');
+        const first = r.word(), last = r.word(), count = r.word(), table = [];
+        check(count > 0, 'Empty SHX index.'); for (let i = 0; i < count; i++) table.push([r.word(), r.word()]);
+        check(table[0][0] === first && table.at(-1)[0] === last, 'Invalid SHX index bounds.');
+        for (const [cp, length] of table) { const record = new Reader(r.bytesAt(length)); const glyphName = record.string();
+            const data = record.bytesAt(record.bytes.length - record.offset);
+            if (cp === 0) { check(data.length >= 4 && data.at(-1) === 0, 'Invalid SHX font metrics.'); [above, below, mode] = data; name = glyphName || name; }
+            else shapes.set(cp, { cp, name: glyphName, codes: binaryCodes(data, false) }); }
+        check(new TextDecoder().decode(r.bytesAt(3)) === 'EOF', 'Missing SHX EOF.');
+    } else if (signature.startsWith('AutoCAD-86 unifont 1.0')) {
+        const r = new Reader(bytes, 0x18); check(r.byte() === 26, 'Invalid SHX Unicode signature.');
+        const count = r.word(); r.word(); const definitionLength = r.word(), definitionStart = r.offset;
+        name = r.string(); above = r.byte(); below = r.byte(); mode = r.byte(); encoding = r.byte(); embedding = r.byte(); check(r.byte() === 0, 'Invalid SHX Unicode metrics.');
+        check(r.offset - definitionStart <= definitionLength, 'Invalid SHX Unicode definition size.'); r.bytesAt(definitionLength - (r.offset - definitionStart));
+        while (r.offset < bytes.length) { const cp = r.word(), length = r.word(), record = new Reader(r.bytesAt(length)); const glyphName = record.string(); shapes.set(cp, { cp, name: glyphName, codes: binaryCodes(record.bytesAt(record.bytes.length - record.offset), true) }); }
+        check(shapes.size === count - 1 || shapes.size === count, 'SHX Unicode record count mismatch.');
+    } else throw new StrokeFontError('Unknown SHX signature.');
+    return { shapes, name, above, below, mode, encoding, embedding };
+}
+function readAscii(text) {
+    const records = []; let record;
+    for (let line of text.split(/\r?\n/)) { line = line.split(';')[0].trim(); if (!line) continue;
+        if (line.startsWith('*')) { const m = /^\*([^,]+),\s*([^,]+),\s*(.*)$/.exec(line); check(m, 'Malformed SHP record.'); record = { key: m[1].trim(), declared: number(m[2]), name: m[3], text: '' }; records.push(record); }
+        else { check(record, 'SHP instructions precede a definition.'); record.text += ',' + line; }
+    }
+    const shapes = new Map(); let name = 'Local SHP', above = 0, below = 0, mode = 0, encoding = 0, embedding = 0;
+    for (const r of records) { check(r.key !== 'BIGFONT', 'SHP BIGFONT is not supported.'); const codes = r.text.split(',').filter(t => t.replace(/[()\s]/g, '')).map(number);
+        check(codes.at(-1) === 0, 'Unterminated SHP record: ' + r.key);
+        if (r.key === 'UNIFONT' || r.key === '0') { [above, below, mode] = codes; name = r.name; if (r.key === 'UNIFONT') { encoding = codes[3]; embedding = codes[4]; } }
+        else { const cp = number(r.key); check(cp >= 0 && cp <= 0x10ffff && !shapes.has(cp), 'Invalid or duplicate SHP character.'); shapes.set(cp, { cp, name: r.name, codes }); }
+    }
+    return { shapes, name, above, below, mode, encoding, embedding };
+}
+/** Canonical fixed-width instructions. Compound opcodes remain conditionally atomic. */
+function decodeStrokeProgram(codes) {
+    const instructions = []; let i = 0, verticalOnly = false, ended = false;
+    const take = () => { check(i < codes.length && Number.isInteger(codes[i]), 'Truncated stroke instruction.'); return codes[i++]; };
+    const add = (op, args = []) => instructions.push([op, ...args, ...Array(6 - args.length).fill(0), Number(verticalOnly)]);
+    while (i < codes.length) {
+        const op = take(); check(op >= 0 && op <= 255 && op !== 15, 'Invalid stroke opcode.');
+        if (op === 0) { add(0); ended = true; break; }
+        if (op === 14) { verticalOnly = true; continue; }
+        if (op > 15) add(16, [op >> 4, op & 15]);
+        else if ([1, 2, 5, 6].includes(op)) add(op);
+        else if (op === 3 || op === 4) { const f = take(); check(f > 0 && f <= 255, 'Invalid stroke scale factor.'); add(op, [f]); }
+        else if (op === 7) add(op, [take()]);
+        else if (op === 8) add(op, [take(), take()]);
+        else if (op === 9 || op === 13) { for (;;) { const x = take(), y = take(); if (!x && !y) break; add(op === 9 ? 8 : 12, op === 9 ? [x, y] : [x, y, take()]); } }
+        else if (op === 10) add(op, [take(), take()]);
+        else if (op === 11) add(op, [take(), take(), take(), take(), take()]);
+        else if (op === 12) add(op, [take(), take(), take()]);
+        verticalOnly = false;
+    }
+    check(ended, 'Unterminated stroke program.'); return instructions;
+}
+function parseStrokeFont(input, { name, vertical = false, maxGlyphs = 4096, maxEdges = 1000000, cellSize = 64 } = {}) {
+    check(typeof input === 'string' || input instanceof ArrayBuffer || ArrayBuffer.isView(input), 'Expected SHP text or an SHX/SHP byte buffer.');
+    const bytes = typeof input === 'string' ? null : new Uint8Array(input.buffer || input, input.byteOffset || 0, input.byteLength);
+    const ascii = typeof input === 'string' || !new TextDecoder().decode(bytes.subarray(0, 10)).startsWith('AutoCAD-86');
+    const font = ascii ? readAscii(typeof input === 'string' ? input : new TextDecoder().decode(bytes)) : readBinary(bytes);
+    check(font.above > 0 && font.above <= 65535, 'A stroke font requires a positive cap height.');
+    check(font.encoding === 0, 'Only single-byte/Unicode stroke fonts are supported, not packed multibyte encodings.');
+    check(font.shapes.size > 0 && font.shapes.size <= maxGlyphs, 'Stroke glyph count exceeds the configured limit.');
+    const definitions = [...font.shapes.values()], index = new Map(definitions.map((d, i) => [d.cp, i + 1]));
+    // A small original missing-glyph box also executes on the GPU.
+    definitions.unshift({ cp: 0xfffd, name: '.notdef', codes: [8, 0, font.above, 8, Math.round(font.above * .6), 0, 8, 0, -font.above, 8, -Math.round(font.above * .6), 0, 2, 8, Math.round(font.above * .8), 0, 0] });
+    const programs = definitions.map(d => decodeStrokeProgram(d.codes));
+    for (const program of programs) for (const op of program) if (op[0] === 7) { check(index.has(op[1]), 'Missing stroke subshape: ' + op[1]); op[1] = index.get(op[1]); }
+    const counts = new Map();
+    function edges(g, chain = new Set()) {
+        check(!chain.has(g) && chain.size < 32, 'Cyclic or excessively deep stroke subshape.'); if (counts.has(g)) return counts.get(g);
+        const next = new Set(chain); next.add(g); let n = 0;
+        for (const op of programs[g]) { if (op[7] && !vertical) continue; if (op[0] === 7) n += edges(op[1], next); else if ([8, 10, 11, 12, 16].includes(op[0])) n++; }
+        check(n <= 65536, 'A stroke glyph exceeds the edge budget.'); counts.set(g, n); return n;
+    }
+    let total = 0; const glyphs = definitions.map((_, i) => { const edgeCapacity = edges(i); total += edgeCapacity; return { edges: [], edgeCapacity, box: [-.15, -.4, 1.2, 1.3], advance: .8, mode: 0, stroke: .025 }; });
+    check(total <= maxEdges, 'Stroke font exceeds the aggregate edge budget.');
+    const words = new Int32Array(programs.length * 4 + programs.reduce((s, p) => s + p.length * 8, 0)); let offset = programs.length * 4;
+    programs.forEach((program, i) => { words.set([offset, program.length, glyphs[i].edgeCapacity, 0], i * 4); for (const op of program) { words.set(op, offset); offset += 8; } });
+    const map = new Map(definitions.map((d, i) => [d.cp, i])); map.set(0xfffd, 0);
+    return packFont({ name: name || font.name, map, glyphs, missing: [], kind: 'stroke-program', strokeProgram: new Uint32Array(words.buffer), capHeight: font.above,
+        vertical, embedding: font.embedding, cellSize, diagnostics: [], sourceFormat: ascii ? 'shp' : 'shx' });
+}
+
+Object.assign(exports,{StrokeFontError,decodeStrokeProgram,parseStrokeFont});
+},
+"packages/font/index.js":function(module,exports,require){
+const {readOpenTypeLayout, glyphClosure, packOpenTypeLayout}=require("packages/font/layout.js");
+/** Original engineering stroke face and a small, defensive TrueType outline reader.
+ * No browser text rasterizer, third-party font, or pre-rasterized atlas is used.
+ * Outlines remain line/quadratic records; the GPU creates the distance atlas.
+ */
+const CELL = 64;
+const ATLAS_COLUMNS = 16;
+const MAX_GLYPHS = 4096;
+const S = {
+    'A': '0,0 .3,1 .6,0|.12,.4 .48,.4', 'B': '0,0 0,1 .38,1 .58,.85 .58,.66 .38,.51 0,.51|.38,.51 .6,.35 .6,.16 .38,0 0,0',
+    'C': '.6,.85 .45,1 .15,1 0,.8 0,.2 .15,0 .45,0 .6,.15', 'D': '0,0 0,1 .34,1 .6,.75 .6,.25 .34,0 0,0',
+    'E': '.6,1 0,1 0,0 .6,0|0,.5 .48,.5', 'F': '0,0 0,1 .6,1|0,.53 .48,.53',
+    'G': '.6,.83 .44,1 .16,1 0,.8 0,.2 .16,0 .44,0 .6,.16 .6,.48 .34,.48', 'H': '0,0 0,1|.6,0 .6,1|0,.5 .6,.5',
+    'I': '.08,1 .52,1|.3,1 .3,0|.08,0 .52,0', 'J': '.6,1 .6,.2 .44,0 .16,0 0,.18|.26,1 .6,1',
+    'K': '0,0 0,1|.6,1 0,.44|.22,.65 .6,0', 'L': '0,1 0,0 .6,0', 'M': '0,0 0,1 .3,.48 .6,1 .6,0',
+    'N': '0,0 0,1 .6,0 .6,1', 'O': '.16,0 0,.2 0,.8 .16,1 .44,1 .6,.8 .6,.2 .44,0 .16,0',
+    'P': '0,0 0,1 .4,1 .6,.83 .6,.66 .4,.5 0,.5', 'Q': '.16,0 0,.2 0,.8 .16,1 .44,1 .6,.8 .6,.2 .44,0 .16,0|.36,.25 .67,-.08',
+    'R': '0,0 0,1 .4,1 .6,.83 .6,.66 .4,.5 0,.5|.3,.5 .6,0', 'S': '.6,.84 .44,1 .16,1 0,.84 0,.67 .16,.52 .44,.48 .6,.32 .6,.16 .44,0 .16,0 0,.16',
+    'T': '0,1 .6,1|.3,1 .3,0', 'U': '0,1 0,.2 .16,0 .44,0 .6,.2 .6,1', 'V': '0,1 .3,0 .6,1',
+    'W': '0,1 .12,0 .3,.5 .48,0 .6,1', 'X': '0,0 .6,1|0,1 .6,0', 'Y': '0,1 .3,.5 .6,1|.3,.5 .3,0', 'Z': '0,1 .6,1 0,0 .6,0',
+    '0': '.16,0 0,.2 0,.8 .16,1 .44,1 .6,.8 .6,.2 .44,0 .16,0|.08,.18 .52,.82', '1': '.1,.8 .3,1 .3,0|.06,0 .54,0',
+    '2': '0,.82 .16,1 .44,1 .6,.82 .6,.64 0,0 .6,0', '3': '0,1 .6,1 .29,.54 .47,.54 .6,.36 .6,.18 .43,0 .14,0 0,.13',
+    '4': '.46,0 .46,1 0,.3 .64,.3', '5': '.6,1 0,1 0,.54 .42,.54 .6,.37 .6,.18 .43,0 .15,0 0,.13',
+    '6': '.57,.88 .43,1 .18,1 0,.75 0,.2 .16,0 .44,0 .6,.2 .6,.38 .44,.55 .16,.55 0,.38',
+    '7': '0,1 .6,1 .15,0', '8': '.16,.51 0,.68 0,.84 .16,1 .44,1 .6,.84 .6,.68 .44,.51 .16,.51 0,.32 0,.16 .16,0 .44,0 .6,.16 .6,.32 .44,.51',
+    '9': '.03,.12 .17,0 .42,0 .6,.25 .6,.8 .44,1 .16,1 0,.8 0,.62 .16,.45 .44,.45 .6,.62',
+    '.': '.29,0 .31,.02', ',': '.33,.05 .24,-.16', ':': '.29,.2 .31,.22|.29,.73 .31,.75', ';': '.33,.22 .24,.01|.29,.73 .31,.75',
+    '-': '.08,.48 .52,.48', '_': '0,-.14 .6,-.14', '+': '.06,.5 .54,.5|.3,.22 .3,.78', '=': '.04,.35 .56,.35|.04,.65 .56,.65',
+    '/': '0,-.06 .6,1.06', '\\': '0,1.06 .6,-.06', '|': '.3,-.15 .3,1.1', '!': '.3,1 .3,.28|.29,0 .31,.02',
+    '?': '0,.83 .16,1 .44,1 .6,.83 .6,.68 .3,.42 .3,.26|.29,0 .31,.02', '(': '.45,1.1 .23,.85 .14,.5 .23,.15 .45,-.1',
+    ')': '.15,1.1 .37,.85 .46,.5 .37,.15 .15,-.1', '[': '.46,1.1 .18,1.1 .18,-.1 .46,-.1', ']': '.14,1.1 .42,1.1 .42,-.1 .14,-.1',
+    '{': '.48,1.1 .26,1.1 .2,.95 .2,.65 .08,.5 .2,.35 .2,.05 .26,-.1 .48,-.1', '}': '.12,1.1 .34,1.1 .4,.95 .4,.65 .52,.5 .4,.35 .4,.05 .34,-.1 .12,-.1',
+    '<': '.54,.86 .08,.5 .54,.14', '>': '.06,.86 .52,.5 .06,.14', '"': '.18,1 .18,.77|.42,1 .42,.77', "'": '.3,1 .3,.77',
+    '#': '.18,0 .28,1|.36,0 .46,1|.04,.3 .57,.3|.07,.7 .6,.7', '*': '.3,.22 .3,.84|.03,.39 .57,.69|.03,.69 .57,.39',
+    '%': '.02,0 .58,1|.12,.64 0,.74 0,.9 .12,1 .24,.9 .24,.74 .12,.64|.48,0 .36,.1 .36,.26 .48,.36 .6,.26 .6,.1 .48,0',
+    '&': '.6,0 .1,.64 .08,.83 .2,1 .36,1 .5,.84 .46,.67 .08,.32 0,.16 .14,0 .35,0 .6,.36',
+    '@': '.47,.18 .58,.34 .58,.73 .43,.92 .15,.92 0,.7 0,.24 .15,.06 .48,.06|.45,.7 .24,.7 .17,.58 .17,.39 .27,.3 .44,.42 .44,.72',
+    '$': '.6,.85 .45,1 .15,1 0,.8 .15,.56 .45,.44 .6,.2 .45,0 .15,0 0,.15|.3,-.12 .3,1.12',
+    '^': '.04,.65 .3,1 .56,.65', '~': '0,.42 .15,.56 .3,.5 .45,.44 .6,.58', '`': '.22,1 .36,.83',
+    'a': '.04,.59 .16,.7 .43,.7 .55,.57 .55,0|.55,.42 .14,.42 0,.28 0,.12 .14,0 .39,0 .55,.14',
+    'b': '0,1 0,0|0,.55 .15,.7 .41,.7 .57,.53 .57,.17 .41,0 .15,0 0,.16',
+    'c': '.56,.57 .42,.7 .16,.7 0,.52 0,.18 .16,0 .42,0 .56,.13',
+    'd': '.57,1 .57,0|.57,.55 .42,.7 .16,.7 0,.53 0,.17 .16,0 .42,0 .57,.16',
+    'e': '0,.36 .57,.36 .57,.53 .41,.7 .16,.7 0,.53 0,.18 .16,0 .42,0 .57,.12',
+    'f': '.18,0 .18,.83 .31,1 .53,1|.03,.65 .46,.65', 'g': '.57,.7 .57,-.15 .43,-.3 .16,-.3 .03,-.2|.57,.55 .42,.7 .16,.7 0,.53 0,.17 .16,0 .42,0 .57,.16',
+    'h': '0,0 0,1|0,.52 .17,.7 .4,.7 .57,.53 .57,0', 'i': '.3,0 .3,.7|.29,.96 .31,.98',
+    'j': '.42,.7 .42,-.16 .27,-.3 .06,-.3|.41,.96 .43,.98', 'k': '0,0 0,1|.55,.7 0,.25|.2,.41 .58,0',
+    'l': '.2,1 .2,.12 .3,0 .47,0', 'm': '0,0 0,.7|0,.55 .13,.7 .27,.7 .3,.52 .3,0|.3,.52 .43,.7 .56,.7 .6,.53 .6,0',
+    'n': '0,0 0,.7|0,.52 .17,.7 .4,.7 .57,.53 .57,0', 'o': '.16,0 0,.18 0,.52 .16,.7 .41,.7 .57,.52 .57,.18 .41,0 .16,0',
+    'p': '0,-.3 0,.7|0,.55 .15,.7 .41,.7 .57,.53 .57,.17 .41,0 .15,0 0,.16',
+    'q': '.57,-.3 .57,.7|.57,.55 .42,.7 .16,.7 0,.53 0,.17 .16,0 .42,0 .57,.16',
+    'r': '.05,0 .05,.7|.05,.51 .22,.7 .42,.7 .55,.58', 's': '.56,.57 .42,.7 .15,.7 0,.56 .15,.39 .42,.32 .57,.17 .42,0 .15,0 0,.13',
+    't': '.28,1 .28,.14 .41,0 .58,0|.06,.7 .52,.7', 'u': '0,.7 0,.18 .16,0 .4,0 .57,.18 .57,.7|.57,.18 .57,0',
+    'v': '0,.7 .3,0 .6,.7', 'w': '0,.7 .12,0 .3,.4 .48,0 .6,.7', 'x': '0,0 .57,.7|0,.7 .57,0',
+    'y': '0,.7 .3,0|.6,.7 .18,-.3 .02,-.3', 'z': '0,.7 .57,.7 0,0 .57,0',
+    '°': '.16,.63 .04,.75 .04,.91 .16,1.03 .32,1.03 .44,.91 .44,.75 .32,.63 .16,.63',
+    '±': '.04,.62 .56,.62|.3,.34 .3,.9|.04,.1 .56,.1', 'Ø': '.16,0 0,.2 0,.8 .16,1 .44,1 .6,.8 .6,.2 .44,0 .16,0|-.04,-.08 .64,1.08',
+    'Δ': '0,0 .3,1 .6,0 0,0', 'Ω': '0,0 .2,0 .2,.15 .03,.35 0,.65 .16,.9 .44,.9 .6,.65 .57,.35 .4,.15 .4,0 .6,0',
+    'μ': '0,-.3 0,.7|0,.2 .17,0 .35,0 .52,.2 .52,.7|.52,.2 .62,0', '→': '0,.5 .65,.5|.4,.75 .65,.5 .4,.25',
+    '□': '0,0 0,1 .6,1 .6,0 0,0', ' ': ''
+};
+const accent = { 'á': ['a', '.24,.86 .43,1.06'], 'é': ['e', '.24,.86 .43,1.06'], 'ó': ['o', '.24,.86 .43,1.06'], 'ú': ['u', '.24,.86 .43,1.06'], 'í': ['i', '.24,.86 .43,1.06'], 'ń': ['n', '.24,.86 .43,1.06'], 'ć': ['c', '.24,.86 .43,1.06'], 'ś': ['s', '.24,.86 .43,1.06'], 'ź': ['z', '.24,.86 .43,1.06'], 'ż': ['z', '.29,.95 .31,.97'], 'ł': ['l', '.04,.36 .49,.62'], 'ą': ['a', '.49,0 .39,-.19 .51,-.27 .63,-.22'], 'ę': ['e', '.41,0 .31,-.19 .43,-.27 .55,-.22'], 'ä': ['a', '.16,.93 .18,.95|.42,.93 .44,.95'], 'ö': ['o', '.16,.93 .18,.95|.42,.93 .44,.95'], 'ü': ['u', '.16,.93 .18,.95|.42,.93 .44,.95'] };
+for (const [c, [base, path]] of Object.entries(accent))
+    S[c] = S[base] + '|' + path;
+function strokeEdges(path) {
+    const out = [];
+    for (const piece of path.split('|')) {
+        if (!piece)
+            continue;
+        const p = piece.trim().split(/\s+/).map(v => v.split(',').map(Number));
+        for (let i = 1; i < p.length; i++)
+            out.push([p[i - 1][0], p[i - 1][1], p[i][0], p[i][1], 0, 0, 0, 0]);
+    }
+    return out;
+}
+function makeBuiltinFont() {
+    const glyphs = [], map = new Map();
+    const chars = ['□', ' ', ...Object.keys(S).filter(c => c !== '□' && c !== ' ')];
+    for (const c of chars) {
+        map.set(c.codePointAt(0), glyphs.length);
+        glyphs.push({ edges: strokeEdges(S[c]), box: [-.12, -.4, .8, 1.22], advance: c === ' ' ? .46 : .73, stroke: .032, mode: 0 });
+    }
+    return packFont({ name: 'Aperture Technical', glyphs, map, missing: [] });
+}
+function packFont(font) {
+    const cellSize = font.cellSize || CELL;
+    if (![32, 64, 128].includes(cellSize)) throw new RangeError('Font atlas cell size must be 32, 64 or 128.');
+    const columns = 2 ** Math.ceil(Math.log2(Math.max(1, Math.sqrt(font.glyphs.length))));
+    const meta = new ArrayBuffer(font.glyphs.length * 48), u = new Uint32Array(meta), f = new Float32Array(meta);
+    const edgeCount = font.glyphs.reduce((n, g) => n + Math.max(g.edges.length, g.edgeCapacity || 0), 0), edges = new Float32Array(edgeCount * 8);
+    let offset = 0;
+    font.glyphs.forEach((g, i) => {
+        const j = i * 12; u[j] = offset; u[j + 1] = g.edges.length; u[j + 2] = g.mode || 0;
+        f.set(g.box, j + 4); f.set([g.advance, g.stroke || 0, 0, 0], j + 8);
+        for (const e of g.edges) { if (e.length !== 8 || e.some(x => !Number.isFinite(x))) throw new RangeError('Invalid font edge.'); edges.set(e, offset++ * 8); }
+        offset += Math.max(0, (g.edgeCapacity || 0) - g.edges.length);
+    });
+    return { ...font, meta, edges, cellSize, count: font.glyphs.length, atlasWidth: columns * cellSize, atlasHeight: Math.ceil(font.glyphs.length / columns) * cellSize };
+}
+/** TrueType glyf/cmap/hmtx reader. CFF/CFF2, WOFF and variable deltas intentionally fail closed. */
+function parseTrueType(buffer, requestedCodepoints = [], { maxGlyphs = MAX_GLYPHS, cellSize = CELL, script = 'latn', language = null, features = ['ccmp', 'liga', 'rlig', 'kern'] } = {}) {
+    if (!(buffer instanceof ArrayBuffer) || !Number.isInteger(maxGlyphs) || maxGlyphs < 1 || maxGlyphs > 16384) throw new TypeError('Expected a TrueType ArrayBuffer and a 1..16384 glyph budget.');
+    const d = new DataView(buffer), len = buffer.byteLength;
+    const need = (o, n) => { if (o < 0 || o + n > len)
+        throw new Error('Truncated TrueType table.'); };
+    need(0, 12);
+    const sig = d.getUint32(0);
+    if (sig !== 0x00010000 && sig !== 0x74727565)
+        throw new Error('Use an uncompressed TrueType .ttf with glyf outlines. CFF/WOFF are not supported.');
+    const tables = {};
+    let nt = d.getUint16(4);
+    if (nt > 256)
+        throw new Error('Invalid TrueType table count.');
+    need(12, nt * 16);
+    for (let i = 0; i < nt; i++) {
+        let a = 12 + i * 16, k = String.fromCharCode(...new Uint8Array(buffer, a, 4)), o = d.getUint32(a + 8), n = d.getUint32(a + 12);
+        need(o, n);
+        tables[k] = { o, n };
+    }
+    if (tables.fvar || tables.gvar)
+        throw new Error('Variable TrueType fonts are not supported. Supply a static TrueType instance.');
+    for (const t of ['head', 'maxp', 'hhea', 'hmtx', 'loca', 'glyf', 'cmap'])
+        if (!tables[t])
+            throw new Error('Missing TrueType ' + t + ' table.');
+    for (const [name, length] of [['head', 54], ['maxp', 6], ['hhea', 36], ['cmap', 4]]) if (tables[name].n < length) throw new Error('Truncated TrueType ' + name + ' table.');
+    const head = tables.head.o, units = d.getUint16(head + 18), ng = d.getUint16(tables.maxp.o + 4), long = d.getInt16(head + 50) === 1, nh = d.getUint16(tables.hhea.o + 34);
+    if (units < 16 || nh < 1 || nh > ng)
+        throw new Error('Invalid TrueType metrics.');
+    if (tables.hmtx.n < nh * 4 + (ng - nh) * 2 || tables.loca.n < (ng + 1) * (long ? 4 : 2)) throw new Error('Truncated TrueType location or metric table.');
+    const loc = i => { need(tables.loca.o + i * (long ? 4 : 2), long ? 4 : 2); return long ? d.getUint32(tables.loca.o + i * 4) : d.getUint16(tables.loca.o + i * 2) * 2; };
+    const cm = tables.cmap.o;
+    need(cm, 4);
+    let sub = -1, rank = -1;
+    for (let i = 0; i < d.getUint16(cm + 2); i++) {
+        const a = cm + 4 + i * 8;
+        need(a, 8);
+        const o = cm + d.getUint32(a + 4);
+        need(o, 2);
+        const fmt = d.getUint16(o), p = d.getUint16(a), e = d.getUint16(a + 2), r = fmt === 12 ? 30 : fmt === 4 ? 20 : -1;
+        if (r + (p === 3 ? 2 : 0) + (e === 10 ? 1 : 0) > rank && r >= 0) {
+            sub = o;
+            rank = r + (p === 3 ? 2 : 0) + (e === 10 ? 1 : 0);
+        }
+    }
+    if (sub < 0)
+        throw new Error('No Unicode cmap format 4 or 12.');
+    const cmap = cp => {
+        if (d.getUint16(sub) === 12) {
+            need(sub, 16);
+            let lo = 0, hi = d.getUint32(sub + 12) - 1;
+            if (hi > 1000000)
+                throw new Error('Invalid cmap groups.');
+            need(sub + 16, (hi + 1) * 12);
+            while (lo <= hi) {
+                const m = (lo + hi) >>> 1, a = sub + 16 + m * 12, s = d.getUint32(a), e = d.getUint32(a + 4);
+                if (cp < s)
+                    hi = m - 1;
+                else if (cp > e)
+                    lo = m + 1;
+                else
+                    return d.getUint32(a + 8) + cp - s;
+            }
+            return 0;
+        }
+        if (cp > 65535)
+            return 0;
+        const n = d.getUint16(sub + 6) / 2, end = sub + 14, start = end + n * 2 + 2, delta = start + n * 2, range = delta + n * 2;
+        need(range, n * 2);
+        for (let i = 0; i < n; i++) {
+            const e = d.getUint16(end + i * 2);
+            if (cp > e)
+                continue;
+            const s = d.getUint16(start + i * 2);
+            if (cp < s)
+                return 0;
+            const off = d.getUint16(range + i * 2), v = d.getInt16(delta + i * 2);
+            if (!off)
+                return (cp + v) & 65535;
+            const a = range + i * 2 + off + (cp - s) * 2;
+            need(a, 2);
+            const g = d.getUint16(a);
+            return g ? (g + v) & 65535 : 0;
+        }
+        return 0;
+    };
+    function outline(g, depth = 0, stack = new Set()) {
+        if (g >= ng || depth > 12 || stack.has(g))
+            throw new Error('Invalid or cyclic TrueType composite glyph.');
+        const start = loc(g), end = loc(g + 1);
+        if (start === end)
+            return [];
+        if (end < start || end > tables.glyf.n)
+            throw new Error('Invalid glyph location.');
+        const a = tables.glyf.o + start;
+        const need = (offset, length) => { if (offset < a || offset + length > tables.glyf.o + end) throw new Error('Truncated TrueType glyph record.'); };
+        need(a, 10);
+        const nc = d.getInt16(a), out = [];
+        let p = a + 10;
+        if (nc >= 0) {
+            if (nc > 32767)
+                throw new Error('Excessive contours.');
+            need(p, nc * 2);
+            const ends = [];
+            for (let i = 0; i < nc; i++)
+                ends.push(d.getUint16(p + i * 2));
+            p += nc * 2;
+            need(p, 2);
+            const ni = d.getUint16(p);
+            p += 2 + ni;
+            const n = nc ? ends[nc - 1] + 1 : 0;
+            if (n > 65536)
+                throw new Error('Excessive glyph points.');
+            const flags = [];
+            while (flags.length < n) {
+                need(p, 1);
+                const f = d.getUint8(p++);
+                flags.push(f);
+                if (f & 8) {
+                    need(p, 1);
+                    let r = d.getUint8(p++);
+                    if (flags.length + r > n)
+                        throw new Error('Bad glyph flag run.');
+                    while (r--)
+                        flags.push(f);
+                }
+            }
+            const xs = [], ys = [];
+            let x = 0, y = 0;
+            for (const f of flags) {
+                if (f & 2) {
+                    need(p, 1);
+                    x += (f & 16 ? 1 : -1) * d.getUint8(p++);
+                }
+                else if (!(f & 16)) {
+                    need(p, 2);
+                    x += d.getInt16(p);
+                    p += 2;
+                }
+                xs.push(x / units);
+            }
+            for (const f of flags) {
+                if (f & 4) {
+                    need(p, 1);
+                    y += (f & 32 ? 1 : -1) * d.getUint8(p++);
+                }
+                else if (!(f & 32)) {
+                    need(p, 2);
+                    y += d.getInt16(p);
+                    p += 2;
+                }
+                ys.push(y / units);
+            }
+            let first = 0;
+            for (const last of ends) {
+                const pts = [];
+                for (let i = first; i <= last; i++)
+                    pts.push([xs[i], ys[i], !!(flags[i] & 1)]);
+                first = last + 1;
+                if (!pts.length)
+                    continue;
+                const expanded = [];
+                for (let i = 0; i < pts.length; i++) {
+                    const u = pts[i], v = pts[(i + 1) % pts.length];
+                    expanded.push(u);
+                    if (!u[2] && !v[2])
+                        expanded.push([(u[0] + v[0]) / 2, (u[1] + v[1]) / 2, true]);
+                }
+                let s = expanded.findIndex(p => p[2]);
+                if (s < 0)
+                    continue;
+                const pp = expanded.slice(s).concat(expanded.slice(0, s));
+                pp.push(pp[0]);
+                let cur = pp[0];
+                for (let i = 1; i < pp.length; i++) {
+                    const v = pp[i];
+                    if (v[2]) {
+                        out.push([cur[0], cur[1], v[0], v[1], 0, 0, 0, 0]);
+                        cur = v;
+                    }
+                    else {
+                        const e = pp[++i];
+                        out.push([cur[0], cur[1], e[0], e[1], v[0], v[1], 1, 0]);
+                        cur = e;
+                    }
+                }
+            }
+        }
+        else {
+            stack = new Set(stack);
+            stack.add(g);
+            let flags = 0;
+            do {
+                need(p, 4);
+                flags = d.getUint16(p);
+                const child = d.getUint16(p + 2);
+                p += 4;
+                let ax, ay;
+                if (flags & 1) {
+                    need(p, 4);
+                    ax = d.getInt16(p);
+                    ay = d.getInt16(p + 2);
+                    p += 4;
+                }
+                else {
+                    need(p, 2);
+                    ax = d.getInt8(p);
+                    ay = d.getInt8(p + 1);
+                    p += 2;
+                }
+                if (!(flags & 2))
+                    throw new Error('TrueType point-matched composites are not supported; use XY-positioned outlines.');
+                let xx = 1, xy = 0, yx = 0, yy = 1;
+                const read = () => { need(p, 2); const v = d.getInt16(p) / 16384; p += 2; return v; };
+                if (flags & 8) {
+                    xx = yy = read();
+                }
+                else if (flags & 64) {
+                    xx = read();
+                    yy = read();
+                }
+                else if (flags & 128) {
+                    xx = read();
+                    yx = read();
+                    xy = read();
+                    yy = read();
+                }
+                let dx = ax / units, dy = ay / units;
+                if (flags & 2048) {
+                    [dx, dy] = [xx * dx + xy * dy, yx * dx + yy * dy];
+                }
+                for (const e of outline(child, depth + 1, stack)) {
+                    const q = e.slice();
+                    for (let k = 0; k < 6; k += 2) {
+                        q[k] = xx * e[k] + xy * e[k + 1] + dx;
+                        q[k + 1] = yx * e[k] + yy * e[k + 1] + dy;
+                    }
+                    out.push(q);
+                }
+            } while (flags & 32);
+        }
+        return out;
+    }
+    const cps = [...new Set([0x25a1, 32, ...Array.from({ length: 95 }, (_, i) => i + 32), ...requestedCodepoints])];
+    if (cps.some(cp => !Number.isInteger(cp) || cp < 0 || cp > 0x10ffff)) throw new RangeError('Invalid requested Unicode codepoint.');
+    const layout = readOpenTypeLayout(d, tables, units, { script, language, features });
+    const mapped = cps.map(cp => [cp, cmap(cp)]), missing = mapped.filter(([cp, g]) => !g && cp !== 0x25a1).map(([cp]) => cp);
+    const glyphIds = glyphClosure(layout, mapped.map(([, g]) => g), maxGlyphs);
+    if (glyphIds.length > maxGlyphs) throw new Error(`This atlas supports ${maxGlyphs} distinct glyphs; requested ${glyphIds.length}.`);
+    const glyphs = [], map = new Map(), dense = new Map(glyphIds.map((g, i) => [g, i]));
+    for (const g of glyphIds) {
+        if (g >= ng) throw new Error('OpenType substituted glyph is outside the glyph table.');
+        const edges = outline(g), adv = d.getUint16(tables.hmtx.o + Math.min(g, nh - 1) * 4) / units;
+        let box = [0, -.25, Math.max(adv, .2), 1];
+        if (edges.length) {
+            let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+            for (const e of edges) for (let k = 0; k < (e[6] ? 6 : 4); k += 2) { x0 = Math.min(x0, e[k]); y0 = Math.min(y0, e[k + 1]); x1 = Math.max(x1, e[k]); y1 = Math.max(y1, e[k + 1]); }
+            box = [x0 - .1, y0 - .1, x1 + .1, y1 + .1];
+        }
+        glyphs.push({ edges, box, advance: adv, mode: 1, stroke: 0, originalId: g });
+    }
+    for (const [cp, gid] of mapped) map.set(cp, dense.get(gid));
+    return packFont({ name: 'Imported TrueType', glyphs, map, missing, cellSize, glyphIds,
+        layoutData: packOpenTypeLayout(layout, glyphIds), layoutProfile: { script, language, features }, diagnostics: layout.diagnostics });
+}
+
+Object.assign(exports,{CELL,ATLAS_COLUMNS,MAX_GLYPHS,makeBuiltinFont,packFont,parseTrueType});
+},
+"packages/font/layout.js":function(module,exports,require){
+/** Defensive OpenType table decoding. Only GPU kernels apply these programs to text.
+ * The current profile supports GSUB single/ligature and horizontal GPOS pair/class kerning.
+ * Script/language selection and unsupported lookups are reported, never guessed as full shaping.
+ */
+const {WordArena}=require("packages/model/index.js");
+function readOpenTypeLayout(view,tables,units,{script='latn',language=null,features=['ccmp','liga','rlig','kern'],maxRecords=1000000}={}) {
+    const diagnostics=[], substitutions=[], positioning=[];let recordCount=0;
+    const warn=message=>{if(!diagnostics.includes(message))diagnostics.push(message);};
+    function reader(table){const start=table.o,end=start+table.n;const need=(o,n)=>{if(!Number.isInteger(o)||o<start||o+n>end)throw new Error('OpenType layout offset outside table.');};return {u16:o=>(need(o,2),view.getUint16(o)),i16:o=>(need(o,2),view.getInt16(o)),u32:o=>(need(o,4),view.getUint32(o)),tag:o=>(need(o,4),String.fromCharCode(...new Uint8Array(view.buffer,view.byteOffset+o,4)))};}
+    function addRecords(n){recordCount+=n;if(recordCount>maxRecords)throw new Error('OpenType layout record budget exceeded.');}
+    function coverage(r,o){const f=r.u16(o),n=r.u16(o+2),a=[];if(f===1){for(let i=0;i<n;i++)a.push(r.u16(o+4+i*2));}else if(f===2){for(let i=0;i<n;i++){const p=o+4+i*6,start=r.u16(p),end=r.u16(p+2),index=r.u16(p+4);if(end<start||index!==a.length)throw new Error('Invalid OpenType coverage range.');for(let g=start;g<=end;g++)a.push(g);}}else throw new Error('Unknown OpenType coverage format.');addRecords(a.length);return a;}
+    function classes(r,o){const f=r.u16(o),map=new Map();if(f===1){const start=r.u16(o+2),n=r.u16(o+4);for(let i=0;i<n;i++)map.set(start+i,r.u16(o+6+i*2));}else if(f===2){const n=r.u16(o+2);for(let i=0;i<n;i++){const p=o+4+i*6,start=r.u16(p),end=r.u16(p+2),c=r.u16(p+4);if(end<start)throw new Error('Invalid OpenType class range.');for(let g=start;g<=end;g++)map.set(g,c);}}else throw new Error('Unknown OpenType class format.');addRecords(map.size);return map;}
+    function selected(table){const r=reader(table),b=table.o,sl=b+r.u16(b+4),fl=b+r.u16(b+6),ll=b+r.u16(b+8);let scriptOffset=0,fallback=0;
+        for(let i=0,n=r.u16(sl);i<n;i++){const p=sl+2+i*6,tag=r.tag(p),offset=sl+r.u16(p+4);if(tag===script)scriptOffset=offset;if(tag==='DFLT')fallback=offset;}
+        scriptOffset ||= fallback;if(!scriptOffset)return {r,ll,indices:[]};let languageOffset=r.u16(scriptOffset)?scriptOffset+r.u16(scriptOffset):0;
+        if(language)for(let i=0,n=r.u16(scriptOffset+2);i<n;i++){const p=scriptOffset+4+i*6;if(r.tag(p)===language)languageOffset=scriptOffset+r.u16(p+4);}
+        if(!languageOffset)return {r,ll,indices:[]};const selectedFeatures=[],required=r.u16(languageOffset+2);if(required!==65535)selectedFeatures.push(required);
+        for(let i=0,n=r.u16(languageOffset+4);i<n;i++)selectedFeatures.push(r.u16(languageOffset+6+i*2));const indices=new Set(),nf=r.u16(fl),nl=r.u16(ll);
+        for(const fi of selectedFeatures){if(fi>=nf)throw new Error('OpenType feature index outside table.');const p=fl+2+fi*6,tag=r.tag(p);if(fi!==required&&!features.includes(tag))continue;const f=fl+r.u16(p+4);for(let i=0,n=r.u16(f+2);i<n;i++){const index=r.u16(f+4+i*2);if(index>=nl)throw new Error('OpenType lookup index outside table.');indices.add(index);}}
+        return {r,ll,indices:[...indices].sort((a,b)=>a-b)};
+    }
+    if(tables.GSUB){const {r,ll,indices}=selected(tables.GSUB);for(const index of indices){const lookup=ll+r.u16(ll+2+index*2),type=r.u16(lookup),flags=r.u16(lookup+2),rules=[];
+        if(flags){warn(`GSUB lookup ${index}: lookup flags ${flags} need mark filtering; skipped.`);continue;}
+        for(let si=0,n=r.u16(lookup+4);si<n;si++){let o=lookup+r.u16(lookup+6+si*2),t=type;if(t===7){if(r.u16(o)!==1)throw new Error('Invalid GSUB extension.');t=r.u16(o+2);o+=r.u32(o+4);}
+            const format=r.u16(o);if(t===1){const glyphs=coverage(r,o+r.u16(o+2));if(format===1){const delta=r.i16(o+4);for(const g of glyphs)rules.push({input:[g],output:(g+delta)&65535});}else if(format===2){if(r.u16(o+4)!==glyphs.length)throw new Error('GSUB coverage/substitution mismatch.');glyphs.forEach((g,i)=>rules.push({input:[g],output:r.u16(o+6+i*2)}));}else throw new Error('Unknown GSUB single format.');}
+            else if(t===4&&format===1){const glyphs=coverage(r,o+r.u16(o+2));if(r.u16(o+4)!==glyphs.length)throw new Error('GSUB ligature coverage mismatch.');glyphs.forEach((g,i)=>{const set=o+r.u16(o+6+i*2);for(let j=0,n=r.u16(set);j<n;j++){const l=set+r.u16(set+2+j*2),count=r.u16(l+2);if(count<2||count>32){warn('GSUB ligatures outside 2..32 components were skipped.');continue;}const input=[g];for(let k=1;k<count;k++)input.push(r.u16(l+2+k*2));rules.push({input,output:r.u16(l)});}});}
+            else warn(`GSUB lookup type ${t}, format ${format} is not in the current horizontal profile.`);
+        }addRecords(rules.length);if(rules.length)substitutions.push({index,rules});}}
+    if(tables.GPOS){const {r,ll,indices}=selected(tables.GPOS);for(const index of indices){const lookup=ll+r.u16(ll+2+index*2),type=r.u16(lookup),flags=r.u16(lookup+2),subtables=[];
+        if(flags){warn(`GPOS lookup ${index}: lookup flags ${flags} need mark filtering; skipped.`);continue;}
+        for(let si=0,n=r.u16(lookup+4);si<n;si++){let o=lookup+r.u16(lookup+6+si*2),t=type;if(t===9){if(r.u16(o)!==1)throw new Error('Invalid GPOS extension.');t=r.u16(o+2);o+=r.u32(o+4);}
+            const format=r.u16(o);if(t!==2||![1,2].includes(format)){warn(`GPOS lookup type ${t}, format ${format} is not in the current horizontal profile.`);continue;}
+            const vf1=r.u16(o+4),vf2=r.u16(o+6);if((vf1&~4)!==0||vf2!==0){warn('GPOS non-advance placement/device adjustments were skipped.');continue;}const size=vf1&4?2:0,glyphs=coverage(r,o+r.u16(o+2));
+            if(format===1){if(r.u16(o+8)!==glyphs.length)throw new Error('GPOS pair coverage mismatch.');const pairs=[];glyphs.forEach((left,i)=>{const set=o+r.u16(o+10+i*2),count=r.u16(set);for(let j=0;j<count;j++){const p=set+2+j*(2+size);pairs.push({left,right:r.u16(p),advance:size?r.i16(p+2)/units:0});}});addRecords(pairs.length);subtables.push({type:1,pairs});}
+            else {const class1=classes(r,o+r.u16(o+8)),class2=classes(r,o+r.u16(o+10)),n1=r.u16(o+12),n2=r.u16(o+14);if(!n1||!n2)throw new Error('Empty GPOS class matrix.');addRecords(n1*n2);const matrix=new Float32Array(n1*n2);for(let i=0;i<matrix.length;i++)matrix[i]=size?r.i16(o+16+i*size)/units:0;
+                if([...class1.values()].some(c=>c>=n1)||[...class2.values()].some(c=>c>=n2))throw new Error('GPOS class outside matrix.');subtables.push({type:2,coverage:new Set(glyphs),class1,class2,n1,n2,matrix});}
+        }if(subtables.length)positioning.push({index,subtables});}}
+    if(!positioning.length&&tables.kern){const r=reader(tables.kern),b=tables.kern.o;if(r.u16(b)===0){let o=b+4;for(let i=0,n=r.u16(b+2);i<n;i++){const length=r.u16(o+2),flags=r.u16(o+4);if(length<6)throw new Error('Invalid kern length.');if((flags>>8)===0&&(flags&7)===1){const pairs=[];for(let j=0,n=r.u16(o+6);j<n;j++){const p=o+14+j*6;pairs.push({left:r.u16(p),right:r.u16(p+2),advance:r.i16(p+4)/units});}addRecords(pairs.length);positioning.push({index:i,override:!!(flags&8),subtables:[{type:1,pairs}]});}else warn('Unsupported legacy kern subtable skipped.');o+=length;}}else warn('Apple kern v1 is not in the current profile.');}
+    return {substitutions,positioning,diagnostics,script,language,features};
+}
+function glyphClosure(layout,initial,maxGlyphs=4096){const set=new Set(initial);if(!Number.isInteger(maxGlyphs)||maxGlyphs<1||set.size>maxGlyphs)throw new Error('Initial glyph set exceeds the atlas budget.');let changed=true;while(changed){changed=false;for(const lookup of layout.substitutions)for(const rule of lookup.rules)if(rule.input.every(g=>set.has(g))&&!set.has(rule.output)){set.add(rule.output);changed=true;if(set.size>maxGlyphs)throw new Error('GSUB glyph closure exceeds atlas glyph budget.');}}return [...set];}
+/** Compact sorted GSUB tables; GPOS class matrices stay matrices, never O(glyphCount²) pairs. */
+function packOpenTypeLayout(layout,glyphIds){
+    const dense=new Map(glyphIds.map((g,i)=>[g,i])),arena=new WordArena(),header=arena.alloc(8),substitutionData=[];
+    for(const lookup of layout.substitutions){const map=new Map();for(const rule of lookup.rules){if(!dense.has(rule.output)||!rule.input.every(g=>dense.has(g)))continue;const input=rule.input.map(g=>dense.get(g)),key=input[0];if(!map.has(key))map.set(key,[]);map.get(key).push({input,output:dense.get(rule.output)});}if(map.size)substitutionData.push(map);}
+    const lookupTable=arena.alloc(substitutionData.length*4);
+    substitutionData.forEach((map,index)=>{const entries=[...map].sort((a,b)=>a[0]-b[0]),offset=arena.alloc(entries.length*4);arena.u.set([entries.length,offset,0,0],lookupTable+index*4);
+        entries.forEach(([gid,rules],i)=>{const ro=arena.alloc(rules.length*4);arena.u.set([gid,rules.length,ro,0],offset+i*4);rules.forEach((rule,j)=>{const components=arena.alloc(rule.input.length-1);arena.u.set(rule.input.slice(1),components);arena.u.set([rule.output,rule.input.length,components,0],ro+j*4);});});});
+    const positioning=[];for(const lookup of layout.positioning){const subs=[];for(const sub of lookup.subtables){if(sub.type===1){const records=sub.pairs.filter(p=>dense.has(p.left)&&dense.has(p.right)).map(p=>[dense.get(p.left)*glyphIds.length+dense.get(p.right),p.advance]).sort((a,b)=>a[0]-b[0]);if(records.length)subs.push({type:1,records});}else subs.push(sub);}if(subs.length)positioning.push({...lookup,subtables:subs});}
+    const positionTable=arena.alloc(positioning.length*4);
+    positioning.forEach((lookup,i)=>{const offset=arena.alloc(lookup.subtables.length*4);arena.u.set([lookup.subtables.length,offset,Number(!!lookup.override),0],positionTable+i*4);lookup.subtables.forEach((sub,j)=>{const o=offset+j*4;if(sub.type===1){const data=arena.alloc(sub.records.length*2);arena.u.set([1,sub.records.length,data,0],o);sub.records.forEach(([key,value],k)=>{arena.u[data+k*2]=key;arena.f[data+k*2+1]=value;});}else{const classes=arena.alloc(glyphIds.length*2),matrix=arena.alloc(sub.matrix.length);arena.f.set(sub.matrix,matrix);glyphIds.forEach((g,k)=>arena.u.set([sub.coverage.has(g)?(sub.class1.get(g)||0)+1:0,sub.class2.get(g)||0],classes+k*2));arena.u.set([2,classes,sub.n2,matrix],o);}});});
+    arena.u.set([0x4f544c32,substitutionData.length,lookupTable,positioning.length,positionTable,glyphIds.length,0,0],header);
+    return new Uint32Array(arena.finish());
+}
+
+Object.assign(exports,{readOpenTypeLayout,glyphClosure,packOpenTypeLayout});
+},
+"packages/model/features.js":function(module,exports,require){
+const { ModelBuilder, TYPE, rgba }=require("packages/model/index.js");
+/** Original parameter-only qualification scene: all boundary, pattern, text and dimension evaluation is GPU work. */
+function makeFeatureGallery(font) {
+    const layers = [['FRAME', '#526982'], ['LABELS', '#c2d4e5'], ['PATTERNS', '#58cdb6'], ['DIMENSIONS', '#d9ac76'], ['ALPHA', '#9e9bea']]
+        .map(([name, color]) => ({ name, color: rgba(color), visible: true }));
+    const b = new ModelBuilder(font, { name: 'Aperture / Compute Features', layers });
+    const label = (s,x,y,h=4) => b.text(s,x,y,h,1);
+    b.rect(0,0,520,340); label('APERTURE / COMPUTE FEATURES',12,321,8);
+    label('PARAMETRIC HATCHES  .  GPU DIMENSIONS  .  TEXT  .  ORDERED ALPHA',12,308,3.8);
+    const ring = (x,y,r,loop=0) => ({ kind:3, loop, flags:loop?0:1, center:[x,y], major:[r,0], ratio:1, start:0, sweep:Math.PI*2 });
+    const rectangle = (x,y,w,h,loop=0) => { const p=[[x,y],[x+w,y],[x+w,y+h],[x,y+h]];
+        return p.map((a,i)=>({kind:1,loop,flags:loop?0:1,a,b:p[(i+1)%4]})); };
+    const hatch = (edges, families, solid=false) => b.add({type:TYPE.HATCH,anchor:[0,0],layer:2,hatch:{style:0,edges,families,solid}});
+    const family = (angle,spacing,dashes=[]) => ({angle,base:[0,0],offset:[-Math.sin(angle)*spacing,Math.cos(angle)*spacing],dashes});
+    b.rect(10,167,244,130); label('01 / ANALYTIC PATTERN FAMILIES',17,284);
+    hatch([...rectangle(22,204,90,60),ring(67,234,17,1)],[family(Math.PI/4,6)]);
+    hatch([ring(180,234,32),ring(180,234,15,1)],[family(0,5,[8,-3]),family(Math.PI/2,9,[2,-4])]);
+    label('Nested hole / line boundaries',22,184,3); label('Conic rings / cross hatch',140,184,3);
+    b.rect(266,167,244,130); label('02 / PARAMETRIC DIMENSIONS',274,284);
+    b.rect(296,215,165,36,0); b.circle(321,232,11,0); b.circle(436,232,11,0);
+    b.add({type:TYPE.DIMENSION,anchor:[296,215],layer:3,dimension:{kind:0,
+        points:[[296,195],[378.5,199],[0,0],[296,215],[461,215],[0,0],[0,0]],
+        precision:2,textHeight:4,arrowSize:3,extensionOffset:2,extensionLength:3,gap:2}});
+    b.add({type:TYPE.DIMENSION,anchor:[321,232],layer:3,dimension:{kind:4,
+        points:[[321,232],[341,267],[0,0],[0,0],[0,0],[332,232],[0,0]],
+        precision:1,textHeight:3.5,arrowSize:2,gap:2}});
+    label('Definition points -> geometry + numeric label',274,175,3.2);
+    b.rect(10,10,244,145); label('03 / GLYPH QUALITY & SHAPING',17,142);
+    label('AVATAR  To Wa  office affinity',22,119,7);
+    label('fi ffi fl ffl  /  0123456789',22,99,6);
+    label('Tiny labels stay independent GPU entities.',22,77,3);
+    label('Load a local TTF for ligatures and kerning.',22,64,3);
+    label('Load SHX / SHP for GPU stroke compilation.',22,51,3);
+    label('Original built-in face has no GSUB / GPOS.',22,32,3);
+    b.rect(266,10,244,145); label('04 / BOUNDED SOURCE-OVER',274,142);
+    const fill=(x,y,w,h,color)=>b.add({type:TYPE.HATCH,anchor:[0,0],layer:4,color,
+        hatch:{solid:true,style:0,edges:rectangle(x,y,w,h),families:[]}});
+    fill(291,63,78,53,(rgba('#55c6b1') & 0xffffff) | (150<<24));
+    fill(336,80,78,53,(rgba('#dc9977') & 0xffffff) | (150<<24));
+    fill(381,63,78,53,(rgba('#9995e8') & 0xffffff) | (150<<24));
+    label('Enable Ordered alpha in the Compute lab.',278,42,3.2);
+    label('Fragment overflow is flagged, never hidden.',278,26,3.2);
+    return b.finish();
+}
+
+Object.assign(exports,{makeFeatureGallery});
+},
+"packages/model/demo.js":function(module,exports,require){
+const { ModelBuilder, TYPE, FLAGS, rgba }=require("packages/model/index.js");
+/** Original, fictional process-campus drawing. Every mark is an ordinary GPU entity. */
+function makeCampus(font) {
+    const layers = [['A-STRUCTURE', '#788eaa'], ['P-PROCESS', '#5dd1bf'], ['E-EQUIPMENT', '#dca36d'], ['I-INSTRUMENTS', '#a998e2'], ['A-TEXT', '#b6c5d7'], ['A-DIMENSIONS', '#667d96'], ['E-DETAIL', '#678b9c'], ['A-SITE', '#40556c']].map(([name, color]) => ({ name, color: rgba(color), visible: true }));
+    const b = new ModelBuilder(font, { name: 'Eastworks / Process Campus', layers });
+    const L = (a, c, layer = 0) => b.line(a, c, layer);
+    const R = (x, y, w, h, layer = 0) => b.rect(x, y, w, h, layer);
+    const T = (s, x, y, h = 7, layer = 4) => b.text(s, x, y, h, layer);
+    const C = (x, y, r, layer = 2) => b.circle(x, y, r, layer);
+    function pipe(points, layer = 1) { b.add({ type: TYPE.POLYLINE, anchor: points[0], points, layer }); }
+    function arrow(x, y, dx, dy, layer = 5) { b.add({ type: TYPE.TRIANGLE, anchor: [x, y], p: [dx - dy * .4, dy + dx * .4, dx + dy * .4, dy - dx * .4], layer }); }
+    function dimension(x, y, w, label) { L([x, y], [x + w, y], 5); L([x, y - 8], [x, y + 8], 5); L([x + w, y - 8], [x + w, y + 8], 5); arrow(x, y, 6, 0); arrow(x + w, y, -6, 0); T(label, x + w * .5 - label.length * 2.3, y + 6, 6, 5); }
+    function valve(x, y, vertical = false) { if (!vertical) {
+        b.add({ type: TYPE.POLYLINE, anchor: [x - 5, y - 4], points: [[x - 5, y - 4], [x + 5, y + 4], [x + 5, y - 4], [x - 5, y + 4], [x - 5, y - 4]], layer: 1 });
+    }
+    else {
+        b.add({ type: TYPE.POLYLINE, anchor: [x - 4, y - 5], points: [[x - 4, y - 5], [x + 4, y + 5], [x - 4, y + 5], [x + 4, y - 5], [x - 4, y - 5]], layer: 1 });
+    } }
+    function pump(x, y, id) { C(x, y, 12); C(x, y, 8); R(x + 14, y - 8, 20, 16, 2); L([x + 19, y - 6], [x + 19, y + 6], 6); L([x + 23, y - 6], [x + 23, y + 6], 6); L([x + 27, y - 6], [x + 27, y + 6], 6); L([x - 17, y], [x - 12, y], 1); L([x + 12, y], [x + 14, y], 1); L([x, y + 12], [x, y + 23], 1); valve(x, y + 19, true); R(x - 15, y - 14, 52, 29, 6); T('P-' + String(id).padStart(4, '0'), x - 12, y - 24, 5.1); T('45 kW', x + 16, y + 19, 4.4, 6); }
+    function rack(x, y, id) { R(x, y, 38, 58, 2); R(x + 3, y + 3, 32, 52, 6); for (let j = 0; j < 9; j++) {
+        L([x + 5, y + 7 + j * 5], [x + 33, y + 7 + j * 5], 6);
+        for (let k = 0; k < 5; k++)
+            C(x + 8 + k * 5, y + 9 + j * 5, .7, 6);
+    } T('HX-' + id, x, y - 8, 5.2); L([x + 10, y + 58], [x + 10, y + 64], 1); L([x + 28, y + 58], [x + 28, y + 64], 1); }
+    R(35, 35, 1895, 1160, 0);
+    R(44, 44, 1877, 1142, 7);
+    for (let x = 75; x < 1900; x += 50) {
+        L([x, 1180], [x, 1186], 7);
+        L([x, 44], [x, 50], 7);
+    }
+    for (let y = 80; y < 1170; y += 50) {
+        L([44, y], [50, y], 7);
+        L([1915, y], [1921, y], 7);
+    }
+    T('EASTWORKS', 83, 1126, 25, 4);
+    T('PROCESS CAMPUS  /  GENERAL ARRANGEMENT', 84, 1103, 9, 5);
+    T('MODEL SPACE  .  ENGINEERING DEMONSTRATION', 1370, 1146, 6, 5);
+    T('N', 1848, 1094, 9, 4);
+    L([1850, 1055], [1850, 1084], 5);
+    arrow(1850, 1086, 0, -10);
+    C(1850, 1055, 8, 5);
+    // Main process train: 48 detailed pumps and pipe manifolds.
+    R(105, 555, 765, 455);
+    R(111, 561, 753, 443, 7);
+    T('01', 122, 969, 18, 1);
+    T('PROCESS HALL A', 164, 979, 11);
+    T('PRIMARY CIRCULATION / DUTY + STANDBY', 164, 962, 5.8, 5);
+    for (let row = 0; row < 6; row++) {
+        const y = 600 + row * 57;
+        L([123, y + 29], [846, y + 29], 1);
+        L([123, y + 32], [846, y + 32], 6);
+        for (let col = 0; col < 8; col++) {
+            const x = 143 + col * 89;
+            pump(x, y, 2100 + row * 8 + col);
+            pipe([[x, y + 23], [x, y + 29]]);
+            if (col < 7)
+                valve(x + 54, y + 29);
+        }
+    }
+    for (let x = 120; x < 864; x += 100) {
+        R(x, 556, 8, 8);
+        R(x, 997, 8, 8);
+    }
+    for (let y = 560; y < 1000; y += 100) {
+        R(106, y, 8, 8);
+        R(858, y, 8, 8);
+    }
+    dimension(105, 1031, 765, '76 500');
+    // Heat exchange galleries: each tiny detail remains selectable.
+    R(920, 650, 470, 360);
+    R(926, 656, 458, 348, 7);
+    T('02', 936, 969, 18, 1);
+    T('THERMAL GALLERY', 978, 979, 10);
+    T('HEAT EXCHANGE / MODULAR UNITS', 978, 962, 5.3, 5);
+    for (let row = 0; row < 3; row++) {
+        const y = 688 + row * 84;
+        for (let col = 0; col < 7; col++)
+            rack(944 + col * 62, y, 300 + row * 7 + col);
+        L([936, y + 65], [1370, y + 65], 1);
+    }
+    dimension(920, 1031, 470, '47 000');
+    // Storage vessels with ring details, bolts, nozzle and instrument loops.
+    R(1440, 555, 435, 455);
+    T('03', 1455, 969, 18, 1);
+    T('VESSEL FARM', 1498, 979, 11);
+    T('CLOSED-LOOP / 12 BAR DESIGN', 1498, 962, 5.5, 5);
+    for (let row = 0; row < 3; row++)
+        for (let col = 0; col < 3; col++) {
+            const x = 1512 + col * 143, y = 627 + row * 116;
+            C(x, y, 43);
+            C(x, y, 38, 6);
+            C(x, y, 10, 6);
+            C(x, y, 5, 2);
+            for (let j = 0; j < 16; j++) {
+                const a = j * Math.PI / 8;
+                C(x + 40.5 * Math.cos(a), y + 40.5 * Math.sin(a), 1.2, 6);
+            }
+            L([x - 48, y], [x + 48, y], 5);
+            L([x, y - 48], [x, y + 48], 5);
+            T('V-' + (401 + row * 3 + col), x - 15, y + 17, 6.5);
+            T('Ø 8 600', x - 18, y - 23, 5.2, 5);
+            C(x + 52, y + 28, 8, 3);
+            T('PI', x + 47, y + 25, 5, 3);
+            pipe([[x + 40, y + 18], [x + 52, y + 18], [x + 52, y + 20]], 3);
+            L([x, y - 43], [x, y - 56], 1);
+            valve(x, y - 52, true);
+        }
+    // Electrical/control wing.
+    R(105, 205, 640, 280);
+    T('04', 121, 445, 18, 1);
+    T('POWER + CONTROL', 164, 455, 11);
+    T('MCC / CONTROL ROOM / SERVICE ACCESS', 164, 439, 5.5, 5);
+    for (let col = 0; col < 4; col++) {
+        const x = 120 + col * 151;
+        R(x, 224, 140, 195, 0);
+        T(['CONTROL', 'MCC-A', 'MCC-B', 'UPS / LV'][col], x + 9, 401, 6.2);
+        for (let row = 0; row < 3; row++)
+            for (let unit = 0; unit < 4; unit++) {
+                let xx = x + 10 + unit * 30, yy = 242 + row * 47;
+                R(xx, yy, 24, 34, 2);
+                for (let k = 0; k < 6; k++)
+                    L([xx + 4, yy + 5 + k * 4], [xx + 20, yy + 5 + k * 4], 6);
+                C(xx + 18, yy + 29, 1.2, 1);
+                T(String(101 + row * 4 + unit), xx + 4, yy + 37, 4.3, 6);
+            }
+        L([x + 12, 231], [x + 128, 231], 1);
+    }
+    // Utility loop and coolant skid.
+    R(790, 205, 600, 280);
+    T('05', 806, 445, 18, 1);
+    T('UTILITY SKIDS', 850, 455, 11);
+    T('SECONDARY CIRCUIT / CHILLED WATER', 850, 439, 5.5, 5);
+    for (let r = 0; r < 2; r++)
+        for (let c = 0; c < 4; c++) {
+            let x = 830 + c * 138, y = 270 + r * 89;
+            R(x - 12, y - 22, 114, 62, 7);
+            pump(x + 4, y, 3100 + r * 4 + c);
+            R(x + 49, y - 10, 36, 27, 2);
+            for (let z = 0; z < 7; z++)
+                L([x + 53 + z * 4, y - 7], [x + 53 + z * 4, y + 14], 6);
+            pipe([[x - 20, y], [x - 8, y]]);
+            T('SKID ' + (r * 4 + c + 1), x + 52, y + 26, 5);
+        }
+    // Vertical circulation and main headers.
+    for (let offset = 0; offset < 4; offset++) {
+        const y = 510 + offset * 8;
+        pipe([[85, y], [1414, y], [1414, 585 + offset * 8], [1887, 585 + offset * 8]], offset % 2 ? 6 : 1);
+        for (let x = 155; x < 1360; x += 225)
+            valve(x, y);
+    }
+    for (let offset = 0; offset < 3; offset++) {
+        const x = 888 + offset * 7;
+        pipe([[x, 224], [x, 1054], [1823, 1054 + offset * 7], [1823, 1015]], offset === 0 ? 1 : 6);
+    }
+    for (let y = 610; y < 950; y += 114)
+        pipe([[870, y], [888, y]], 1);
+    for (let x = 270; x < 1350; x += 140) {
+        pipe([[x, 485], [x, 508]], 1);
+    }
+    // Laboratory / sample area with benches.
+    R(1440, 205, 435, 280);
+    T('06', 1456, 445, 18, 1);
+    T('ANALYTICS LAB', 1498, 455, 11);
+    T('QUALITY ASSURANCE / SAMPLING', 1498, 439, 5.5, 5);
+    for (let row = 0; row < 4; row++)
+        for (let col = 0; col < 4; col++) {
+            const x = 1455 + col * 102, y = 232 + row * 44;
+            R(x, y, 88, 28, 0);
+            R(x + 4, y + 4, 30, 20, 6);
+            for (let k = 0; k < 4; k++) {
+                C(x + 43 + k * 10, y + 14, 3.2, 3);
+                L([x + 40 + k * 10, y + 14], [x + 46 + k * 10, y + 14], 6);
+            }
+            T('LAB-' + (row * 4 + col + 1), x + 6, y + 10, 4.4);
+        }
+    dimension(105, 177, 1770, '177 000  /  OVERALL');
+    // Drawing title block and legend.
+    R(74, 72, 1815, 67, 5);
+    L([1150, 72], [1150, 139], 5);
+    L([1590, 72], [1590, 139], 5);
+    L([1742, 72], [1742, 139], 5);
+    T('APERTURE  /  ENGINEERING SYSTEMS', 90, 114, 12);
+    T('EASTWORKS CAMPUS . XY COORDINATES IN MILLIMETRES . NOT FOR CONSTRUCTION', 91, 90, 5.6, 5);
+    T('GENERAL ARRANGEMENT', 1169, 117, 9);
+    T('PROCESS + UTILITIES', 1169, 99, 7, 5);
+    T('100% COMPUTE RASTERIZATION', 1169, 84, 5.8, 1);
+    T('DRAWING NO.', 1605, 123, 5, 5);
+    T('EW-P-042', 1605, 101, 12);
+    T('REVISION', 1758, 123, 5, 5);
+    T('B.03', 1758, 100, 13);
+    T('SCALE  1 : 250', 1758, 84, 5.5, 5);
+    const result = b.finish();
+    result.demo = true;
+    result.diagnostics = [];
+    return result;
+}
+
+Object.assign(exports,{makeCampus});
+}};const cache={};function require(id){if(cache[id])return cache[id].exports;const module={exports:{}};cache[id]=module;factories[id](module,module.exports,require);return module.exports;}require("packages/app/index.js");})();
